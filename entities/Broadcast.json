@@ -1,0 +1,35 @@
+{
+  "name": "Broadcast",
+  "type": "object",
+  "properties": {
+    "active": {
+      "type": "boolean",
+      "default": false
+    },
+    "title": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "Optional uploaded video file URL"
+    },
+    "lore_entry_id": {
+      "type": "string",
+      "description": "Optional: a LoreEntry id to broadcast"
+    },
+    "target_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "If set, only show to these player emails. Empty = show to all."
+    }
+  },
+  "required": []
+}
