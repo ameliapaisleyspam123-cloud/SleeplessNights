@@ -1,6 +1,19 @@
 {
   "name": "PlayerNote",
   "type": "object",
-  "properties": {},
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Campaign this private note belongs to"
+    },
+    "session_label": {
+      "type": "string",
+      "description": "Display label for the session log"
+    },
+    "content": {
+      "type": "string",
+      "description": "Private note content"
+    }
+  },
   "required": []
 }
