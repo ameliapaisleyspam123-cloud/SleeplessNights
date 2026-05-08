@@ -9,6 +9,20 @@ This repository is a migration staging area for a Base44 campaign-management web
 - `src/entities/defaults.ts`: Default values for new records.
 - `src/entities/index.ts`: Barrel exports for the entity helpers.
 
+## Base44 pages received
+
+The migration has source for these Base44 pages, but they are not runnable yet because they still depend on Base44 runtime APIs and missing local components/hooks:
+
+- `Broadcast.jsx`
+- `CampaignLobby.jsx`
+- `CharacterSheets.jsx`
+- `Chat.jsx`
+- `DmVault.jsx`
+- `Documents.jsx`
+- `Home.jsx`
+- `Lore.jsx`
+- `Notes.jsx`
+
 ## Next migration steps
 
 1. Copy the Base44 `pages`, `components`, `integrations`, `functions`, and asset folders into this repository.
