@@ -39,6 +39,9 @@ The migration has source for these Base44 pages, but they are not runnable yet b
 - `src/utils/index.ts`
 - `src/components/documents/DocumentEditor.jsx`
 - `src/components/broadcast/BroadcastOverlay.jsx`
+- `src/components/initiative/CombatTurnIndicator.jsx`
+- `src/components/initiative/InitiativeTracker.jsx`
+- `src/api/base44Client.js`
 
 ## Next migration steps
 
