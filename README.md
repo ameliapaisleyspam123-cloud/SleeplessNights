@@ -43,6 +43,12 @@ The migration has source for these Base44 pages, but they are not runnable yet b
 - `src/components/initiative/InitiativeTracker.jsx`
 - `src/api/base44Client.js`
 
+## Base44 functions received
+
+- `functions/getMessages.ts`
+- `functions/getUsers.ts`
+- `functions/sendMessages.ts`
+
 ## Next migration steps
 
 1. Copy the Base44 `pages`, `components`, `integrations`, `functions`, and asset folders into this repository.
