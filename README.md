@@ -59,6 +59,14 @@ The migration has source for these Base44 pages, but they are not runnable yet b
 - `src/components/ProtectedRoute.jsx`
 - `src/components/UserNotRegisteredError.jsx`
 
+## Base44 character components received
+
+- `src/components/characters/CharacterSheetCard.jsx`
+- `src/components/characters/CharacterSheetDetail.jsx`
+- `src/components/characters/CharacterSheetEditor.jsx`
+- `src/components/characters/CharacterSheetView.jsx`
+- `src/components/characters/DndBeyondImport.jsx`
+
 ## Next migration steps
 
 1. Copy the Base44 `pages`, `components`, `integrations`, `functions`, and asset folders into this repository.
