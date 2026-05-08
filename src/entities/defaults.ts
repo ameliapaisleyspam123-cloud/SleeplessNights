@@ -73,4 +73,6 @@ export const loreEntryDefaults: Partial<LoreEntry> = {
 
 export const messageDefaults: Partial<Message> = {};
 
-export const playerNoteDefaults: Partial<PlayerNote> = {};
+export const playerNoteDefaults: Partial<PlayerNote> = {
+  content: "",
+};
