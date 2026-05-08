@@ -1,0 +1,40 @@
+{
+  "name": "Initiative",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": false
+    },
+    "turn_seconds": {
+      "type": "number",
+      "default": 6
+    },
+    "current_turn_index": {
+      "type": "number",
+      "default": 0
+    },
+    "entries": {
+      "type": "array",
+      "description": "JSON array of initiative entries (characters/groups)",
+      "items": {
+        "type": "object"
+      }
+    },
+    "spells": {
+      "type": "array",
+      "description": "JSON array of active spell duration trackers",
+      "items": {
+        "type": "object"
+      }
+    },
+    "round": {
+      "type": "number",
+      "default": 1
+    }
+  },
+  "required": []
+}
