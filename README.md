@@ -49,6 +49,16 @@ The migration has source for these Base44 pages, but they are not runnable yet b
 - `functions/getUsers.ts`
 - `functions/sendMessages.ts`
 
+## Base44 UI shell received
+
+- `src/components/CampaignSettingsModal.jsx`
+- `src/components/DiceRoller.jsx`
+- `src/components/Layout.jsx`
+- `src/components/PageHeader.jsx`
+- `src/components/ProfileNameModal.jsx`
+- `src/components/ProtectedRoute.jsx`
+- `src/components/UserNotRegisteredError.jsx`
+
 ## Next migration steps
 
 1. Copy the Base44 `pages`, `components`, `integrations`, `functions`, and asset folders into this repository.
