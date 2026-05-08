@@ -153,7 +153,9 @@ export interface Message extends Base44Record {
 }
 
 export interface PlayerNote extends Base44Record {
-  [key: string]: unknown;
+  campaign_id?: string;
+  session_label?: string;
+  content?: string;
 }
 
 export type EntityName =
