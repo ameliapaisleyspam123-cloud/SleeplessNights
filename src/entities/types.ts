@@ -1,0 +1,167 @@
+export interface Base44Record {
+  id?: string;
+  created_date?: string;
+  updated_date?: string;
+  created_by?: string;
+}
+
+export interface Broadcast extends Base44Record {
+  active?: boolean;
+  title?: string;
+  message?: string;
+  image_url?: string;
+  video_url?: string;
+  lore_entry_id?: string;
+  target_emails?: string[];
+}
+
+export interface Campaign extends Base44Record {
+  name: string;
+  description?: string;
+  dm_code: string;
+  player_code: string;
+  dm_email?: string;
+  player_emails?: string[];
+  active?: boolean;
+}
+
+export type CharacterAlignment =
+  | "Lawful Good"
+  | "Neutral Good"
+  | "Chaotic Good"
+  | "Lawful Neutral"
+  | "True Neutral"
+  | "Chaotic Neutral"
+  | "Lawful Evil"
+  | "Neutral Evil"
+  | "Chaotic Evil";
+
+export type SharedVisibility = "public" | "dm_only" | "archived" | "specific_players";
+
+export interface CharacterSheet extends Base44Record {
+  campaign_id?: string;
+  folder?: string;
+  name: string;
+  race?: string;
+  class?: string;
+  subclass?: string;
+  level?: number;
+  background?: string;
+  alignment?: CharacterAlignment;
+  experience_points?: number;
+  inspiration?: boolean;
+  strength?: number;
+  dexterity?: number;
+  constitution?: number;
+  intelligence?: number;
+  wisdom?: number;
+  charisma?: number;
+  saving_throws?: string;
+  hp_max?: number;
+  hp_current?: number;
+  hp_temp?: number;
+  ac?: number;
+  initiative?: number;
+  speed?: number;
+  proficiency_bonus?: number;
+  hit_dice?: string;
+  death_save_successes?: number;
+  death_save_failures?: number;
+  skills?: string;
+  skill_expertises?: string;
+  passive_perception?: number;
+  languages?: string;
+  traits?: string;
+  ideals?: string;
+  bonds?: string;
+  flaws?: string;
+  features_traits?: string;
+  equipment?: string;
+  cp?: number;
+  sp?: number;
+  ep?: number;
+  gp?: number;
+  pp?: number;
+  spellcasting_ability?: string;
+  spell_save_dc?: number;
+  spell_attack_bonus?: number;
+  spell_slots?: string;
+  spells_known?: string;
+  attacks?: string;
+  notes?: string;
+  image_url?: string;
+  visibility?: SharedVisibility;
+  allowed_emails?: string[];
+}
+
+export type DocumentVisibility = "public" | "private";
+
+export interface Document extends Base44Record {
+  campaign_id?: string;
+  title: string;
+  description?: string;
+  file_url: string;
+  visibility?: DocumentVisibility;
+  allowed_emails?: string[];
+}
+
+export interface InitiativeEntry {
+  [key: string]: unknown;
+}
+
+export interface ActiveSpellTracker {
+  [key: string]: unknown;
+}
+
+export interface Initiative extends Base44Record {
+  campaign_id?: string;
+  active?: boolean;
+  turn_seconds?: number;
+  current_turn_index?: number;
+  entries?: InitiativeEntry[];
+  spells?: ActiveSpellTracker[];
+  round?: number;
+}
+
+export type LoreCategory =
+  | "map"
+  | "character"
+  | "place"
+  | "event"
+  | "artifact"
+  | "religion"
+  | "other";
+
+export interface LoreEntry extends Base44Record {
+  campaign_id?: string;
+  title: string;
+  category?: LoreCategory;
+  folder?: string;
+  content?: string;
+  image_url?: string;
+  pdf_url?: string;
+  tags?: string[];
+  visibility?: SharedVisibility;
+  allowed_emails?: string[];
+}
+
+export interface Message extends Base44Record {
+  campaign_id?: string;
+  content: string;
+  channel: string;
+  recipient_email?: string;
+}
+
+export interface PlayerNote extends Base44Record {
+  [key: string]: unknown;
+}
+
+export type EntityName =
+  | "Broadcast"
+  | "Campaign"
+  | "CharacterSheet"
+  | "Document"
+  | "Initiative"
+  | "LoreEntry"
+  | "Message"
+  | "PlayerNote";
