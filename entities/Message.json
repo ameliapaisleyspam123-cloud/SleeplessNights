@@ -1,0 +1,25 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Campaign this message belongs to"
+    },
+    "content": {
+      "type": "string"
+    },
+    "channel": {
+      "type": "string",
+      "description": "'group' for the main chat, or a sorted pair of emails like 'a@x.com|b@x.com' for DMs"
+    },
+    "recipient_email": {
+      "type": "string",
+      "description": "For DMs: the other participant's email. Empty for group messages."
+    }
+  },
+  "required": [
+    "content",
+    "channel"
+  ]
+}
