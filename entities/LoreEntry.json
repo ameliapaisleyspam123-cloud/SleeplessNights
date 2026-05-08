@@ -1,0 +1,69 @@
+{
+  "name": "LoreEntry",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Campaign this entry belongs to"
+    },
+    "title": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "map",
+        "character",
+        "place",
+        "event",
+        "artifact",
+        "religion",
+        "other"
+      ],
+      "default": "other"
+    },
+    "folder": {
+      "type": "string",
+      "description": "Optional folder name to group entries"
+    },
+    "content": {
+      "type": "string",
+      "description": "Lore text / description"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Optional image or map URL"
+    },
+    "pdf_url": {
+      "type": "string",
+      "description": "Optional PDF attachment URL"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "dm_only",
+        "archived",
+        "specific_players"
+      ],
+      "default": "public",
+      "description": "public = all players; dm_only = GM only; archived = hidden; specific_players = allowed_emails only"
+    },
+    "allowed_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails of players who can see this entry when visibility=specific_players"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}
