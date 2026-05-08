@@ -1,0 +1,226 @@
+{
+  "name": "CharacterSheet",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Campaign this character sheet belongs to"
+    },
+    "folder": {
+      "type": "string",
+      "description": "Optional folder name to group characters. Use / for nesting."
+    },
+    "name": {
+      "type": "string"
+    },
+    "race": {
+      "type": "string"
+    },
+    "class": {
+      "type": "string"
+    },
+    "subclass": {
+      "type": "string"
+    },
+    "level": {
+      "type": "number",
+      "default": 1
+    },
+    "background": {
+      "type": "string"
+    },
+    "alignment": {
+      "type": "string",
+      "enum": [
+        "Lawful Good",
+        "Neutral Good",
+        "Chaotic Good",
+        "Lawful Neutral",
+        "True Neutral",
+        "Chaotic Neutral",
+        "Lawful Evil",
+        "Neutral Evil",
+        "Chaotic Evil"
+      ]
+    },
+    "experience_points": {
+      "type": "number",
+      "default": 0
+    },
+    "inspiration": {
+      "type": "boolean",
+      "default": false
+    },
+    "strength": {
+      "type": "number",
+      "default": 10
+    },
+    "dexterity": {
+      "type": "number",
+      "default": 10
+    },
+    "constitution": {
+      "type": "number",
+      "default": 10
+    },
+    "intelligence": {
+      "type": "number",
+      "default": 10
+    },
+    "wisdom": {
+      "type": "number",
+      "default": 10
+    },
+    "charisma": {
+      "type": "number",
+      "default": 10
+    },
+    "saving_throws": {
+      "type": "string",
+      "description": "Comma-separated proficient saving throws"
+    },
+    "hp_max": {
+      "type": "number",
+      "default": 10
+    },
+    "hp_current": {
+      "type": "number",
+      "default": 10
+    },
+    "hp_temp": {
+      "type": "number",
+      "default": 0
+    },
+    "ac": {
+      "type": "number",
+      "default": 10
+    },
+    "initiative": {
+      "type": "number",
+      "default": 0
+    },
+    "speed": {
+      "type": "number",
+      "default": 30
+    },
+    "proficiency_bonus": {
+      "type": "number",
+      "default": 2
+    },
+    "hit_dice": {
+      "type": "string",
+      "description": "e.g. 1d10"
+    },
+    "death_save_successes": {
+      "type": "number",
+      "default": 0
+    },
+    "death_save_failures": {
+      "type": "number",
+      "default": 0
+    },
+    "skills": {
+      "type": "string",
+      "description": "Comma-separated proficient skills"
+    },
+    "skill_expertises": {
+      "type": "string",
+      "description": "Comma-separated expertise skills"
+    },
+    "passive_perception": {
+      "type": "number",
+      "default": 10
+    },
+    "languages": {
+      "type": "string"
+    },
+    "traits": {
+      "type": "string"
+    },
+    "ideals": {
+      "type": "string"
+    },
+    "bonds": {
+      "type": "string"
+    },
+    "flaws": {
+      "type": "string"
+    },
+    "features_traits": {
+      "type": "string",
+      "description": "Class features, racial traits"
+    },
+    "equipment": {
+      "type": "string"
+    },
+    "cp": {
+      "type": "number",
+      "default": 0
+    },
+    "sp": {
+      "type": "number",
+      "default": 0
+    },
+    "ep": {
+      "type": "number",
+      "default": 0
+    },
+    "gp": {
+      "type": "number",
+      "default": 0
+    },
+    "pp": {
+      "type": "number",
+      "default": 0
+    },
+    "spellcasting_ability": {
+      "type": "string"
+    },
+    "spell_save_dc": {
+      "type": "number",
+      "default": 8
+    },
+    "spell_attack_bonus": {
+      "type": "number",
+      "default": 0
+    },
+    "spell_slots": {
+      "type": "string",
+      "description": "JSON string of {level: {total, used}}"
+    },
+    "spells_known": {
+      "type": "string",
+      "description": "Free text list of spells"
+    },
+    "attacks": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "dm_only",
+        "archived",
+        "specific_players"
+      ],
+      "default": "public",
+      "description": "public = all players; dm_only = GM only; archived = hidden; specific_players = allowed_emails only"
+    },
+    "allowed_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails of players who can see this sheet when visibility=specific_players"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
