@@ -32,6 +32,14 @@ The migration has source for these Base44 pages, but they are not runnable yet b
 - `src/lib/query-client.js`
 - `src/lib/utils.js`
 
+## Base44 hooks/utils/components received
+
+- `src/hooks/useCampaign.js`
+- `src/hooks/use-mobile.jsx`
+- `src/utils/index.ts`
+- `src/components/documents/DocumentEditor.jsx`
+- `src/components/broadcast/BroadcastOverlay.jsx`
+
 ## Next migration steps
 
 1. Copy the Base44 `pages`, `components`, `integrations`, `functions`, and asset folders into this repository.
