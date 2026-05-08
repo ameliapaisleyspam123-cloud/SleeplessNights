@@ -23,6 +23,15 @@ The migration has source for these Base44 pages, but they are not runnable yet b
 - `Lore.jsx`
 - `Notes.jsx`
 
+## Base44 lib files received
+
+- `src/lib/AuthContext.jsx`
+- `src/lib/InitiativeContext.jsx`
+- `src/lib/PageNotFound.jsx`
+- `src/lib/app-params.js`
+- `src/lib/query-client.js`
+- `src/lib/utils.js`
+
 ## Next migration steps
 
 1. Copy the Base44 `pages`, `components`, `integrations`, `functions`, and asset folders into this repository.
