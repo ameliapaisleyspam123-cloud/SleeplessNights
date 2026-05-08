@@ -37,6 +37,14 @@ The migration has source for these Base44 pages, but they are not runnable yet b
 - `src/hooks/useCampaign.js`
 - `src/hooks/use-mobile.jsx`
 - `src/utils/index.ts`
+- `src/components/chat/ChannelList.jsx`
+- `src/components/chat/ChatWindow.jsx`
+- `src/components/chat/LorePanel.jsx`
+- `src/components/chat/PlayerNotesPanel.jsx`
+- `src/components/lore/LoreCard.jsx`
+- `src/components/lore/LoreDetail.jsx`
+- `src/components/lore/LoreEditor.jsx`
+- `src/components/lore/MoveFolderDialog.jsx`
 - `src/components/documents/DocumentEditor.jsx`
 - `src/components/broadcast/BroadcastOverlay.jsx`
 - `src/components/initiative/CombatTurnIndicator.jsx`
