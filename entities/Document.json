@@ -1,0 +1,39 @@
+{
+  "name": "Document",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Campaign this document belongs to"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "private"
+      ],
+      "default": "public",
+      "description": "public = everyone, private = only specified users"
+    },
+    "allowed_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails allowed to view when visibility is private"
+    }
+  },
+  "required": [
+    "title",
+    "file_url"
+  ]
+}
