@@ -16,6 +16,18 @@
     "recipient_email": {
       "type": "string",
       "description": "For DMs: the other participant's email. Empty for group messages."
+    },
+    "file_url": {
+      "type": "string",
+      "description": "Optional uploaded chat attachment URL"
+    },
+    "file_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "pdf"
+      ],
+      "description": "Uploaded chat attachment type"
     }
   },
   "required": [
