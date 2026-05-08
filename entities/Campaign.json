@@ -1,0 +1,40 @@
+{
+  "name": "Campaign",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "dm_code": {
+      "type": "string",
+      "description": "Secret code for the Dungeon Master"
+    },
+    "player_code": {
+      "type": "string",
+      "description": "Code for players to join"
+    },
+    "dm_email": {
+      "type": "string",
+      "description": "Email of the Dungeon Master"
+    },
+    "player_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails of players who have joined"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "dm_code",
+    "player_code"
+  ]
+}
