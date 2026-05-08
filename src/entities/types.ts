@@ -150,6 +150,8 @@ export interface Message extends Base44Record {
   content: string;
   channel: string;
   recipient_email?: string;
+  file_url?: string;
+  file_type?: "image" | "pdf";
 }
 
 export interface PlayerNote extends Base44Record {
