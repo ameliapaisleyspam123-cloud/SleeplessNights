@@ -4,17 +4,20 @@ import { appClient } from "@/api/appClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Sword, Copy, Check, LogOut } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowRight, Check, Copy, Dices, RefreshCw, Shield, Swords } from "lucide-react";
 
-function makeCode(prefix) {
-  return `${prefix}${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function makeCode() {
+  return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
 }
 
 function Field({ label, children }) {
   return (
     <div>
-      <Label>{label}</Label>
-      <div className="mt-1.5">{children}</div>
+      <Label className="text-base text-foreground font-semibold">{label}</Label>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }
@@ -27,7 +30,7 @@ function CopyButton({ value }) {
       onClick={() => {
         navigator.clipboard?.writeText(value);
         setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
+        setTimeout(() => setCopied(false), 1400);
       }}
       className="inline-flex items-center gap-1 text-xs text-accent hover:text-foreground"
     >
@@ -37,15 +40,30 @@ function CopyButton({ value }) {
   );
 }
 
+function CodeCard({ label, value }) {
+  return (
+    <div className="border border-border bg-background/55 rounded-sm px-4 py-4 min-w-0">
+      <div className="text-[11px] uppercase tracking-[0.24em] text-accent mb-2">{label}</div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="font-mono text-xl font-bold tracking-[0.16em] text-foreground">{value}</div>
+        <CopyButton value={value} />
+      </div>
+    </div>
+  );
+}
+
 export default function CampaignLobby() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
+  const [mode, setMode] = useState("join");
   const [campaignName, setCampaignName] = useState("Sleepless Nights");
+  const [description, setDescription] = useState("");
   const [displayName, setDisplayName] = useState("Player");
   const [email, setEmail] = useState("");
-  const [dmCode, setDmCode] = useState("");
-  const [playerCode, setPlayerCode] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [dmCode, setDmCode] = useState(() => makeCode());
+  const [playerCode, setPlayerCode] = useState(() => makeCode());
   const [message, setMessage] = useState("");
 
   const load = async () => {
@@ -62,12 +80,37 @@ export default function CampaignLobby() {
     load();
   }, []);
 
-  const currentCampaign = useMemo(() => campaigns.find((campaign) => campaign.id === user?.campaign_id), [campaigns, user]);
+  const activeEmail = email.trim().toLowerCase() || user?.email || "";
+  const yourCampaigns = useMemo(() => {
+    if (!activeEmail) return campaigns;
+    return campaigns.filter((campaign) => campaign.dm_email === activeEmail || campaign.player_emails?.includes(activeEmail) || campaign.id === user?.campaign_id);
+  }, [activeEmail, campaigns, user]);
 
   const loginDetails = () => ({
     email: email.trim().toLowerCase(),
     display_name: displayName.trim() || email.trim().toLowerCase(),
   });
+
+  const enterCampaign = async (campaign, role) => {
+    const login = loginDetails();
+    if (!login.email) {
+      setMessage("Enter your email first.");
+      return;
+    }
+    await appClient.auth.switchCampaign({
+      ...login,
+      campaign_id: campaign.id,
+      campaign_role: role,
+      role: role === "dm" ? "admin" : "user",
+    });
+    await load();
+    navigate("/");
+  };
+
+  const enterKnownCampaign = (campaign) => {
+    const role = campaign.dm_email === activeEmail || user?.campaign_role === "dm" ? "dm" : "player";
+    enterCampaign(campaign, role);
+  };
 
   const createCampaign = async () => {
     setMessage("");
@@ -78,164 +121,130 @@ export default function CampaignLobby() {
     }
     const campaign = await appClient.entities.Campaign.create({
       name: campaignName.trim() || "Sleepless Nights",
-      dm_code: makeCode("DM"),
-      player_code: makeCode("PL"),
+      description: description.trim(),
+      dm_code: dmCode,
+      player_code: playerCode,
       dm_email: login.email,
       player_emails: [],
       active: true,
     });
-    await appClient.auth.switchCampaign({
-      ...login,
-      campaign_id: campaign.id,
-      campaign_role: "dm",
-      role: "admin",
-    });
-    await load();
-    navigate("/");
+    await enterCampaign(campaign, "dm");
   };
 
-  const joinWithCode = async (kind) => {
+  const joinCampaign = async () => {
     setMessage("");
     const login = loginDetails();
     if (!login.email) {
       setMessage("Enter an email before joining.");
       return;
     }
-    const code = (kind === "dm" ? dmCode : playerCode).trim().toUpperCase();
-    const campaign = campaigns.find((item) => (kind === "dm" ? item.dm_code : item.player_code) === code);
+
+    const code = joinCode.trim().toUpperCase();
+    const campaign = campaigns.find((item) => item.dm_code === code || item.player_code === code);
     if (!campaign) {
-      setMessage(kind === "dm" ? "No campaign found with that DM code." : "No campaign found with that player code.");
+      setMessage("No campaign found with that code.");
       return;
     }
 
-    if (kind === "player" && !campaign.player_emails?.includes(login.email)) {
+    const role = campaign.dm_code === code ? "dm" : "player";
+    if (role === "player" && !campaign.player_emails?.includes(login.email)) {
       await appClient.entities.Campaign.update(campaign.id, {
         player_emails: [...(campaign.player_emails || []), login.email],
       });
     }
 
-    await appClient.auth.switchCampaign({
-      ...login,
-      campaign_id: campaign.id,
-      campaign_role: kind === "dm" ? "dm" : "player",
-      role: kind === "dm" ? "admin" : "user",
-    });
-    await load();
-    navigate("/");
+    await enterCampaign(campaign, role);
   };
 
-  const signOut = () => {
-    appClient.auth.logout();
+  const regenerateCodes = () => {
+    setDmCode(makeCode());
+    setPlayerCode(makeCode());
   };
 
   return (
-    <main className="min-h-screen parchment flex items-center justify-center p-6">
-      <div className="w-full max-w-6xl">
-        <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.28em] text-accent mb-3">Campaign Gateway</div>
-            <h1 className="font-display text-4xl md:text-5xl leading-tight">Sleepless Nights</h1>
-            {currentCampaign && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Signed in as {user.display_name || user.email} for <span className="text-foreground">{currentCampaign.name}</span>.
-              </p>
-            )}
+    <main className="min-h-screen parchment flex justify-center px-5 py-10">
+      <div className="w-full max-w-[560px]">
+        <header className="text-center mb-8">
+          <div className="mx-auto w-20 h-20 rounded-sm bg-primary text-primary-foreground flex items-center justify-center sculk-glow mb-5">
+            <Swords className="w-9 h-9" strokeWidth={1.8} />
           </div>
-          {user && (
-            <Button variant="outline" onClick={signOut}>
-              <LogOut className="w-4 h-4" /> Switch login
-            </Button>
+          <h1 className="font-display text-4xl md:text-5xl leading-tight text-foreground">The Grimoire</h1>
+          <p className="text-muted-foreground text-lg mt-2">Your D&D campaign hub</p>
+        </header>
+
+        <section className="mb-10">
+          <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground mb-3">Your Campaigns</div>
+          <div className="space-y-2.5">
+            {yourCampaigns.length === 0 && (
+              <div className="border border-border bg-card/70 rounded-sm p-4 text-sm text-muted-foreground">No campaigns yet. Create one or enter a code below.</div>
+            )}
+            {yourCampaigns.map((campaign) => {
+              const role = campaign.dm_email === activeEmail ? "Dungeon Master" : "Player";
+              return (
+                <button key={campaign.id} onClick={() => enterKnownCampaign(campaign)} className="w-full border border-border bg-card/70 hover:border-accent/60 hover:bg-secondary/70 rounded-sm p-4 text-left transition-colors flex items-center gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-lg font-semibold text-foreground leading-snug">{campaign.name}</div>
+                    <div className="text-sm text-muted-foreground mt-0.5">{role}</div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <div className="grid grid-cols-2 border border-border rounded-sm overflow-hidden mb-8">
+          <button onClick={() => setMode("join")} className={`h-12 text-base font-semibold transition-colors ${mode === "join" ? "bg-primary text-primary-foreground" : "bg-card/50 text-muted-foreground hover:text-foreground"}`}>
+            Join Campaign
+          </button>
+          <button onClick={() => setMode("create")} className={`h-12 text-base font-semibold transition-colors ${mode === "create" ? "bg-primary text-primary-foreground" : "bg-card/50 text-muted-foreground hover:text-foreground"}`}>
+            Create Campaign
+          </button>
+        </div>
+
+        <div className="space-y-5">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label={mode === "create" ? "DM Name" : "Your Name"}>
+              <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Amelia" />
+            </Field>
+            <Field label={mode === "create" ? "DM Email" : "Your Email"}>
+              <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
+            </Field>
+          </div>
+
+          {mode === "join" ? (
+            <>
+              <Field label="Enter Code">
+                <Input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="ABCXYZ" className="text-center font-mono tracking-[0.35em] uppercase" />
+              </Field>
+              <p className="text-sm text-muted-foreground">DM code joins as Dungeon Master. Player code joins as a Player.</p>
+              <Button className="w-full h-12 text-base" onClick={joinCampaign}>
+                <Dices className="w-5 h-5" /> Enter the Realm
+              </Button>
+            </>
+          ) : (
+            <>
+              <Field label="Campaign Name">
+                <Input value={campaignName} onChange={(event) => setCampaignName(event.target.value)} placeholder="The Curse of Strahd..." />
+              </Field>
+              <Field label="Description (optional)">
+                <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="A gothic horror adventure..." className="min-h-[74px]" />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <CodeCard label="DM Code" value={dmCode} />
+                <CodeCard label="Player Code" value={playerCode} />
+              </div>
+              <Button variant="outline" className="w-full h-10" onClick={regenerateCodes}>
+                <RefreshCw className="w-4 h-4" /> Regenerate Codes
+              </Button>
+              <Button className="w-full h-12 text-base" onClick={createCampaign}>
+                <Shield className="w-5 h-5" /> Forge Campaign
+              </Button>
+            </>
           )}
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-5">
-          <section className="border border-border bg-card p-5 rounded-sm">
-            <div className="flex items-center gap-2 text-accent mb-3">
-              <Shield className="w-4 h-4" />
-              <span className="text-[10px] uppercase tracking-[0.24em]">Create as DM</span>
-            </div>
-            <div className="space-y-4">
-              <Field label="DM name">
-                <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-              </Field>
-              <Field label="DM email">
-                <Input value={email} onChange={(event) => setEmail(event.target.value)} />
-              </Field>
-              <Field label="Campaign name">
-                <Input value={campaignName} onChange={(event) => setCampaignName(event.target.value)} />
-              </Field>
-              <Button className="w-full" onClick={createCampaign}>
-                Create campaign
-              </Button>
-            </div>
-          </section>
-
-          <section className="border border-border bg-card p-5 rounded-sm">
-            <div className="flex items-center gap-2 text-accent mb-3">
-              <Shield className="w-4 h-4" />
-              <span className="text-[10px] uppercase tracking-[0.24em]">DM Login</span>
-            </div>
-            <div className="space-y-4">
-              <Field label="DM name">
-                <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-              </Field>
-              <Field label="DM email">
-                <Input value={email} onChange={(event) => setEmail(event.target.value)} />
-              </Field>
-              <Field label="DM code">
-                <Input value={dmCode} onChange={(event) => setDmCode(event.target.value.toUpperCase())} placeholder="DMNIGHT" />
-              </Field>
-              <Button variant="outline" className="w-full" onClick={() => joinWithCode("dm")}>
-                Enter as DM
-              </Button>
-            </div>
-          </section>
-
-          <section className="border border-border bg-card p-5 rounded-sm">
-            <div className="flex items-center gap-2 text-accent mb-3">
-              <Sword className="w-4 h-4" />
-              <span className="text-[10px] uppercase tracking-[0.24em]">Player Login</span>
-            </div>
-            <div className="space-y-4">
-              <Field label="Player name">
-                <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-              </Field>
-              <Field label="Player email">
-                <Input value={email} onChange={(event) => setEmail(event.target.value)} />
-              </Field>
-              <Field label="Player code">
-                <Input value={playerCode} onChange={(event) => setPlayerCode(event.target.value.toUpperCase())} placeholder="NIGHTS" />
-              </Field>
-              <Button variant="outline" className="w-full" onClick={() => joinWithCode("player")}>
-                Enter as player
-              </Button>
-            </div>
-          </section>
-        </div>
-
-        {message && <div className="mt-4 border border-border bg-secondary/50 rounded-sm p-3 text-sm text-muted-foreground">{message}</div>}
-
-        {currentCampaign && user?.campaign_role === "dm" && (
-          <div className="mt-5 border border-accent/30 bg-accent/5 rounded-sm p-4">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-accent mb-3">Current Campaign Codes</div>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div className="border border-border bg-card/60 rounded-sm p-3">
-                <div className="text-xs text-muted-foreground mb-1">DM code</div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-lg tracking-[0.18em]">{currentCampaign.dm_code}</span>
-                  <CopyButton value={currentCampaign.dm_code} />
-                </div>
-              </div>
-              <div className="border border-border bg-card/60 rounded-sm p-3">
-                <div className="text-xs text-muted-foreground mb-1">Player code</div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-lg tracking-[0.18em]">{currentCampaign.player_code}</span>
-                  <CopyButton value={currentCampaign.player_code} />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {message && <div className="mt-5 border border-border bg-secondary/50 rounded-sm p-3 text-sm text-muted-foreground">{message}</div>}
       </div>
     </main>
   );

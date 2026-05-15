@@ -23,6 +23,11 @@ function now() {
   return new Date().toISOString();
 }
 
+function code() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+}
+
 function defaultStore() {
   const campaignId = id("campaign");
   const dmEmail = "ameliapaisleyspam123@gmail.com";
@@ -32,8 +37,8 @@ function defaultStore() {
         id: campaignId,
         name: "Sleepless Nights",
         description: "A Vercel-hostable campaign hub running on local app data.",
-        dm_code: "DMNIGHT",
-        player_code: "NIGHTS",
+        dm_code: code(),
+        player_code: code(),
         dm_email: dmEmail,
         player_emails: [],
         active: true,
