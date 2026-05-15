@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Radio, FileText, Eye, X } from "lucide-react";
+import { Pencil, Radio, FileText, Eye, X, Trash2 } from "lucide-react";
 import { appClient } from "@/api/appClient";
 
-export default function LoreDetail({ entry, open, onOpenChange, onEdit, isAdmin }) {
+export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete, isAdmin }) {
   const [pdfOpen, setPdfOpen] = useState(false);
   if (!entry) return null;
 
@@ -31,9 +31,16 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, isAdmin 
               <div className="text-[10px] uppercase tracking-[0.28em] text-accent mb-2">{entry.category}</div>
               <h2 className="font-display text-3xl md:text-4xl leading-tight">{entry.title}</h2>
             </div>
-            <Button variant="outline" onClick={onEdit} className="shrink-0">
-              <Pencil className="w-4 h-4 mr-1.5" /> Edit
-            </Button>
+            {isAdmin && (
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" onClick={onEdit}>
+                  <Pencil className="w-4 h-4 mr-1.5" /> Edit
+                </Button>
+                <Button variant="outline" onClick={onDelete} className="text-destructive hover:text-destructive">
+                  <Trash2 className="w-4 h-4 mr-1.5" /> Delete
+                </Button>
+              </div>
+            )}
           </div>
           {entry.tags?.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-3">

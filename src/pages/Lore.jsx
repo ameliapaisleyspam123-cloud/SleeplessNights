@@ -18,9 +18,13 @@ export default function Lore() {
   const [category, setCategory] = useState("all");
   const [folder, setFolder] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const load = async () => {
     const user = await appClient.auth.me();
+    const isSuperuser = user?.email === "ameliapaisleyspam123@gmail.com";
+    const dmOverride = localStorage.getItem("dm_override") === "true";
+    setIsAdmin(user?.campaign_role === "dm" || (isSuperuser && dmOverride));
     setItems(await appClient.entities.LoreEntry.filter({ campaign_id: user.campaign_id }, "-updated_date", 200));
   };
 
@@ -37,15 +41,26 @@ export default function Lore() {
     return matchesQuery && matchesCategory && matchesFolder;
   });
 
+  const deleteEntry = async (entry) => {
+    if (!entry?.id) return;
+    if (!window.confirm(`Delete "${entry.title}" from Lore & Maps?`)) return;
+    await appClient.entities.LoreEntry.delete(entry.id);
+    if (viewing?.id === entry.id) setViewing(null);
+    if (editing?.id === entry.id) setEditing(null);
+    await load();
+  };
+
   return (
     <div className="p-6 lg:p-10 space-y-5">
       <PageHeader
         eyebrow="World"
         title="Lore & Maps"
         action={
-          <Button onClick={() => setEditing({})}>
-            <Plus className="w-4 h-4" /> New
-          </Button>
+          isAdmin ? (
+            <Button onClick={() => setEditing({})}>
+              <Plus className="w-4 h-4" /> New
+            </Button>
+          ) : null
         }
       />
 
@@ -115,7 +130,15 @@ export default function Lore() {
       ) : (
             <div className={viewMode === "grid" ? "grid sm:grid-cols-2 xl:grid-cols-3 gap-4" : "space-y-2"}>
           {filtered.map((entry) => (
-                <LoreCard key={entry.id} entry={entry} viewMode={viewMode} onClick={() => setViewing(entry)} onEdit={() => setEditing(entry)} />
+                <LoreCard
+                  key={entry.id}
+                  entry={entry}
+                  viewMode={viewMode}
+                  canManage={isAdmin}
+                  onClick={() => setViewing(entry)}
+                  onEdit={() => setEditing(entry)}
+                  onDelete={() => deleteEntry(entry)}
+                />
           ))}
         </div>
       )}
@@ -128,9 +151,12 @@ export default function Lore() {
         onOpenChange={(open) => !open && setViewing(null)}
         entry={viewing}
         onEdit={() => {
+          if (!isAdmin) return;
           setEditing(viewing);
           setViewing(null);
         }}
+        onDelete={() => viewing && deleteEntry(viewing)}
+        isAdmin={isAdmin}
       />
     </div>
   );

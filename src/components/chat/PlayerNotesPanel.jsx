@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { appClient } from "@/api/appClient";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { X, NotebookPen, Loader2, Check, BookOpen, Dices, Plus, ScrollText } from "lucide-react";
+import { X, NotebookPen, Loader2, Check, BookOpen, Dices, Pencil, Plus, ScrollText, Trash2 } from "lucide-react";
 
 export default function PlayerNotesPanel({ onClose, currentUser }) {
   const fullPage = !onClose;
@@ -10,6 +10,8 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
   const [noteId, setNoteId] = useState(null);
   const [notes, setNotes] = useState([]);
   const [campaign, setCampaign] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const saveTimeout = useRef(null);
@@ -46,7 +48,7 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
         const updated = await appClient.entities.PlayerNote.update(noteId, { content: v });
         setNotes((items) => items.map((item) => (item.id === updated.id ? updated : item)));
       } else {
-        const created = await appClient.entities.PlayerNote.create({ campaign_id: currentUser.campaign_id, session_label: "Session 1", content: v });
+        const created = await appClient.entities.PlayerNote.create({ campaign_id: currentUser.campaign_id, session_label: "Session 0", content: v });
         setNoteId(created.id);
         setNotes([created]);
       }
@@ -75,7 +77,11 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
     if (!currentUser?.campaign_id) return;
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     if (noteId) await save(content);
-    const nextIndex = notes.length + 1;
+    const usedSessionNumbers = notes
+      .map((note) => /^Session\s+(\d+)$/i.exec(note.session_label || ""))
+      .filter(Boolean)
+      .map((match) => Number(match[1]));
+    const nextIndex = usedSessionNumbers.length > 0 ? Math.max(...usedSessionNumbers) + 1 : 0;
     const created = await appClient.entities.PlayerNote.create({
       campaign_id: currentUser.campaign_id,
       session_label: `Session ${nextIndex}`,
@@ -87,8 +93,41 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
     setSaved(false);
   };
 
+  const startRename = (event, note) => {
+    event.stopPropagation();
+    setRenamingId(note.id);
+    setRenameValue(note.session_label || "Session 0");
+  };
+
+  const finishRename = async () => {
+    const cleanName = renameValue.trim();
+    if (!renamingId || !cleanName) {
+      setRenamingId(null);
+      return;
+    }
+    const updated = await appClient.entities.PlayerNote.update(renamingId, { session_label: cleanName });
+    setNotes((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+    setRenamingId(null);
+    setRenameValue("");
+  };
+
+  const deleteSessionLog = async (event, note) => {
+    event.stopPropagation();
+    if (!window.confirm(`Delete ${note.session_label || "this session log"}?`)) return;
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    await appClient.entities.PlayerNote.delete(note.id);
+    const remaining = notes.filter((item) => item.id !== note.id);
+    setNotes(remaining);
+    if (note.id === noteId) {
+      const next = remaining[0];
+      setNoteId(next?.id || null);
+      setContent(next?.content || "");
+    }
+    setRenamingId(null);
+  };
+
   const activeNote = notes.find((note) => note.id === noteId);
-  const activeLabel = activeNote?.session_label || "Session 1";
+  const activeLabel = activeNote?.session_label || "Session 0";
   const campaignName = campaign?.name || "Sleepless Nights";
 
   if (fullPage) {
@@ -130,17 +169,59 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
                 notes.map((note, index) => {
                   const selected = note.id === noteId;
                   return (
-                    <button
+                    <div
                       key={note.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => selectNote(note)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-colors ${
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          selectNote(note);
+                        }
+                      }}
+                      className={`group w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-colors ${
                         selected ? "bg-accent/10 text-foreground border-l-2 border-accent" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50 border-l-2 border-transparent"
                       }`}
                     >
                       <BookOpen className={`w-4 h-4 shrink-0 ${selected ? "text-accent" : ""}`} />
-                      {note.session_label || `Session ${index + 1}`}
-                    </button>
+                      {renamingId === note.id ? (
+                        <input
+                          value={renameValue}
+                          onChange={(event) => setRenameValue(event.target.value)}
+                          onClick={(event) => event.stopPropagation()}
+                          onBlur={finishRename}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") finishRename();
+                            if (event.key === "Escape") setRenamingId(null);
+                          }}
+                          className="min-w-0 flex-1 rounded-sm border border-accent/60 bg-background px-2 py-1 text-sm text-foreground outline-none"
+                          autoFocus
+                        />
+                      ) : (
+                        <span className="min-w-0 flex-1 truncate">{note.session_label || `Session ${index}`}</span>
+                      )}
+                      {renamingId !== note.id && (
+                        <span className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={(event) => startRename(event, note)}
+                            className="w-7 h-7 rounded-sm flex items-center justify-center text-muted-foreground hover:text-accent hover:bg-accent/10"
+                            title="Rename session"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => deleteSessionLog(event, note)}
+                            className="w-7 h-7 rounded-sm flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            title="Delete session"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      )}
+                    </div>
                   );
                 })
               )}

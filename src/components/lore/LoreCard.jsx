@@ -1,5 +1,5 @@
 import React from "react";
-import { ScrollText, MapIcon, User, Castle, Sparkles, Swords, Star, Lock, EyeOff, Sun, Folder, Pencil } from "lucide-react";
+import { ScrollText, MapIcon, User, Castle, Sparkles, Swords, Star, Lock, EyeOff, Sun, Folder, Pencil, Trash2 } from "lucide-react";
 
 const CATEGORY_META = {
   map: { icon: MapIcon, label: "Map" },
@@ -11,7 +11,7 @@ const CATEGORY_META = {
   other: { icon: Star, label: "Other" },
 };
 
-export default function LoreCard({ entry, onClick, onContextMenu, onEdit, viewMode = "grid" }) {
+export default function LoreCard({ entry, onClick, onContextMenu, onEdit, onDelete, canManage = false, viewMode = "grid" }) {
   const meta = CATEGORY_META[entry.category] || CATEGORY_META.other;
   const Icon = meta.icon;
   const isList = viewMode === "list";
@@ -20,6 +20,12 @@ export default function LoreCard({ entry, onClick, onContextMenu, onEdit, viewMo
     event.preventDefault();
     event.stopPropagation();
     onEdit?.();
+  };
+
+  const handleDelete = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onDelete?.();
   };
 
   return (
@@ -60,15 +66,27 @@ export default function LoreCard({ entry, onClick, onContextMenu, onEdit, viewMo
           <div className="flex items-center gap-1.5">
             {entry.visibility === "dm_only" && <Lock className="w-3 h-3 text-amber-400" title="DM Only" />}
             {entry.visibility === "archived" && <EyeOff className="w-3 h-3 text-muted-foreground" title="Archived" />}
-            <button
-              type="button"
-              onClick={handleEdit}
-              className="h-7 px-2 rounded-sm border border-border bg-background/60 text-muted-foreground hover:text-accent hover:border-accent/60 hover:bg-accent/10 transition-all inline-flex items-center gap-1.5"
-              title="Edit lore entry"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              <span className="text-[10px] uppercase tracking-[0.16em] hidden sm:inline">Edit</span>
-            </button>
+            {canManage && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleEdit}
+                  className="h-7 px-2 rounded-sm border border-border bg-background/60 text-muted-foreground hover:text-accent hover:border-accent/60 hover:bg-accent/10 transition-all inline-flex items-center gap-1.5"
+                  title="Edit lore entry"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span className="text-[10px] uppercase tracking-[0.16em] hidden sm:inline">Edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="h-7 w-7 rounded-sm border border-border bg-background/60 text-muted-foreground hover:text-destructive hover:border-destructive/60 hover:bg-destructive/10 transition-all inline-flex items-center justify-center"
+                  title="Delete lore entry"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
           </div>
         </div>
         <div className={`${isList ? "text-lg truncate" : "text-xl"} font-display mt-1.5 leading-tight`}>{entry.title}</div>
