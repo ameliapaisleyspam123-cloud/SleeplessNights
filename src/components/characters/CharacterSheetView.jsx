@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Lock, EyeOff, Users, Heart, Minus, Plus, Loader2, Swords } from "lucide-react";
 import InventoryManager from "@/components/characters/InventoryManager";
 import AttackManager from "@/components/characters/AttackManager";
+import SpellManager from "@/components/characters/SpellManager";
 import { appClient } from "@/api/appClient";
 
 const STATS = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
@@ -82,11 +83,40 @@ function SaveLine({ ability, sheet, profSaves, pb }) {
 }
 
 function TextSection({ label, content }) {
-  if (!content) return null;
   return (
     <div>
       <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">{label}</div>
-      <RichText content={content} />
+      {content ? <RichText content={content} /> : <EmptyBlock label="Not recorded." />}
+    </div>
+  );
+}
+
+function EmptyBlock({ label }) {
+  return <div className="border border-dashed border-border rounded-sm py-4 px-3 text-xs text-muted-foreground text-center">{label}</div>;
+}
+
+function hasListData(value) {
+  return Boolean(value && value !== "[]");
+}
+
+function CurrencyBlock({ sheet }) {
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Currency</div>
+      <div className="grid grid-cols-5 gap-2 text-center">
+        {[
+          ["CP", sheet.cp, "text-slate-400"],
+          ["SP", sheet.sp, "text-slate-300"],
+          ["EP", sheet.ep, "text-emerald-400"],
+          ["GP", sheet.gp, "text-yellow-400"],
+          ["PP", sheet.pp, "text-purple-400"],
+        ].map(([label, value, cls]) => (
+          <div key={label} className="border border-border rounded-sm bg-card p-2">
+            <div className={`text-sm font-medium ${cls}`}>{value || 0}</div>
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground">{label}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -272,7 +302,14 @@ function SpellSlotsBlock({ slotsJson, onSave }) {
     setSaving(false);
   };
 
-  if (!Object.keys(slots).some((level) => slots[level]?.total > 0)) return null;
+  if (!Object.keys(slots).some((level) => slots[level]?.total > 0)) {
+    return (
+      <div>
+        <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Spell Slots</div>
+        <EmptyBlock label="No spell slots recorded." />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -307,7 +344,7 @@ function SpellSlotsBlock({ slotsJson, onSave }) {
   );
 }
 
-export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit, onEdit, onDuplicate }) {
+export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit, onEdit }) {
   const [inspired, setInspired] = useState(Boolean(sheet?.inspiration));
   const [savingInspiration, setSavingInspiration] = useState(false);
 
@@ -322,8 +359,6 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
   const profSaves = (sheet.saving_throws || "").split(",").map((value) => value.trim()).filter(Boolean);
   const pb = sheet.proficiency_bonus || 2;
   const passivePerc = 10 + mod(sheet.wisdom || 10) + (expertSkills.includes("Perception") ? pb * 2 : profSkills.includes("Perception") ? pb : 0);
-  const hasSpells = sheet.spellcasting_ability || sheet.spells_known || sheet.spell_slots;
-
   const saveField = async (data) => {
     if (sheet?.id) await appClient.entities.CharacterSheet.update(sheet.id, data);
   };
@@ -372,16 +407,11 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
                   <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
                 </Button>
               )}
-              {canEdit && (
-                <Button size="sm" variant="outline" onClick={onDuplicate}>
-                  Duplicate
-                </Button>
-              )}
-              {sheet.campaign_id && <AddToInitiativeButton sheet={sheet} />}
               <button onClick={toggleInspiration} disabled={savingInspiration} className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-sm border text-xs font-medium transition-all disabled:opacity-50 ${inspired ? "bg-amber-400/20 border-amber-400/60 text-amber-400 hover:bg-amber-400/10" : "border-border text-muted-foreground hover:border-amber-400/40 hover:text-amber-400/70"}`}>
                 {savingInspiration ? <Loader2 className="w-3 h-3 animate-spin" /> : <span>*</span>}
                 {inspired ? "Inspired" : "Inspiration"}
               </button>
+              {sheet.campaign_id && <AddToInitiativeButton sheet={sheet} />}
             </div>
           </div>
         </div>
@@ -408,7 +438,9 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 {[
                   ["Armor Class", sheet.ac ?? "-"],
+                  ["Initiative", fmt(sheet.initiative || mod(sheet.dexterity || 10))],
                   ["Speed", `${sheet.speed ?? 30}ft`],
+                  ["Prof Bonus", fmt(pb)],
                   ["Hit Dice", sheet.hit_dice || "-"],
                 ].map(([label, value]) => (
                   <div key={label} className="flex flex-col items-center border border-border rounded-sm bg-card p-2 text-center min-h-[56px] justify-center">
@@ -423,57 +455,48 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
               </div>
             </div>
 
-            {sheet.attacks && sheet.attacks !== "[]" && <AttackManager value={sheet.attacks} readOnly />}
-            {sheet.inventory && sheet.inventory !== "[]" && <InventoryManager value={sheet.inventory} readOnly />}
-
-            {(sheet.equipment || sheet.gp || sheet.sp || sheet.cp || sheet.ep || sheet.pp) && (
+            {hasListData(sheet.attacks) ? (
+              <AttackManager value={sheet.attacks} readOnly />
+            ) : (
               <div>
-                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Equipment & Currency</div>
-                {sheet.equipment && <RichText content={sheet.equipment} />}
-                <div className="flex gap-3 flex-wrap text-sm mt-2">
-                  {[
-                    ["CP", sheet.cp, "text-slate-400"],
-                    ["SP", sheet.sp, "text-slate-300"],
-                    ["EP", sheet.ep, "text-emerald-400"],
-                    ["GP", sheet.gp, "text-yellow-400"],
-                    ["PP", sheet.pp, "text-purple-400"],
-                  ]
-                    .filter(([, value]) => value > 0)
-                    .map(([label, value, cls]) => (
-                      <span key={label} className={`${cls} font-medium`}>
-                        {value} {label}
-                      </span>
-                    ))}
-                </div>
+                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Attacks & Weapons</div>
+                <EmptyBlock label="No attacks recorded." />
               </div>
             )}
 
-            {hasSpells && (
+            {hasListData(sheet.inventory) ? (
+              <InventoryManager value={sheet.inventory} readOnly />
+            ) : (
               <div>
-                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Spellcasting</div>
-                {sheet.spellcasting_ability && (
-                  <div className="flex gap-4 text-sm mb-3 flex-wrap">
-                    <span className="text-muted-foreground">Ability: <b className="text-foreground uppercase">{ABBR[sheet.spellcasting_ability] || sheet.spellcasting_ability}</b></span>
-                    <span className="text-muted-foreground">Save DC: <b className="text-foreground">{sheet.spell_save_dc}</b></span>
-                    <span className="text-muted-foreground">Attack: <b className="text-foreground">{fmt(sheet.spell_attack_bonus || 0)}</b></span>
-                  </div>
-                )}
-                <SpellSlotsBlock slotsJson={sheet.spell_slots} onSave={saveField} />
-                {sheet.spells_known && <div className="mt-3"><RichText content={sheet.spells_known} /></div>}
+                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Inventory</div>
+                <EmptyBlock label="No inventory recorded." />
               </div>
             )}
 
-            {(sheet.traits || sheet.ideals || sheet.bonds || sheet.flaws) && (
-              <div>
-                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Character Details</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <TextSection label="Personality Traits" content={sheet.traits} />
-                  <TextSection label="Ideals" content={sheet.ideals} />
-                  <TextSection label="Bonds" content={sheet.bonds} />
-                  <TextSection label="Flaws" content={sheet.flaws} />
-                </div>
+            <CurrencyBlock sheet={sheet} />
+
+            <div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Spellcasting</div>
+              <div className="flex gap-4 text-sm mb-3 flex-wrap">
+                <span className="text-muted-foreground">Ability: <b className="text-foreground uppercase">{ABBR[sheet.spellcasting_ability] || sheet.spellcasting_ability || "None"}</b></span>
+                <span className="text-muted-foreground">Save DC: <b className="text-foreground">{sheet.spell_save_dc ?? 8}</b></span>
+                <span className="text-muted-foreground">Attack: <b className="text-foreground">{fmt(sheet.spell_attack_bonus || 0)}</b></span>
               </div>
-            )}
+              <SpellSlotsBlock slotsJson={sheet.spell_slots} onSave={saveField} />
+              <div className="mt-3">
+                {hasListData(sheet.spells_known) ? <SpellManager value={sheet.spells_known} readOnly /> : <EmptyBlock label="No spells recorded." />}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Character Details</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <TextSection label="Personality Traits" content={sheet.traits} />
+                <TextSection label="Ideals" content={sheet.ideals} />
+                <TextSection label="Bonds" content={sheet.bonds} />
+                <TextSection label="Flaws" content={sheet.flaws} />
+              </div>
+            </div>
 
             <TextSection label="Features & Traits" content={sheet.features_traits} />
             <TextSection label="Languages & Proficiencies" content={sheet.languages} />

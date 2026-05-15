@@ -53,6 +53,7 @@ export default function Characters() {
     if (!sheet || !user?.campaign_id) return;
     await appClient.entities.CharacterSheet.create(cloneSheet(sheet, user.campaign_id));
     setViewing(null);
+    setEditing(null);
     await load();
   };
 
@@ -91,13 +92,12 @@ export default function Characters() {
           ))}
         </div>
       )}
-      <CharacterSheetEditor open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)} sheet={editing?.id ? editing : null} onSaved={load} />
+      <CharacterSheetEditor open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)} sheet={editing?.id ? editing : null} onSaved={load} onDuplicate={() => duplicateSheet(editing)} />
       <CharacterSheetView
         open={Boolean(viewing)}
         onOpenChange={(open) => !open && setViewing(null)}
         sheet={viewing}
         canEdit
-        onDuplicate={() => duplicateSheet(viewing)}
         onEdit={() => {
           setEditing(viewing);
           setViewing(null);

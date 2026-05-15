@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Loader2, Eye, Lock, EyeOff, Users } from "lucide-react";
+import { Upload, Loader2, Eye, Lock, EyeOff, Users, Copy } from "lucide-react";
 import InventoryManager from "@/components/characters/InventoryManager";
 import AttackManager from "@/components/characters/AttackManager";
+import SpellManager from "@/components/characters/SpellManager";
 
 const ALIGNMENTS = ["Lawful Good", "Neutral Good", "Chaotic Good", "Lawful Neutral", "True Neutral", "Chaotic Neutral", "Lawful Evil", "Neutral Evil", "Chaotic Evil"];
 const ABILITY_SCORES = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
@@ -166,7 +167,7 @@ function RichEditor({ value, onChange, placeholder, min = 100 }) {
   );
 }
 
-export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSaved }) {
+export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSaved, onDuplicate }) {
   const [form, setForm] = useState(defaultForm());
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -357,8 +358,7 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
           </section>
 
           <section className="space-y-2">
-            <div className="text-[10px] uppercase tracking-widest text-accent font-medium">Equipment & Currency</div>
-            <RichEditor value={form.equipment} onChange={(value) => set("equipment", value)} placeholder="Chain mail, explorer's pack..." />
+            <div className="text-[10px] uppercase tracking-widest text-accent font-medium">Currency</div>
             <div className="grid grid-cols-5 gap-2 text-center">
               {[
                 ["cp", "CP"],
@@ -419,7 +419,7 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                 ))}
               </div>
             </div>
-            <Field label="Spells Known / Prepared"><RichEditor value={form.spells_known} onChange={(value) => set("spells_known", value)} placeholder="Cantrips: Fire Bolt, Mage Hand" min={120} /></Field>
+            <SpellManager value={form.spells_known} onChange={(value) => set("spells_known", value)} />
           </section>
 
           <section className="space-y-2">
@@ -457,11 +457,18 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
         </div>
 
         <div className="flex justify-between items-center px-6 py-4 border-t border-border sticky bottom-0 bg-background">
-          {sheet?.id && sheet.visibility !== "archived" ? (
-            <Button variant="ghost" size="sm" onClick={archive} className="text-muted-foreground hover:text-foreground">
-              <EyeOff className="w-4 h-4 mr-1.5" /> Archive
-            </Button>
-          ) : <span />}
+          <div className="flex gap-2">
+            {sheet?.id && (
+              <Button variant="ghost" size="sm" onClick={onDuplicate} className="text-muted-foreground hover:text-foreground">
+                <Copy className="w-4 h-4 mr-1.5" /> Duplicate
+              </Button>
+            )}
+            {sheet?.id && sheet.visibility !== "archived" ? (
+              <Button variant="ghost" size="sm" onClick={archive} className="text-muted-foreground hover:text-foreground">
+                <EyeOff className="w-4 h-4 mr-1.5" /> Archive
+              </Button>
+            ) : null}
+          </div>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button onClick={save} disabled={saving || !form.name?.trim()}>

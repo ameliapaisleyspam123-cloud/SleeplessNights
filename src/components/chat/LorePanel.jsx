@@ -64,6 +64,16 @@ const ABBR_PANEL = {
   charisma: "CHA",
 };
 
+function readCharacterSpells(value) {
+  try {
+    const parsed = JSON.parse(value || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    const legacy = String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    return legacy ? [{ name: legacy }] : [];
+  }
+}
+
 function EntryCard({ entry }) {
   const [expanded, setExpanded] = useState(false);
   const meta = CATEGORY_META[entry.category] || CATEGORY_META.other;
@@ -182,6 +192,7 @@ function CharacterCard({ sheet }) {
     failures: sheet.death_save_failures ?? 0,
   });
   const stats = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+  const spells = readCharacterSpells(sheet.spells_known);
 
   const changeHp = async (delta) => {
     const max = sheet.hp_max ?? 0;
@@ -297,10 +308,22 @@ function CharacterCard({ sheet }) {
           )}
           {(sheet.spells_known || sheet.spell_slots) && (
             <div className="border-t border-border pt-2 space-y-2">
-              {sheet.spells_known && (
+              {spells.length > 0 && (
                 <div>
                   <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Spells</div>
-                  <p className="text-xs text-foreground/80 leading-relaxed">{sheet.spells_known}</p>
+                  <div className="space-y-1">
+                    {spells.slice(0, 5).map((spell, index) => (
+                      <div key={`${spell.name}-${index}`} className="text-[10px] text-foreground/80 leading-relaxed border border-border/60 rounded-sm px-2 py-1">
+                        <div className="font-medium text-foreground">{spell.name || "-"}</div>
+                        {(spell.castingTime || spell.rangeArea || spell.components || spell.duration) && (
+                          <div className="text-muted-foreground">
+                            {[spell.castingTime, spell.rangeArea, spell.components, spell.duration].filter(Boolean).join(" | ")}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {spells.length > 5 && <div className="text-[10px] text-muted-foreground">+{spells.length - 5} more</div>}
+                  </div>
                 </div>
               )}
               {sheet.spell_slots && (

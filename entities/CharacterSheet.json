@@ -194,7 +194,7 @@
     },
     "spells_known": {
       "type": "string",
-      "description": "Free text list of spells"
+      "description": "JSON array of spells [{name, castingTime, rangeArea, components, duration}]"
     },
     "attacks": {
       "type": "string",
