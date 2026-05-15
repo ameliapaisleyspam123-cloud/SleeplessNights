@@ -51,9 +51,7 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
           )}
           <div className="ink-divider my-5" />
           {entry.content && (
-            <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">
-              {entry.content}
-            </div>
+            <div className="rich-content text-[15px] leading-relaxed text-foreground/90" dangerouslySetInnerHTML={{ __html: entry.content }} />
           )}
 
           {entry.pdf_url && (

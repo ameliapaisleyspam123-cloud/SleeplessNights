@@ -1,11 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
+import ReactQuill from "react-quill";
 import { appClient } from "@/api/appClient";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { X, NotebookPen, Loader2, Check, BookOpen, Dices, Pencil, Plus, ScrollText, Trash2 } from "lucide-react";
 
-export default function PlayerNotesPanel({ onClose, currentUser }) {
-  const fullPage = !onClose;
+const quillModules = { toolbar: [["bold", "italic"], [{ list: "bullet" }, { list: "ordered" }], ["clean"]] };
+const quillClass = "[&_.ql-container]:border-border [&_.ql-container]:text-sm [&_.ql-editor]:bg-background/55 [&_.ql-editor]:text-foreground [&_.ql-toolbar]:border-border [&_.ql-toolbar]:bg-card/60 [&_.ql-stroke]:stroke-muted-foreground [&_.ql-fill]:fill-muted-foreground [&_.ql-picker]:text-muted-foreground";
+
+function selectedSessionKey(user) {
+  return user?.campaign_id && user?.email ? `sleepless_selected_note_${user.campaign_id}_${user.email}` : "";
+}
+
+export default function PlayerNotesPanel({ onClose, currentUser, embedded = false }) {
+  const fullPage = !onClose && !embedded;
   const [content, setContent] = useState("");
   const [noteId, setNoteId] = useState(null);
   const [notes, setNotes] = useState([]);
@@ -15,6 +22,7 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const saveTimeout = useRef(null);
+  const instanceId = useRef(Math.random().toString(36).slice(2));
 
   const loadNotes = async () => {
     if (!currentUser?.campaign_id) return;
@@ -25,10 +33,12 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
     setCampaign(campaigns.find((item) => item.id === currentUser.campaign_id) || null);
     setNotes(playerNotes);
 
-    const selected = noteId ? playerNotes.find((note) => note.id === noteId) : playerNotes[0];
+    const savedSelectedId = localStorage.getItem(selectedSessionKey(currentUser));
+    const selected = playerNotes.find((note) => note.id === (noteId || savedSelectedId)) || playerNotes[0];
     if (selected) {
       setContent(selected.content || "");
       setNoteId(selected.id);
+      localStorage.setItem(selectedSessionKey(currentUser), selected.id);
     } else {
       setContent("");
       setNoteId(null);
@@ -38,6 +48,43 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
   useEffect(() => {
     loadNotes().catch(() => {});
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser?.campaign_id) return undefined;
+    const syncSelected = (event) => {
+      if (event.detail?.key !== selectedSessionKey(currentUser)) return;
+      const selected = notes.find((note) => note.id === event.detail.noteId);
+      if (selected) {
+        setNoteId(selected.id);
+        setContent(selected.content || "");
+      }
+    };
+    const syncContent = (event) => {
+      if (event.detail?.key !== selectedSessionKey(currentUser)) return;
+      if (event.detail?.sourceId === instanceId.current) return;
+      if (event.detail?.noteId !== noteId) return;
+      setContent(event.detail.content || "");
+    };
+    const unsubscribe = appClient.entities.PlayerNote.subscribe((event) => {
+      if (event.type === "delete") {
+        loadNotes().catch(() => {});
+        return;
+      }
+      if (event.data?.id === noteId) {
+        setContent(event.data.content || "");
+        setNotes((items) => items.map((item) => (item.id === event.data.id ? event.data : item)));
+      } else if (event.type === "create" || event.type === "update") {
+        loadNotes().catch(() => {});
+      }
+    });
+    window.addEventListener("sleepless-note-selected", syncSelected);
+    window.addEventListener("sleepless-note-content", syncContent);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("sleepless-note-selected", syncSelected);
+      window.removeEventListener("sleepless-note-content", syncContent);
+    };
+  }, [currentUser, noteId, notes]);
 
   const save = async (val) => {
     const v = val !== undefined ? val : content;
@@ -62,6 +109,16 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
   const autosave = (newContent) => {
     setContent(newContent);
     setSaved(false);
+    if (noteId) {
+      window.dispatchEvent(new CustomEvent("sleepless-note-content", {
+        detail: {
+          key: selectedSessionKey(currentUser),
+          noteId,
+          content: newContent,
+          sourceId: instanceId.current,
+        },
+      }));
+    }
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => save(newContent), 1200);
   };
@@ -71,6 +128,8 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
     setSaved(false);
     setNoteId(note.id);
     setContent(note.content || "");
+    localStorage.setItem(selectedSessionKey(currentUser), note.id);
+    window.dispatchEvent(new CustomEvent("sleepless-note-selected", { detail: { key: selectedSessionKey(currentUser), noteId: note.id } }));
   };
 
   const createSessionLog = async () => {
@@ -89,6 +148,8 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
     });
     setNotes((items) => [...items, created]);
     setNoteId(created.id);
+    localStorage.setItem(selectedSessionKey(currentUser), created.id);
+    window.dispatchEvent(new CustomEvent("sleepless-note-selected", { detail: { key: selectedSessionKey(currentUser), noteId: created.id } }));
     setContent("");
     setSaved(false);
   };
@@ -245,12 +306,16 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
               </div>
             </div>
 
-            <Textarea
-              value={content}
-              onChange={(event) => autosave(event.target.value)}
-              placeholder="What transpired this session? Jot down clues, suspicions, NPC names, and secrets only you know..."
-              className="min-h-[42vh] lg:min-h-[50vh] resize-none rounded-sm bg-background/55 border-border/90 text-base leading-relaxed p-4 focus-visible:ring-1 focus-visible:ring-accent/50"
-            />
+            <div className="player-notes-editor rounded-sm border border-border/90 overflow-hidden">
+              <ReactQuill
+                value={content}
+                onChange={autosave}
+                theme="snow"
+                placeholder="What transpired this session? Jot down clues, suspicions, NPC names, and secrets only you know..."
+                modules={quillModules}
+                className={`${quillClass} [&_.ql-editor]:min-h-[42vh] lg:[&_.ql-editor]:min-h-[50vh]`}
+              />
+            </div>
             <p className="text-xs text-muted-foreground mt-3 italic">Auto-inscribed. Visible only to you.</p>
           </main>
         </div>
@@ -277,12 +342,36 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
       </div>
 
       <div className="flex-1 p-3 overflow-hidden flex flex-col">
-        <Textarea
-          value={content}
-          onChange={(e) => autosave(e.target.value)}
-          placeholder="Jot down your secrets, plans, and observations... Only you can see these."
-          className="flex-1 resize-none bg-secondary/20 border-border text-sm leading-relaxed h-full min-h-0 focus-visible:ring-1 focus-visible:ring-accent/50"
-        />
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-xs font-medium truncate">{activeLabel}</div>
+            <div className="text-[10px] text-muted-foreground">Synced with Grimoire</div>
+          </div>
+          {notes.length > 1 && (
+            <select
+              value={noteId || ""}
+              onChange={(event) => {
+                const selected = notes.find((note) => note.id === event.target.value);
+                if (selected) selectNote(selected);
+              }}
+              className="max-w-32 rounded-sm border border-border bg-background px-2 py-1 text-xs text-foreground"
+            >
+              {notes.map((note, index) => (
+                <option key={note.id} value={note.id}>{note.session_label || `Session ${index}`}</option>
+              ))}
+            </select>
+          )}
+        </div>
+        <div className="player-notes-editor flex-1 min-h-0 rounded-sm border border-border overflow-hidden">
+          <ReactQuill
+            value={content}
+            onChange={autosave}
+            theme="snow"
+            placeholder="Jot down your secrets, plans, and observations... Only you can see these."
+            modules={quillModules}
+            className={`${quillClass} h-full [&_.ql-container]:h-[calc(100%-42px)] [&_.ql-editor]:min-h-[220px]`}
+          />
+        </div>
         <p className="text-[10px] text-muted-foreground mt-1.5 italic">Private — only visible to you.</p>
       </div>
     </div>

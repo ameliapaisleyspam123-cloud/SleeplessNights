@@ -10,6 +10,10 @@ import { Folder, Grid2X2, List, Plus, Search } from "lucide-react";
 
 const CATEGORIES = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
 
+function plainText(value = "") {
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export default function Lore() {
   const [items, setItems] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -35,7 +39,7 @@ export default function Lore() {
   const folders = [...new Set(items.map((item) => item.folder).filter(Boolean))].sort();
   const filtered = items.filter((item) => {
     const q = query.trim().toLowerCase();
-    const matchesQuery = !q || item.title?.toLowerCase().includes(q) || item.content?.toLowerCase().includes(q) || item.tags?.some((tag) => tag.toLowerCase().includes(q));
+    const matchesQuery = !q || item.title?.toLowerCase().includes(q) || plainText(item.content).toLowerCase().includes(q) || item.tags?.some((tag) => tag.toLowerCase().includes(q));
     const matchesCategory = category === "all" || item.category === category;
     const matchesFolder = folder === "all" || item.folder === folder;
     return matchesQuery && matchesCategory && matchesFolder;

@@ -11,6 +11,10 @@ const CATEGORY_META = {
   other: { icon: Star, label: "Other" },
 };
 
+function previewText(value = "") {
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export default function LoreCard({ entry, onClick, onContextMenu, onEdit, onDelete, canManage = false, viewMode = "grid" }) {
   const meta = CATEGORY_META[entry.category] || CATEGORY_META.other;
   const Icon = meta.icon;
@@ -90,9 +94,9 @@ export default function LoreCard({ entry, onClick, onContextMenu, onEdit, onDele
           </div>
         </div>
         <div className={`${isList ? "text-lg truncate" : "text-xl"} font-display mt-1.5 leading-tight`}>{entry.title}</div>
-        {entry.content && (
+        {previewText(entry.content) && (
           <p className={`text-sm text-muted-foreground mt-2 ${isList ? "line-clamp-1" : "line-clamp-2"} leading-relaxed`}>
-            {entry.content}
+            {previewText(entry.content)}
           </p>
         )}
         {entry.folder && (

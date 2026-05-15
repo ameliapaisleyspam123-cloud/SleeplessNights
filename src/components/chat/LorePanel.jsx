@@ -75,6 +75,10 @@ function readCharacterSpells(value) {
   }
 }
 
+function previewHtml(value = "") {
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function EntryCard({ entry }) {
   const [expanded, setExpanded] = useState(false);
   const meta = CATEGORY_META[entry.category] || CATEGORY_META.other;
@@ -118,9 +122,7 @@ function EntryCard({ entry }) {
             <img src={entry.image_url} alt={entry.title} className="w-full rounded-sm object-cover max-h-40" />
           )}
           {entry.content && (
-            <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">
-              {entry.content}
-            </p>
+            <div className="rich-content text-xs text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: entry.content }} />
           )}
           {!entry.content && !entry.image_url && (
             <p className="text-xs text-muted-foreground italic">No details recorded.</p>
@@ -382,7 +384,7 @@ export default function LorePanel({ onClose }) {
   const filtered = entries.filter((e) => {
     const matchCat = cat === "all" || e.category === cat;
     const q = query.toLowerCase();
-    const matchQ = !q || e.title?.toLowerCase().includes(q) || e.tags?.some((t) => t.toLowerCase().includes(q));
+    const matchQ = !q || e.title?.toLowerCase().includes(q) || previewHtml(e.content).toLowerCase().includes(q) || e.tags?.some((t) => t.toLowerCase().includes(q));
     return matchCat && matchQ;
   });
 
@@ -412,7 +414,7 @@ export default function LorePanel({ onClose }) {
 
       {mainTab === "notes" && (
         <div className="flex-1 overflow-hidden">
-          <PlayerNotesPanel currentUser={user} />
+          <PlayerNotesPanel currentUser={user} embedded />
         </div>
       )}
 

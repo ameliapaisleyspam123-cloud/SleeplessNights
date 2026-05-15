@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
+import ReactQuill from "react-quill";
 import { appClient } from "@/api/appClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Upload, Loader2, FileText, Eye, EyeOff, Lock, Users } from "lucide-react";
 
 const VISIBILITY_OPTIONS = [
@@ -36,6 +36,9 @@ const blankEntry = {
   visibility: "public",
   allowed_emails: [],
 };
+
+const quillModules = { toolbar: [["bold", "italic"], [{ list: "bullet" }, { list: "ordered" }], ["clean"]] };
+const quillClass = "[&_.ql-container]:text-sm [&_.ql-editor]:bg-card [&_.ql-editor]:text-foreground [&_.ql-editor]:min-h-[150px] [&_.ql-toolbar]:border-border [&_.ql-container]:border-border [&_.ql-toolbar]:bg-card/60 [&_.ql-stroke]:stroke-muted-foreground [&_.ql-fill]:fill-muted-foreground [&_.ql-picker]:text-muted-foreground";
 
 export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
   const [form, setForm] = useState(() => entry || blankEntry);
@@ -172,7 +175,16 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
 
           <div>
             <Label>Lore</Label>
-            <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Pen the tale..." className="min-h-[150px]" />
+            <div className="mt-1 rounded-sm border border-border overflow-hidden">
+              <ReactQuill
+                value={form.content || ""}
+                onChange={(value) => setForm({ ...form, content: value })}
+                placeholder="Pen the tale..."
+                theme="snow"
+                modules={quillModules}
+                className={quillClass}
+              />
+            </div>
           </div>
 
           <div>
