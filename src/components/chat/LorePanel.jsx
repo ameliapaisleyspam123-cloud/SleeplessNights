@@ -175,7 +175,7 @@ function SpellSlotsEditor({ sheet }) {
             <span className="text-muted-foreground">Lvl {level}:</span>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => updateSlot(level, "used", Math.max(0, slotData.used - 1))}
+                onClick={() => updateSlot(level, "used", Math.min(slotData.total, slotData.used + 1))}
                 className="w-4 h-4 rounded border border-border bg-secondary/60 hover:bg-destructive/20 hover:border-destructive/50 text-muted-foreground hover:text-destructive transition-colors leading-none flex items-center justify-center"
               >
                 <Minus className="w-2.5 h-2.5" />
@@ -184,7 +184,7 @@ function SpellSlotsEditor({ sheet }) {
                 {remaining}/{slotData.total}
               </span>
               <button
-                onClick={() => updateSlot(level, "used", Math.min(slotData.total, slotData.used + 1))}
+                onClick={() => updateSlot(level, "used", Math.max(0, slotData.used - 1))}
                 className="w-4 h-4 rounded border border-border bg-secondary/60 hover:bg-accent/20 hover:border-accent/50 text-muted-foreground hover:text-accent transition-colors leading-none flex items-center justify-center"
               >
                 <Plus className="w-2.5 h-2.5" />
