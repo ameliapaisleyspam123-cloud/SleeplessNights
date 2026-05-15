@@ -31,6 +31,7 @@ const CATEGORY_META = {
   place: { icon: Castle, label: "Place", color: "text-teal-400" },
   event: { icon: Sparkles, label: "Event", color: "text-accent" },
   artifact: { icon: Swords, label: "Artifact", color: "text-indigo-400" },
+  religion: { icon: Sparkles, label: "Religion", color: "text-sky-400" },
   other: { icon: Star, label: "Other", color: "text-muted-foreground" },
 };
 
@@ -140,6 +141,14 @@ function SpellSlotsEditor({ sheet }) {
   });
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    try {
+      setSlots(sheet.spell_slots ? JSON.parse(sheet.spell_slots) : {});
+    } catch {
+      setSlots({});
+    }
+  }, [sheet.spell_slots]);
+
   const updateSlot = async (level, field, value) => {
     const newSlots = {
       ...slots,
@@ -151,10 +160,15 @@ function SpellSlotsEditor({ sheet }) {
     setSaving(false);
   };
 
+  if (!Object.keys(slots).some((level) => slots[level]?.total > 0)) {
+    return <div className="text-[10px] text-muted-foreground border border-dashed border-border rounded-sm px-2 py-2 text-center">No spell slots recorded.</div>;
+  }
+
   return (
     <div className="space-y-1">
       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => {
         const slotData = slots[level] || { total: 0, used: 0 };
+        if (!slotData.total) return null;
         const remaining = slotData.total - slotData.used;
         return (
           <div key={level} className="flex items-center justify-between text-[10px]">
@@ -184,7 +198,7 @@ function SpellSlotsEditor({ sheet }) {
 }
 
 function CharacterCard({ sheet }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [hp, setHp] = useState(sheet.hp_current ?? sheet.hp_max ?? 0);
   const [savingDeathSaves, setSavingDeathSaves] = useState(false);
   const [deathSaves, setDeathSaves] = useState({
@@ -193,6 +207,14 @@ function CharacterCard({ sheet }) {
   });
   const stats = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
   const spells = readCharacterSpells(sheet.spells_known);
+
+  useEffect(() => {
+    setHp(sheet.hp_current ?? sheet.hp_max ?? 0);
+    setDeathSaves({
+      successes: sheet.death_save_successes ?? 0,
+      failures: sheet.death_save_failures ?? 0,
+    });
+  }, [sheet.hp_current, sheet.hp_max, sheet.death_save_successes, sheet.death_save_failures]);
 
   const changeHp = async (delta) => {
     const max = sheet.hp_max ?? 0;
@@ -256,7 +278,7 @@ function CharacterCard({ sheet }) {
             ))}
           </div>
           <div className="space-y-2 text-xs">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <span className="flex items-center gap-1">
                 <Shield className="w-3 h-3 text-accent" />
                 AC {sheet.ac}
@@ -270,22 +292,22 @@ function CharacterCard({ sheet }) {
                 <button onClick={() => changeHp(1)} className="w-5 h-5 rounded-sm border border-border bg-secondary/60 hover:bg-accent/20 hover:border-accent/50 text-muted-foreground hover:text-accent transition-colors text-sm leading-none flex items-center justify-center">+</button>
               </div>
             </div>
-            {hp === 0 && (
-              <div className="flex items-center gap-2 text-[9px] text-accent">
-                <span>Death Saves:</span>
-                <div className="flex gap-1">
-                  {[...Array(3)].map((_, i) => (
-                    <button key={`success-${i}`} onClick={() => updateDeathSave("success", i < deathSaves.successes ? -1 : 1)} className={`w-4 h-4 rounded-full border-2 transition-colors ${i < deathSaves.successes ? "bg-green-500/30 border-green-500" : "border-border hover:border-green-500/50"}`} />
-                  ))}
-                </div>
-                <div className="flex gap-1">
-                  {[...Array(3)].map((_, i) => (
-                    <button key={`failure-${i}`} onClick={() => updateDeathSave("failure", i < deathSaves.failures ? -1 : 1)} className={`w-4 h-4 rounded-full border-2 transition-colors ${i < deathSaves.failures ? "bg-red-500/30 border-red-500" : "border-border hover:border-red-500/50"}`} />
-                  ))}
-                </div>
-                {savingDeathSaves && <span className="text-muted-foreground">Saving...</span>}
+            <div className="flex items-center gap-2 text-[9px] text-accent flex-wrap">
+              <span className="uppercase tracking-widest text-muted-foreground">Death Saves</span>
+              <div className="flex items-center gap-1">
+                <span className="text-green-400">S</span>
+                {[...Array(3)].map((_, i) => (
+                  <button key={`success-${i}`} onClick={() => updateDeathSave("success", i < deathSaves.successes ? -1 : 1)} className={`w-4 h-4 rounded-full border-2 transition-colors ${i < deathSaves.successes ? "bg-green-500/30 border-green-500" : "border-border hover:border-green-500/50"}`} />
+                ))}
               </div>
-            )}
+              <div className="flex items-center gap-1">
+                <span className="text-red-400">F</span>
+                {[...Array(3)].map((_, i) => (
+                  <button key={`failure-${i}`} onClick={() => updateDeathSave("failure", i < deathSaves.failures ? -1 : 1)} className={`w-4 h-4 rounded-full border-2 transition-colors ${i < deathSaves.failures ? "bg-red-500/30 border-red-500" : "border-border hover:border-red-500/50"}`} />
+                ))}
+              </div>
+              {savingDeathSaves && <span className="text-muted-foreground">Saving...</span>}
+            </div>
           </div>
           {profSkills.length > 0 && (
             <div className="border-t border-border pt-2">
@@ -355,7 +377,7 @@ export default function LorePanel({ onClose }) {
     appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 200).then(setCharacters);
   }, [user?.campaign_id]);
 
-  const cats = ["all", "character", "map", "place", "event", "artifact", "other"];
+  const cats = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
 
   const filtered = entries.filter((e) => {
     const matchCat = cat === "all" || e.category === cat;
@@ -372,14 +394,14 @@ export default function LorePanel({ onClose }) {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
-        <div className="flex gap-1">
-          <button onClick={() => setMainTab("lore")} className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-sm transition-colors ${mainTab === "lore" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-            <ScrollText className="w-3.5 h-3.5" /> Lore
+        <div className="flex gap-1 min-w-0 overflow-x-auto thin-scroll">
+          <button onClick={() => setMainTab("lore")} className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm transition-colors whitespace-nowrap ${mainTab === "lore" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+            <ScrollText className="w-3.5 h-3.5" /> Lore & Maps
           </button>
-          <button onClick={() => setMainTab("characters")} className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-sm transition-colors ${mainTab === "characters" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+          <button onClick={() => setMainTab("characters")} className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm transition-colors whitespace-nowrap ${mainTab === "characters" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
             <User className="w-3.5 h-3.5" /> Characters
           </button>
-          <button onClick={() => setMainTab("notes")} className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-sm transition-colors ${mainTab === "notes" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+          <button onClick={() => setMainTab("notes")} className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm transition-colors whitespace-nowrap ${mainTab === "notes" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
             <NotebookPen className="w-3.5 h-3.5" /> Grimoire
           </button>
         </div>

@@ -20,11 +20,13 @@ import {
   Settings,
   NotebookPen,
   Columns,
+  Dices,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BroadcastOverlay from "./broadcast/BroadcastOverlay";
 import CombatTurnIndicator from "./initiative/CombatTurnIndicator";
 import InitiativeTracker from "./initiative/InitiativeTracker";
+import DiceRoller from "./DiceRoller";
 import ProfileNameModal from "./ProfileNameModal";
 import CampaignSettingsModal from "./CampaignSettingsModal";
 import { InitiativeProvider, useInitiative } from "@/lib/InitiativeContext";
@@ -62,6 +64,7 @@ function LayoutInner() {
   const [collapsed, setCollapsed] = useState(false);
   const [nameModalOpen, setNameModalOpen] = useState(false);
   const [campaignModalOpen, setCampaignModalOpen] = useState(false);
+  const [diceOpen, setDiceOpen] = useState(false);
   const [userLoaded, setUserLoaded] = useState(false);
   const location = useLocation();
   const { splitOpen, setSplitOpen, setCampaignId, campaignId } = useInitiative();
@@ -197,6 +200,22 @@ function LayoutInner() {
 
       <BroadcastOverlay user={user} />
       {!isAdmin && <CombatTurnIndicator currentUser={user} />}
+      <button
+        type="button"
+        onClick={() => setDiceOpen((open) => !open)}
+        className={`fixed bottom-4 right-4 z-50 h-11 px-4 rounded-sm border shadow-lg flex items-center gap-2 text-sm font-medium transition-all ${
+          diceOpen ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card text-foreground hover:border-accent/70 hover:text-accent"
+        }`}
+        title="Open dice roller"
+      >
+        <Dices className="w-4 h-4" />
+        Dice
+      </button>
+      {diceOpen && (
+        <div className="fixed bottom-20 right-4 z-50 w-[min(22rem,calc(100vw-2rem))] max-h-[min(38rem,calc(100vh-6rem))] overflow-hidden rounded-sm border border-border bg-card shadow-2xl sculk-glow">
+          <DiceRoller onClose={() => setDiceOpen(false)} />
+        </div>
+      )}
       <ProfileNameModal open={nameModalOpen} onOpenChange={setNameModalOpen} currentUser={user} onSaved={loadUser} />
       {isAdmin && <CampaignSettingsModal open={campaignModalOpen} onOpenChange={setCampaignModalOpen} campaign={campaign} onSaved={handleCampaignSaved} />}
     </div>

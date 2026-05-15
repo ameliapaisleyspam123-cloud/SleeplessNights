@@ -54,15 +54,13 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, isAdmin 
 
           <div className="flex gap-2 mt-8 justify-end">
             {isAdmin && (
-              <>
-                <Button variant="outline" onClick={broadcast}>
-                  <Radio className="w-4 h-4 mr-1.5" /> Broadcast
-                </Button>
-                <Button onClick={onEdit}>
-                  <Pencil className="w-4 h-4 mr-1.5" /> Edit
-                </Button>
-              </>
+              <Button variant="outline" onClick={broadcast}>
+                <Radio className="w-4 h-4 mr-1.5" /> Broadcast
+              </Button>
             )}
+            <Button onClick={onEdit}>
+              <Pencil className="w-4 h-4 mr-1.5" /> Edit
+            </Button>
           </div>
         </div>
 
