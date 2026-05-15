@@ -2,12 +2,13 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Pencil, Lock, EyeOff, Users, Heart, Minus, Plus, Loader2, Swords } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import InventoryManager from "@/components/characters/InventoryManager";
+import { appClient } from "@/api/appClient";
 
 const STATS = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 const ABBR = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
-const mod = (v) => Math.floor(((v || 10) - 10) / 2);
-const fmt = (m) => (m >= 0 ? `+${m}` : `${m}`);
+const mod = (value) => Math.floor(((value || 10) - 10) / 2);
+const fmt = (value) => (value >= 0 ? `+${value}` : `${value}`);
 
 const ALL_SKILLS = [
   { name: "Acrobatics", ability: "dexterity" },
@@ -30,12 +31,19 @@ const ALL_SKILLS = [
   { name: "Survival", ability: "wisdom" },
 ];
 
+function RichText({ content }) {
+  if (!content) return null;
+  const looksHtml = /<\/?[a-z][\s\S]*>/i.test(content);
+  if (looksHtml) return <div className="text-sm leading-relaxed border border-border rounded-sm bg-secondary/20 p-3" dangerouslySetInnerHTML={{ __html: content }} />;
+  return <div className="text-sm leading-relaxed whitespace-pre-wrap border border-border rounded-sm bg-secondary/20 p-3">{content}</div>;
+}
+
 function AbilityScore({ stat, value }) {
-  const m = mod(value);
+  const modifier = mod(value);
   return (
     <div className="flex flex-col items-center bg-card border border-border rounded-sm overflow-hidden text-center w-full">
       <div className="text-[8px] uppercase tracking-widest text-muted-foreground bg-secondary/60 w-full py-0.5">{ABBR[stat]}</div>
-      <div className="text-[10px] text-accent font-medium mt-1">{fmt(m)}</div>
+      <div className="text-[10px] text-accent font-medium mt-1">{fmt(modifier)}</div>
       <div className="font-display text-2xl leading-none mb-1">{value ?? 10}</div>
     </div>
   );
@@ -46,26 +54,26 @@ function ProfDot({ filled, expertise }) {
   return <div className={`w-3 h-3 rounded-full border-2 shrink-0 ${filled ? "bg-accent border-accent" : "border-muted-foreground/40"}`} />;
 }
 
-function SkillLine({ sk, sheet, profSkills, expertSkills, pb }) {
-  const isExp = expertSkills.includes(sk.name);
-  const isProf = profSkills.includes(sk.name);
-  const bonus = mod(sheet[sk.ability] || 10) + (isExp ? pb * 2 : isProf ? pb : 0);
+function SkillLine({ skill, sheet, profSkills, expertSkills, pb }) {
+  const expertise = expertSkills.includes(skill.name);
+  const proficient = profSkills.includes(skill.name);
+  const bonus = mod(sheet[skill.ability] || 10) + (expertise ? pb * 2 : proficient ? pb : 0);
   return (
-    <div className={`flex items-center gap-1.5 py-[2px] ${!isProf && !isExp ? "opacity-40" : ""}`}>
-      <ProfDot filled={isProf || isExp} expertise={isExp} />
+    <div className={`flex items-center gap-1.5 py-[2px] ${!proficient && !expertise ? "opacity-40" : ""}`}>
+      <ProfDot filled={proficient || expertise} expertise={expertise} />
       <span className="text-[11px] tabular-nums text-accent w-7 text-right shrink-0">{fmt(bonus)}</span>
-      <span className="text-[11px] flex-1 truncate">{sk.name}</span>
-      <span className="text-[9px] text-muted-foreground shrink-0">{ABBR[sk.ability]}</span>
+      <span className="text-[11px] flex-1 truncate">{skill.name}</span>
+      <span className="text-[9px] text-muted-foreground shrink-0">{ABBR[skill.ability]}</span>
     </div>
   );
 }
 
 function SaveLine({ ability, sheet, profSaves, pb }) {
-  const isProf = profSaves.includes(ability);
-  const bonus = mod(sheet[ability] || 10) + (isProf ? pb : 0);
+  const proficient = profSaves.includes(ability);
+  const bonus = mod(sheet[ability] || 10) + (proficient ? pb : 0);
   return (
     <div className="flex items-center gap-1.5 py-[2px]">
-      <ProfDot filled={isProf} />
+      <ProfDot filled={proficient} />
       <span className="text-[11px] tabular-nums text-accent w-7 text-right shrink-0">{fmt(bonus)}</span>
       <span className="text-[11px] flex-1 capitalize">{ability}</span>
     </div>
@@ -77,7 +85,7 @@ function TextSection({ label, content }) {
   return (
     <div>
       <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">{label}</div>
-      <div className="text-sm leading-relaxed whitespace-pre-wrap border border-border rounded-sm bg-secondary/20 p-3">{content}</div>
+      <RichText content={content} />
     </div>
   );
 }
@@ -92,25 +100,45 @@ function AddToInitiativeButton({ sheet }) {
     setState("rolling");
     const roll = Math.floor(Math.random() * 20) + 1;
     const total = roll + initMod;
-    const list = await base44.entities.Initiative.filter({ campaign_id: sheet.campaign_id, active: true }, "-updated_date", 1);
-    const combat = list[0];
+    const [combat] = await appClient.entities.Initiative.filter({ campaign_id: sheet.campaign_id, active: true }, "-updated_date", 1);
     if (!combat) {
       setState("no_combat");
       setTimeout(() => setState("idle"), 2500);
       return;
     }
-    const existing = (combat.entries || []).find((e) => e.id === sheet.id);
+
+    const existing = (combat.entries || []).find((entry) => entry.id === sheet.id);
     const entries = existing
-      ? (combat.entries || []).map((e) => (e.id === sheet.id ? { ...e, roll, total, modifier: initMod } : e))
-      : [...(combat.entries || []), { id: sheet.id, name: sheet.name, image_url: sheet.image_url || "", roll, modifier: initMod, total, isGroup: false, groupSize: 1, ownerEmail: sheet.created_by || "", type: "character" }].sort((a, b) => b.total - a.total);
-    await base44.entities.Initiative.update(combat.id, { entries });
+      ? (combat.entries || []).map((entry) => (entry.id === sheet.id ? { ...entry, roll, total, modifier: initMod } : entry))
+      : [
+          ...(combat.entries || []),
+          {
+            id: sheet.id,
+            name: sheet.name,
+            image_url: sheet.image_url || "",
+            roll,
+            modifier: initMod,
+            total,
+            isGroup: false,
+            groupSize: 1,
+            ownerEmail: sheet.created_by || "",
+            type: "character",
+          },
+        ].sort((a, b) => b.total - a.total);
+
+    await appClient.entities.Initiative.update(combat.id, { entries });
     setState("added");
     setTimeout(() => setState("idle"), 3000);
   };
 
   const label = state === "rolling" ? "..." : state === "added" ? `Added (${fmt(initMod)})` : state === "no_combat" ? "No active combat" : `Roll Initiative (${fmt(initMod)})`;
 
-  return <Button size="sm" variant={state === "added" ? "default" : "outline"} onClick={handleAdd} disabled={state === "rolling"} className="shrink-0 gap-1.5"><Swords className="w-3.5 h-3.5" />{label}</Button>;
+  return (
+    <Button size="sm" variant={state === "added" ? "default" : "outline"} onClick={handleAdd} disabled={state === "rolling"} className={`shrink-0 gap-1.5 ${state === "added" ? "bg-accent text-accent-foreground border-accent" : ""}`}>
+      <Swords className="w-3.5 h-3.5" />
+      {label}
+    </Button>
+  );
 }
 
 function HpBlock({ hp, hpMax, hpTemp, onSave }) {
@@ -123,6 +151,9 @@ function HpBlock({ hp, hpMax, hpTemp, onSave }) {
     setTemp(hpTemp ?? 0);
   }, [hp, hpMax, hpTemp]);
 
+  const pct = Math.max(0, Math.min(100, (current / (hpMax || 1)) * 100));
+  const barColor = pct > 50 ? "bg-green-500" : pct > 25 ? "bg-yellow-500" : "bg-red-500";
+
   const handleSave = async () => {
     setSaving(true);
     await onSave({ hp_current: current, hp_temp: temp });
@@ -131,37 +162,182 @@ function HpBlock({ hp, hpMax, hpTemp, onSave }) {
 
   return (
     <div className="border border-border rounded-sm bg-card p-3 col-span-3 sm:col-span-2 lg:col-span-2">
-      <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Heart className="w-3 h-3" /> Hit Points</div>
+      <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1">
+        <Heart className="w-3 h-3" /> Hit Points
+      </div>
+      <div className="w-full h-2 bg-secondary rounded-full mb-2 overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
       <div className="flex items-center gap-2 mb-2">
-        <button onClick={() => setCurrent((c) => Math.max(0, c - 1))} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors"><Minus className="w-4 h-4" /></button>
-        <div className="flex-1 text-center"><span className="font-display text-3xl leading-none">{current}</span><span className="text-muted-foreground text-sm">/{hpMax}</span></div>
-        <button onClick={() => setCurrent((c) => Math.min(hpMax, c + 1))} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors"><Plus className="w-4 h-4" /></button>
+        <button onClick={() => setCurrent((value) => Math.max(0, value - 1))} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
+          <Minus className="w-4 h-4" />
+        </button>
+        <div className="flex-1 text-center">
+          <span className="font-display text-3xl leading-none">{current}</span>
+          <span className="text-muted-foreground text-sm">/{hpMax}</span>
+        </div>
+        <button onClick={() => setCurrent((value) => Math.min(hpMax || value + 1, value + 1))} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
+          <Plus className="w-4 h-4" />
+        </button>
       </div>
       <div className="flex items-center gap-2">
         <span className="text-[9px] text-muted-foreground uppercase tracking-widest shrink-0">Temp HP</span>
-        <button onClick={() => setTemp((t) => Math.max(0, t - 1))} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground"><Minus className="w-3 h-3" /></button>
+        <button onClick={() => setTemp((value) => Math.max(0, value - 1))} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
+          <Minus className="w-3 h-3" />
+        </button>
         <span className="text-sm font-medium w-8 text-center">{temp}</span>
-        <button onClick={() => setTemp((t) => t + 1)} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground"><Plus className="w-3 h-3" /></button>
-        <button onClick={handleSave} disabled={saving} className="ml-auto text-[11px] px-3 py-2 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50">{saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}</button>
+        <button onClick={() => setTemp((value) => value + 1)} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
+          <Plus className="w-3 h-3" />
+        </button>
+        <button onClick={handleSave} disabled={saving} className="ml-auto text-[11px] px-3 py-2 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DeathSaveBlock({ successes, failures, onSave }) {
+  const [succ, setSucc] = useState(successes || 0);
+  const [fail, setFail] = useState(failures || 0);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setSucc(successes || 0);
+    setFail(failures || 0);
+  }, [successes, failures]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave({ death_save_successes: succ, death_save_failures: fail });
+    setSaving(false);
+  };
+
+  return (
+    <div className="border border-border rounded-sm bg-card p-3">
+      <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-2">Death Saves</div>
+      <div className="space-y-1.5">
+        {[
+          ["Successes", "succ", succ, setSucc, "green"],
+          ["Failures", "fail", fail, setFail, "red"],
+        ].map(([label, key, value, setter, color]) => (
+          <div className="flex items-center gap-2" key={key}>
+            <span className={`text-[9px] ${color === "green" ? "text-green-400" : "text-red-400"} w-16`}>{label}</span>
+            <div className="flex gap-2">
+              {[0, 1, 2].map((index) => (
+                <button
+                  key={index}
+                  onClick={() => setter(value > index ? index : index + 1)}
+                  className={`w-7 h-7 rounded-full border-2 transition-colors ${index < value ? (color === "green" ? "bg-green-500 border-green-500" : "bg-red-500 border-red-500") : `border-border ${color === "green" ? "hover:border-green-400" : "hover:border-red-400"}`}`}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <button onClick={handleSave} disabled={saving} className="mt-2 text-[11px] px-3 py-2 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50 w-full text-center">
+        {saving ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : "Save"}
+      </button>
+    </div>
+  );
+}
+
+function SpellSlotsBlock({ slotsJson, onSave }) {
+  const parse = (json) => {
+    try {
+      return JSON.parse(json || "{}");
+    } catch {
+      return {};
+    }
+  };
+  const [slots, setSlots] = useState(parse(slotsJson));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setSlots(parse(slotsJson));
+  }, [slotsJson]);
+
+  const toggleSlot = (level, index) => {
+    const slot = slots[level] || { total: 0, used: 0 };
+    const used = slot.used || 0;
+    const remaining = slot.total - used;
+    const newUsed = index < remaining ? used + 1 : Math.max(0, used - 1);
+    setSlots((prev) => ({ ...prev, [level]: { ...slot, used: newUsed } }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave({ spell_slots: JSON.stringify(slots) });
+    setSaving(false);
+  };
+
+  if (!Object.keys(slots).some((level) => slots[level]?.total > 0)) return null;
+
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center justify-between">
+        <span>Spell Slots</span>
+        <button onClick={handleSave} disabled={saving} className="text-[10px] px-2 py-0.5 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => {
+          const slot = slots[level];
+          if (!slot?.total) return null;
+          const used = slot.used || 0;
+          const remaining = slot.total - used;
+          return (
+            <div key={level} className="border border-border rounded-sm bg-secondary/40 px-3 py-2 text-center min-w-[56px]">
+              <div className="text-[8px] uppercase text-muted-foreground mb-1">Lvl {level}</div>
+              <div className="flex gap-1.5 justify-center flex-wrap">
+                {Array.from({ length: slot.total }).map((_, index) => (
+                  <button key={index} onClick={() => toggleSlot(level, index)} className={`w-5 h-5 rounded-full border-2 transition-colors ${index < remaining ? "bg-accent border-accent hover:bg-accent/60" : "border-border hover:border-accent/50"}`} />
+                ))}
+              </div>
+              <div className="text-[9px] text-muted-foreground mt-1">
+                {remaining}/{slot.total}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit, onEdit }) {
+  const [inspired, setInspired] = useState(Boolean(sheet?.inspiration));
+  const [savingInspiration, setSavingInspiration] = useState(false);
+
+  useEffect(() => {
+    setInspired(Boolean(sheet?.inspiration));
+  }, [sheet?.inspiration]);
+
   if (!sheet) return null;
 
-  const profSkills = (sheet.skills || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const expertSkills = (sheet.skill_expertises || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const profSaves = (sheet.saving_throws || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const profSkills = (sheet.skills || "").split(",").map((value) => value.trim()).filter(Boolean);
+  const expertSkills = (sheet.skill_expertises || "").split(",").map((value) => value.trim()).filter(Boolean);
+  const profSaves = (sheet.saving_throws || "").split(",").map((value) => value.trim()).filter(Boolean);
   const pb = sheet.proficiency_bonus || 2;
-  const passivePerc = sheet.passive_perception || 10 + mod(sheet.wisdom || 10) + (profSkills.includes("Perception") ? pb : 0);
-  const hasSpells = sheet.spellcasting_ability || sheet.spells_known;
-  const saveField = async (data) => { if (sheet?.id) await base44.entities.CharacterSheet.update(sheet.id, data); };
+  const passivePerc = 10 + mod(sheet.wisdom || 10) + (expertSkills.includes("Perception") ? pb * 2 : profSkills.includes("Perception") ? pb : 0);
+  const hasSpells = sheet.spellcasting_ability || sheet.spells_known || sheet.spell_slots;
+
+  const saveField = async (data) => {
+    if (sheet?.id) await appClient.entities.CharacterSheet.update(sheet.id, data);
+  };
+
+  const toggleInspiration = async () => {
+    const next = !inspired;
+    setInspired(next);
+    setSavingInspiration(true);
+    await saveField({ inspiration: next });
+    setSavingInspiration(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto thin-scroll p-0 bg-background">
+      <DialogContent className="w-[95vw] max-w-5xl max-h-[95vh] overflow-y-auto thin-scroll p-0 bg-background">
         <div className="relative bg-secondary/60 border-b border-border">
           {sheet.image_url && <img src={sheet.image_url} alt={sheet.name} className="absolute inset-0 w-full h-full object-cover object-top opacity-20 pointer-events-none" />}
           <div className="relative px-6 py-5 flex items-start justify-between gap-4 flex-wrap">
@@ -176,10 +352,10 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
                 </div>
                 <div className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
                   {sheet.race && <span>{sheet.race}</span>}
-                  {sheet.class && <span> - {sheet.class}{sheet.subclass ? ` (${sheet.subclass})` : ""}</span>}
-                  {sheet.level && <span> - Level {sheet.level}</span>}
-                  {sheet.background && <span> - {sheet.background}</span>}
-                  {sheet.alignment && <span> - {sheet.alignment}</span>}
+                  {sheet.class && <span>- {sheet.class}{sheet.subclass ? ` (${sheet.subclass})` : ""}</span>}
+                  {sheet.level && <span>- Level {sheet.level}</span>}
+                  {sheet.background && <span>- {sheet.background}</span>}
+                  {sheet.alignment && <span>- {sheet.alignment}</span>}
                 </div>
                 <div className="flex gap-4 text-xs text-muted-foreground mt-0.5 flex-wrap">
                   {sheet.experience_points != null && <span>{sheet.experience_points.toLocaleString()} XP</span>}
@@ -190,32 +366,109 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
               </div>
             </div>
             <div className="flex flex-col gap-2 shrink-0">
-              {canEdit && <Button size="sm" variant="outline" onClick={onEdit}><Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit</Button>}
+              {canEdit && (
+                <Button size="sm" variant="outline" onClick={onEdit}>
+                  <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
+                </Button>
+              )}
               {sheet.campaign_id && <AddToInitiativeButton sheet={sheet} />}
+              <button onClick={toggleInspiration} disabled={savingInspiration} className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-sm border text-xs font-medium transition-all disabled:opacity-50 ${inspired ? "bg-amber-400/20 border-amber-400/60 text-amber-400 hover:bg-amber-400/10" : "border-border text-muted-foreground hover:border-amber-400/40 hover:text-amber-400/70"}`}>
+                {savingInspiration ? <Loader2 className="w-3 h-3 animate-spin" /> : <span>*</span>}
+                {inspired ? "Inspired" : "Inspiration"}
+              </button>
             </div>
           </div>
         </div>
 
         <div className="flex flex-col md:flex-row gap-0">
           <div className="md:w-52 shrink-0 border-r border-border px-3 py-4 space-y-4 bg-secondary/10">
-            <div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2 text-center">Ability Scores</div><div className="grid grid-cols-3 md:grid-cols-2 gap-1.5">{STATS.map((s) => <AbilityScore key={s} stat={s} value={sheet[s]} />)}</div></div>
-            <div className="border border-border rounded-sm bg-card p-2"><div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5 text-center">Saving Throws</div>{STATS.map((a) => <SaveLine key={a} ability={a} sheet={sheet} profSaves={profSaves} pb={pb} />)}</div>
-            <div className="border border-border rounded-sm bg-secondary/10 p-2"><div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5 text-center">Skills</div>{ALL_SKILLS.map((sk) => <SkillLine key={sk.name} sk={sk} sheet={sheet} profSkills={profSkills} expertSkills={expertSkills} pb={pb} />)}</div>
+            <div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2 text-center">Ability Scores</div>
+              <div className="grid grid-cols-3 md:grid-cols-2 gap-1.5">{STATS.map((stat) => <AbilityScore key={stat} stat={stat} value={sheet[stat]} />)}</div>
+            </div>
+            <div className="border border-border rounded-sm bg-card p-2">
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5 text-center">Saving Throws</div>
+              {STATS.map((ability) => <SaveLine key={ability} ability={ability} sheet={sheet} profSaves={profSaves} pb={pb} />)}
+            </div>
+            <div className="border border-border rounded-sm bg-secondary/10 p-2">
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5 text-center">Skills</div>
+              {ALL_SKILLS.map((skill) => <SkillLine key={skill.name} skill={skill} sheet={sheet} profSkills={profSkills} expertSkills={expertSkills} pb={pb} />)}
+            </div>
           </div>
 
           <div className="flex-1 px-5 py-4 space-y-5 min-w-0">
             <div>
               <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Combat</div>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                {[["Armor Class", sheet.ac ?? "-"], ["Speed", `${sheet.speed ?? 30}ft`], ["Hit Dice", sheet.hit_dice || "-"]].map(([label, value]) => (
-                  <div key={label} className="flex flex-col items-center border border-border rounded-sm bg-card p-2 text-center min-h-[56px] justify-center"><div className="text-[8px] uppercase tracking-widest text-muted-foreground leading-none mb-0.5">{label}</div><div className="font-display text-2xl leading-none">{value}</div></div>
+                {[
+                  ["Armor Class", sheet.ac ?? "-"],
+                  ["Speed", `${sheet.speed ?? 30}ft`],
+                  ["Hit Dice", sheet.hit_dice || "-"],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex flex-col items-center border border-border rounded-sm bg-card p-2 text-center min-h-[56px] justify-center">
+                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground leading-none mb-0.5">{label}</div>
+                    <div className="font-display text-2xl leading-none">{value}</div>
+                  </div>
                 ))}
                 <HpBlock hp={sheet.hp_current} hpMax={sheet.hp_max} hpTemp={sheet.hp_temp} onSave={saveField} />
               </div>
+              <div className="mt-2">
+                <DeathSaveBlock successes={sheet.death_save_successes} failures={sheet.death_save_failures} onSave={saveField} />
+              </div>
             </div>
+
             <TextSection label="Attacks & Weapons" content={sheet.attacks} />
-            <TextSection label="Equipment" content={sheet.equipment} />
-            {hasSpells && <div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Spellcasting</div>{sheet.spellcasting_ability && <div className="flex gap-4 text-sm mb-3 flex-wrap"><span className="text-muted-foreground">Ability: <b className="text-foreground uppercase">{ABBR[sheet.spellcasting_ability] || sheet.spellcasting_ability}</b></span><span className="text-muted-foreground">Save DC: <b className="text-foreground">{sheet.spell_save_dc}</b></span><span className="text-muted-foreground">Attack: <b className="text-foreground">{fmt(sheet.spell_attack_bonus || 0)}</b></span></div>}<TextSection label="Spells Known / Prepared" content={sheet.spells_known} /></div>}
+            {sheet.inventory && sheet.inventory !== "[]" && <InventoryManager value={sheet.inventory} readOnly />}
+
+            {(sheet.equipment || sheet.gp || sheet.sp || sheet.cp || sheet.ep || sheet.pp) && (
+              <div>
+                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Equipment & Currency</div>
+                {sheet.equipment && <RichText content={sheet.equipment} />}
+                <div className="flex gap-3 flex-wrap text-sm mt-2">
+                  {[
+                    ["CP", sheet.cp, "text-slate-400"],
+                    ["SP", sheet.sp, "text-slate-300"],
+                    ["EP", sheet.ep, "text-emerald-400"],
+                    ["GP", sheet.gp, "text-yellow-400"],
+                    ["PP", sheet.pp, "text-purple-400"],
+                  ]
+                    .filter(([, value]) => value > 0)
+                    .map(([label, value, cls]) => (
+                      <span key={label} className={`${cls} font-medium`}>
+                        {value} {label}
+                      </span>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {hasSpells && (
+              <div>
+                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Spellcasting</div>
+                {sheet.spellcasting_ability && (
+                  <div className="flex gap-4 text-sm mb-3 flex-wrap">
+                    <span className="text-muted-foreground">Ability: <b className="text-foreground uppercase">{ABBR[sheet.spellcasting_ability] || sheet.spellcasting_ability}</b></span>
+                    <span className="text-muted-foreground">Save DC: <b className="text-foreground">{sheet.spell_save_dc}</b></span>
+                    <span className="text-muted-foreground">Attack: <b className="text-foreground">{fmt(sheet.spell_attack_bonus || 0)}</b></span>
+                  </div>
+                )}
+                <SpellSlotsBlock slotsJson={sheet.spell_slots} onSave={saveField} />
+                {sheet.spells_known && <div className="mt-3"><RichText content={sheet.spells_known} /></div>}
+              </div>
+            )}
+
+            {(sheet.traits || sheet.ideals || sheet.bonds || sheet.flaws) && (
+              <div>
+                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Character Details</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <TextSection label="Personality Traits" content={sheet.traits} />
+                  <TextSection label="Ideals" content={sheet.ideals} />
+                  <TextSection label="Bonds" content={sheet.bonds} />
+                  <TextSection label="Flaws" content={sheet.flaws} />
+                </div>
+              </div>
+            )}
+
             <TextSection label="Features & Traits" content={sheet.features_traits} />
             <TextSection label="Languages & Proficiencies" content={sheet.languages} />
             <TextSection label="Notes" content={sheet.notes} />

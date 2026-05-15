@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import {
   ScrollText,
   MapIcon,
@@ -137,7 +137,7 @@ function SpellSlotsEditor({ sheet }) {
     };
     setSlots(newSlots);
     setSaving(true);
-    await base44.entities.CharacterSheet.update(sheet.id, { spell_slots: JSON.stringify(newSlots) });
+    await appClient.entities.CharacterSheet.update(sheet.id, { spell_slots: JSON.stringify(newSlots) });
     setSaving(false);
   };
 
@@ -188,7 +188,7 @@ function CharacterCard({ sheet }) {
     const next = Math.max(0, Math.min(max, hp + delta));
     if (next === hp) return;
     setHp(next);
-    await base44.entities.CharacterSheet.update(sheet.id, { hp_current: next });
+    await appClient.entities.CharacterSheet.update(sheet.id, { hp_current: next });
   };
 
   const updateDeathSave = async (type, delta) => {
@@ -200,7 +200,7 @@ function CharacterCard({ sheet }) {
     const newSaves = { ...deathSaves, [key]: next };
     setDeathSaves(newSaves);
     setSavingDeathSaves(true);
-    await base44.entities.CharacterSheet.update(sheet.id, { [field]: next });
+    await appClient.entities.CharacterSheet.update(sheet.id, { [field]: next });
     setSavingDeathSaves(false);
   };
 
@@ -328,8 +328,8 @@ export default function LorePanel({ onClose }) {
   useEffect(() => {
     if (!user?.campaign_id) return;
     const cid = user.campaign_id;
-    base44.entities.LoreEntry.filter({ campaign_id: cid }, "-created_date", 500).then(setEntries);
-    base44.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 200).then(setCharacters);
+    appClient.entities.LoreEntry.filter({ campaign_id: cid }, "-created_date", 500).then(setEntries);
+    appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 200).then(setCharacters);
   }, [user?.campaign_id]);
 
   const cats = ["all", "character", "map", "place", "event", "artifact", "other"];

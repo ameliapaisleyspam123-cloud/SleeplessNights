@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export default function ProfileNameModal({ open, onOpenChange, currentUser, onSa
   const save = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    await base44.auth.updateMe({ display_name: name.trim() });
+    await appClient.auth.updateMe({ display_name: name.trim() });
     setSaving(false);
     onSaved?.();
     onOpenChange(false);

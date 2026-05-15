@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -51,10 +51,10 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     if (open) {
       setForm(entry || blankEntry);
       setTagInput("");
-      base44.entities.User.list("-created_date", 200).then((u) => setAllUsers(u.filter((x) => x.role !== "admin"))).catch(() => {});
-      base44.auth.me().then((u) => {
+      appClient.entities.User.list("-created_date", 200).then((u) => setAllUsers(u.filter((x) => x.role !== "admin"))).catch(() => {});
+      appClient.auth.me().then((u) => {
         if (!u?.campaign_id) return;
-        base44.entities.LoreEntry.filter({ campaign_id: u.campaign_id }, "-created_date", 200).then((entries) => {
+        appClient.entities.LoreEntry.filter({ campaign_id: u.campaign_id }, "-created_date", 200).then((entries) => {
           const tags = [...new Set(entries.flatMap((e) => e.tags || []))].sort();
           setExistingTags(tags);
           const folders = [...new Set(entries.map((e) => e.folder).filter(Boolean))].sort();
@@ -68,7 +68,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const { file_url } = await appClient.integrations.Core.UploadFile({ file });
     setForm((f) => ({ ...f, image_url: file_url }));
     setUploading(false);
   };
@@ -77,7 +77,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingPdf(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const { file_url } = await appClient.integrations.Core.UploadFile({ file });
     setForm((f) => ({ ...f, pdf_url: file_url }));
     setUploadingPdf(false);
   };
@@ -93,10 +93,10 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     if (!form.title?.trim()) return;
     setSaving(true);
     if (entry?.id) {
-      await base44.entities.LoreEntry.update(entry.id, form);
+      await appClient.entities.LoreEntry.update(entry.id, form);
     } else {
-      const u = await base44.auth.me().catch(() => null);
-      await base44.entities.LoreEntry.create({ ...form, campaign_id: u?.campaign_id });
+      const u = await appClient.auth.me().catch(() => null);
+      await appClient.entities.LoreEntry.create({ ...form, campaign_id: u?.campaign_id });
     }
     setSaving(false);
     onSaved?.();
@@ -105,7 +105,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
 
   const archive = async () => {
     if (!entry?.id) return;
-    await base44.entities.LoreEntry.update(entry.id, { visibility: "archived" });
+    await appClient.entities.LoreEntry.update(entry.id, { visibility: "archived" });
     onSaved?.();
     onOpenChange(false);
   };

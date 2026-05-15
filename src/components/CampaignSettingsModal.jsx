@@ -3,7 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Copy, Check, Loader2, Save } from "lucide-react";
 
 function CopyButton({ value }) {
@@ -31,7 +31,7 @@ export default function CampaignSettingsModal({ open, onOpenChange, campaign, on
   const handleSave = async () => {
     if (!name.trim() || !campaign?.id) return;
     setSaving(true);
-    await base44.entities.Campaign.update(campaign.id, { name: name.trim() });
+    await appClient.entities.Campaign.update(campaign.id, { name: name.trim() });
     setSaving(false);
     onSaved();
     onOpenChange(false);

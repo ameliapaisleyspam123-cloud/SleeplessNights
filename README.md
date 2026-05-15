@@ -1,106 +1,37 @@
 # Sleepless Nights
 
-This repository is a migration staging area for a Base44 campaign-management website.
+Sleepless Nights is a Vercel-ready React/Vite campaign-management app.
 
-## What is included
+## What changed
 
-- `entities/*.json`: Base44 entity schemas copied into version-controlled files.
-- `src/entities/types.ts`: TypeScript interfaces generated from the entity shapes.
-- `src/entities/defaults.ts`: Default values for new records.
-- `src/entities/index.ts`: Barrel exports for the entity helpers.
+- Added a runnable Vite app shell with `index.html`, `src/main.jsx`, `src/App.jsx`, and route pages.
+- Replaced the platform SDK dependency with `src/api/appClient.js`, a browser-local data adapter.
+- Added missing UI primitives under `src/components/ui`.
+- Added `vercel.json` so client-side routes work after deployment.
+- Added a data import/export page at `/import`.
 
-## Base44 pages received
-
-The migration has source for these Base44 pages, but they are not runnable yet because they still depend on Base44 runtime APIs and missing local components/hooks:
-
-- `Broadcast.jsx`
-- `CampaignLobby.jsx`
-- `CharacterSheets.jsx`
-- `Chat.jsx`
-- `DmVault.jsx`
-- `Documents.jsx`
-- `Home.jsx`
-- `Lore.jsx`
-- `Notes.jsx`
-
-## Base44 lib files received
-
-- `src/lib/AuthContext.jsx`
-- `src/lib/InitiativeContext.jsx`
-- `src/lib/PageNotFound.jsx`
-- `src/lib/app-params.js`
-- `src/lib/query-client.js`
-- `src/lib/utils.js`
-
-## Base44 hooks/utils/components received
-
-- `src/hooks/useCampaign.js`
-- `src/hooks/use-mobile.jsx`
-- `src/utils/index.ts`
-- `src/components/chat/ChannelList.jsx`
-- `src/components/chat/ChatWindow.jsx`
-- `src/components/chat/LorePanel.jsx`
-- `src/components/chat/PlayerNotesPanel.jsx`
-- `src/components/lore/LoreCard.jsx`
-- `src/components/lore/LoreDetail.jsx`
-- `src/components/lore/LoreEditor.jsx`
-- `src/components/lore/MoveFolderDialog.jsx`
-- `src/components/documents/DocumentEditor.jsx`
-- `src/components/broadcast/BroadcastOverlay.jsx`
-- `src/components/initiative/CombatTurnIndicator.jsx`
-- `src/components/initiative/InitiativeTracker.jsx`
-- `src/api/base44Client.js`
-
-## Base44 functions received
-
-- `functions/getMessages.ts`
-- `functions/getUsers.ts`
-- `functions/sendMessages.ts`
-
-## Base44 UI shell received
-
-- `src/components/CampaignSettingsModal.jsx`
-- `src/components/DiceRoller.jsx`
-- `src/components/Layout.jsx`
-- `src/components/PageHeader.jsx`
-- `src/components/ProfileNameModal.jsx`
-- `src/components/ProtectedRoute.jsx`
-- `src/components/UserNotRegisteredError.jsx`
-
-## Base44 character components received
-
-- `src/components/characters/CharacterSheetCard.jsx`
-- `src/components/characters/CharacterSheetDetail.jsx`
-- `src/components/characters/CharacterSheetEditor.jsx`
-- `src/components/characters/CharacterSheetView.jsx`
-- `src/components/characters/DndBeyondImport.jsx`
-
-## Next migration steps
-
-1. Copy the Base44 `pages`, `components`, `integrations`, `functions`, and asset folders into this repository.
-2. Replace Base44 SDK imports with a GitHub-hosted backend or client adapter.
-3. Choose a data layer for the migrated site, such as Supabase, Firebase, Prisma/Postgres, or static JSON during development.
-4. Add authentication and authorization rules that match the existing visibility fields:
-   - `public`
-   - `dm_only`
-   - `archived`
-   - `specific_players`
-   - document `private`
-5. Add deployment configuration for GitHub Pages, Vercel, Netlify, or your preferred host.
-
-## GitHub setup
-
-After Git is available locally, run:
+## Local development
 
 ```powershell
-git init
-git add .
-git commit -m "SleeplessNights"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-git push -u origin main
+npm install
+npm run dev
 ```
 
-## Data model notes
+The app runs at `http://127.0.0.1:5173` by default.
 
-Base44 usually provides record metadata such as `id`, `created_date`, `updated_date`, and sometimes `created_by` outside the entity schema. The TypeScript types in this repo include those fields as optional metadata so migrated code can support both exported Base44 data and future database records.
+## Production build
+
+```powershell
+npm run build
+```
+
+Vercel can host this repository as a Vite app. Use the default settings:
+
+- Build command: `npm run build`
+- Output directory: `dist`
+
+## Data model
+
+The current app stores campaign data in browser `localStorage` so it can run without an external platform service. File uploads are stored as data URLs in the browser. This is suitable for a portable single-user or prototype deployment.
+
+For multi-user production use, replace the local adapter in `src/api/appClient.js` with a real backend such as Supabase, Firebase, or a Vercel Postgres API while keeping the same `appClient.entities.*`, `appClient.auth.*`, `appClient.functions.invoke`, and `appClient.integrations.Core.UploadFile` method shapes.

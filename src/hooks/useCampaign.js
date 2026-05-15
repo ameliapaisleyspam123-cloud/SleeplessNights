@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 
 let cachedUser = null;
 let cachedCampaign = null;
@@ -18,10 +18,10 @@ export function invalidateCampaignCache() {
 }
 
 async function fetchData() {
-  const u = await base44.auth.me();
+  const u = await appClient.auth.me();
   cachedUser = u;
   if (u?.campaign_id) {
-    const camps = await base44.entities.Campaign.list("-created_date", 50);
+    const camps = await appClient.entities.Campaign.list("-created_date", 50);
     cachedCampaign = camps.find((c) => c.id === u.campaign_id) || null;
   } else {
     cachedCampaign = null;

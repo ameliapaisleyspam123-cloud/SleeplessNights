@@ -1,11 +1,11 @@
-export interface Base44Record {
+export interface AppRecord {
   id?: string;
   created_date?: string;
   updated_date?: string;
   created_by?: string;
 }
 
-export interface Broadcast extends Base44Record {
+export interface Broadcast extends AppRecord {
   active?: boolean;
   title?: string;
   message?: string;
@@ -15,7 +15,7 @@ export interface Broadcast extends Base44Record {
   target_emails?: string[];
 }
 
-export interface Campaign extends Base44Record {
+export interface Campaign extends AppRecord {
   name: string;
   description?: string;
   dm_code: string;
@@ -38,7 +38,7 @@ export type CharacterAlignment =
 
 export type SharedVisibility = "public" | "dm_only" | "archived" | "specific_players";
 
-export interface CharacterSheet extends Base44Record {
+export interface CharacterSheet extends AppRecord {
   campaign_id?: string;
   folder?: string;
   name: string;
@@ -77,6 +77,7 @@ export interface CharacterSheet extends Base44Record {
   flaws?: string;
   features_traits?: string;
   equipment?: string;
+  inventory?: string;
   cp?: number;
   sp?: number;
   ep?: number;
@@ -96,7 +97,7 @@ export interface CharacterSheet extends Base44Record {
 
 export type DocumentVisibility = "public" | "private";
 
-export interface Document extends Base44Record {
+export interface Document extends AppRecord {
   campaign_id?: string;
   title: string;
   description?: string;
@@ -113,7 +114,7 @@ export interface ActiveSpellTracker {
   [key: string]: unknown;
 }
 
-export interface Initiative extends Base44Record {
+export interface Initiative extends AppRecord {
   campaign_id?: string;
   active?: boolean;
   turn_seconds?: number;
@@ -132,7 +133,7 @@ export type LoreCategory =
   | "religion"
   | "other";
 
-export interface LoreEntry extends Base44Record {
+export interface LoreEntry extends AppRecord {
   campaign_id?: string;
   title: string;
   category?: LoreCategory;
@@ -145,7 +146,7 @@ export interface LoreEntry extends Base44Record {
   allowed_emails?: string[];
 }
 
-export interface Message extends Base44Record {
+export interface Message extends AppRecord {
   campaign_id?: string;
   content: string;
   channel: string;
@@ -154,7 +155,7 @@ export interface Message extends Base44Record {
   file_type?: "image" | "pdf";
 }
 
-export interface PlayerNote extends Base44Record {
+export interface PlayerNote extends AppRecord {
   campaign_id?: string;
   session_label?: string;
   content?: string;

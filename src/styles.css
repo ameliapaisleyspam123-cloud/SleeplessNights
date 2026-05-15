@@ -1,0 +1,75 @@
+@import "react-quill/dist/quill.snow.css";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: hsl(196 55% 5%);
+  color: hsl(176 32% 88%);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.parchment {
+  background:
+    radial-gradient(circle at 18% 8%, hsl(178 100% 48% / 0.16), transparent 18rem),
+    radial-gradient(circle at 84% 16%, hsl(209 78% 36% / 0.22), transparent 24rem),
+    linear-gradient(180deg, hsl(196 55% 5%), hsl(188 55% 7%) 45%, hsl(202 65% 4%));
+  position: relative;
+}
+
+.parchment::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(90deg, hsl(178 100% 48% / 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, hsl(178 100% 48% / 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at center, black, transparent 78%);
+}
+
+.ink-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(178 100% 48% / 0.65), transparent);
+}
+
+.thin-scroll {
+  scrollbar-width: thin;
+}
+
+.sculk-glow {
+  box-shadow: 0 0 18px hsl(178 100% 48% / 0.35), inset 0 0 12px hsl(209 78% 36% / 0.2);
+}
+
+.sculk-pulse {
+  box-shadow: 0 0 40px hsl(178 100% 48% / 0.32), 0 0 80px hsl(209 78% 36% / 0.18);
+}
+
+.bg-card,
+.bg-secondary,
+.border-border {
+  box-shadow: inset 0 0 0 1px hsl(178 100% 48% / 0.02);
+}
+
+.animate-in.fade-in {
+  animation: fade-in 180ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

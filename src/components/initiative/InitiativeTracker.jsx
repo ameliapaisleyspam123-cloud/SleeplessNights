@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -70,7 +70,7 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
 
   const loadCombat = useCallback(async () => {
     if (!campaignId) return;
-    const list = await base44.entities.Initiative.filter({ campaign_id: campaignId }, "-updated_date", 1);
+    const list = await appClient.entities.Initiative.filter({ campaign_id: campaignId }, "-updated_date", 1);
     if (list[0]) setCombat(list[0]);
     else setCombat(null);
     setLoading(false);
@@ -81,16 +81,16 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
   }, [loadCombat]);
 
   useEffect(() => {
-    const unsub = base44.entities.Initiative.subscribe(() => loadCombat());
+    const unsub = appClient.entities.Initiative.subscribe(() => loadCombat());
     return () => unsub();
   }, [loadCombat]);
 
   const save = async (patch) => {
     if (combat?.id) {
-      const updated = await base44.entities.Initiative.update(combat.id, patch);
+      const updated = await appClient.entities.Initiative.update(combat.id, patch);
       setCombat(updated);
     } else {
-      const created = await base44.entities.Initiative.create({ campaign_id: campaignId, ...patch });
+      const created = await appClient.entities.Initiative.create({ campaign_id: campaignId, ...patch });
       setCombat(created);
     }
   };

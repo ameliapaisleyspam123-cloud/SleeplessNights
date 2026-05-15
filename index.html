@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sleepless Nights</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              border: "hsl(188 35% 20%)",
+              background: "hsl(196 55% 5%)",
+              foreground: "hsl(176 32% 88%)",
+              card: "hsl(192 48% 8%)",
+              primary: "hsl(183 94% 38%)",
+              "primary-foreground": "hsl(196 55% 5%)",
+              secondary: "hsl(190 45% 12%)",
+              muted: "hsl(190 42% 14%)",
+              "muted-foreground": "hsl(181 18% 64%)",
+              accent: "hsl(178 100% 48%)",
+              "accent-foreground": "hsl(196 55% 5%)",
+              destructive: "hsl(0 74% 48%)",
+              "destructive-foreground": "hsl(0 0% 100%)"
+            },
+            fontFamily: {
+              display: ["Georgia", "serif"],
+              sans: ["Inter", "ui-sans-serif", "system-ui"]
+            }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

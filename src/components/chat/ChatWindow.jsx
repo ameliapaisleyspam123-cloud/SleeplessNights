@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send, Users, User, Paperclip } from "lucide-react";
@@ -32,7 +32,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
 
   const load = async () => {
     if (!key) return;
-    const res = await base44.functions.invoke("getMessages", { channel: key });
+    const res = await appClient.functions.invoke("getMessages", { channel: key });
     setMessages(res.data?.messages || []);
   };
 
@@ -42,7 +42,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
 
   useEffect(() => {
     if (!key) return;
-    const unsubscribe = base44.entities.Message.subscribe((event) => {
+    const unsubscribe = appClient.entities.Message.subscribe((event) => {
       if (event.data?.channel === key || event.type === "delete") {
         load();
       }
@@ -111,7 +111,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
     e.preventDefault();
     if ((!text.trim() && !fileData) || !currentUser) return;
 
-    await base44.functions.invoke("sendMessages", {
+    await appClient.functions.invoke("sendMessages", {
       content: text.trim(),
       channel: key,
       recipient_email: activeChannel.type === "dm" ? activeChannel.email : "",

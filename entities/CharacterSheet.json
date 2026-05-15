@@ -153,6 +153,10 @@
     "equipment": {
       "type": "string"
     },
+    "inventory": {
+      "type": "string",
+      "description": "JSON array of inventory items [{name, qty, weight, equipped, notes}]"
+    },
     "cp": {
       "type": "number",
       "default": 0

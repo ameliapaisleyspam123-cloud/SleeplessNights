@@ -3,17 +3,17 @@ import { createPortal } from "react-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Pencil, Radio, FileText, Eye, X } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 
 export default function LoreDetail({ entry, open, onOpenChange, onEdit, isAdmin }) {
   const [pdfOpen, setPdfOpen] = useState(false);
   if (!entry) return null;
 
   const broadcast = async () => {
-    const existing = await base44.entities.Broadcast.list("-created_date", 1);
+    const existing = await appClient.entities.Broadcast.list("-created_date", 1);
     const payload = { active: true, title: entry.title, message: entry.content, image_url: entry.image_url, lore_entry_id: entry.id };
-    if (existing[0]) await base44.entities.Broadcast.update(existing[0].id, payload);
-    else await base44.entities.Broadcast.create(payload);
+    if (existing[0]) await appClient.entities.Broadcast.update(existing[0].id, payload);
+    else await appClient.entities.Broadcast.create(payload);
     onOpenChange(false);
   };
 

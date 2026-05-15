@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Textarea } from "@/components/ui/textarea";
 import { X, NotebookPen, Loader2, Check } from "lucide-react";
 
@@ -12,7 +12,7 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
 
   useEffect(() => {
     if (!currentUser?.campaign_id) return;
-    base44.entities.PlayerNote.filter({ campaign_id: currentUser.campaign_id, created_by: currentUser.email }, "-created_date", 1)
+    appClient.entities.PlayerNote.filter({ campaign_id: currentUser.campaign_id, created_by: currentUser.email }, "-created_date", 1)
       .then((notes) => {
         if (notes.length > 0) {
           setContent(notes[0].content || "");
@@ -28,9 +28,9 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
     setSaving(true);
     try {
       if (noteId) {
-        await base44.entities.PlayerNote.update(noteId, { content: v });
+        await appClient.entities.PlayerNote.update(noteId, { content: v });
       } else {
-        const created = await base44.entities.PlayerNote.create({ campaign_id: currentUser.campaign_id, content: v });
+        const created = await appClient.entities.PlayerNote.create({ campaign_id: currentUser.campaign_id, content: v });
         setNoteId(created.id);
       }
       setSaved(true);

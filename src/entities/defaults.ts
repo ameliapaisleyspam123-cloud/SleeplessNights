@@ -38,6 +38,7 @@ export const characterSheetDefaults: Partial<CharacterSheet> = {
   proficiency_bonus: 2,
   death_save_successes: 0,
   death_save_failures: 0,
+  inventory: "",
   passive_perception: 10,
   cp: 0,
   sp: 0,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Users, User } from "lucide-react";
 
 export default function ChannelList({ users, currentUser, activeChannel, onSelect, isAdmin }) {
@@ -32,7 +32,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
   useEffect(() => {
     if (!currentUser) return;
 
-    const unsubscribe = base44.entities.Message.subscribe((event) => {
+    const unsubscribe = appClient.entities.Message.subscribe((event) => {
       if (event.type !== "create" || !event.data) return;
       const msg = event.data;
 

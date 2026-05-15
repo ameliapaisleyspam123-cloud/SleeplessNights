@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +19,7 @@ export default function DocumentEditor({ open, onOpenChange, onSaved }) {
     if (open) {
       setForm({ title: "", description: "", file_url: "", visibility: "public", allowed_emails: [] });
       setFileName("");
-      base44.entities.User.list("-created_date", 200).then(setUsers).catch(() => {});
+      appClient.entities.User.list("-created_date", 200).then(setUsers).catch(() => {});
     }
   }, [open]);
 
@@ -28,7 +28,7 @@ export default function DocumentEditor({ open, onOpenChange, onSaved }) {
     if (!file) return;
     setFileName(file.name);
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const { file_url } = await appClient.integrations.Core.UploadFile({ file });
     setForm((f) => ({ ...f, file_url, title: f.title || file.name.replace(/\.pdf$/i, "") }));
     setUploading(false);
   };
@@ -45,8 +45,8 @@ export default function DocumentEditor({ open, onOpenChange, onSaved }) {
   const save = async () => {
     if (!form.title?.trim() || !form.file_url) return;
     setSaving(true);
-    const u = await base44.auth.me().catch(() => null);
-    await base44.entities.Document.create({ ...form, campaign_id: u?.campaign_id });
+    const u = await appClient.auth.me().catch(() => null);
+    await appClient.entities.Document.create({ ...form, campaign_id: u?.campaign_id });
     setSaving(false);
     onSaved?.();
     onOpenChange(false);

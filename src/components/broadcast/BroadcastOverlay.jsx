@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Radio } from "lucide-react";
 
 export default function BroadcastOverlay({ user }) {
@@ -7,13 +7,13 @@ export default function BroadcastOverlay({ user }) {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    base44.entities.Broadcast.list("-updated_date", 1).then((list) => {
+    appClient.entities.Broadcast.list("-updated_date", 1).then((list) => {
       const active = list[0]?.active ? list[0] : null;
       setBroadcast(active);
     });
 
-    const unsubscribe = base44.entities.Broadcast.subscribe(() => {
-      base44.entities.Broadcast.list("-updated_date", 1).then((list) => {
+    const unsubscribe = appClient.entities.Broadcast.subscribe(() => {
+      appClient.entities.Broadcast.list("-updated_date", 1).then((list) => {
         const active = list[0]?.active ? list[0] : null;
         setBroadcast(active);
         if (!active) setDismissed(false);

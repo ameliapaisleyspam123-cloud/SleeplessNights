@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Swords } from "lucide-react";
 
 export default function CombatTurnIndicator({ currentUser }) {
@@ -9,13 +9,13 @@ export default function CombatTurnIndicator({ currentUser }) {
     if (!currentUser?.campaign_id) return;
 
     const load = async () => {
-      const list = await base44.entities.Initiative.filter({ campaign_id: currentUser.campaign_id, active: true }, "-updated_date", 1);
+      const list = await appClient.entities.Initiative.filter({ campaign_id: currentUser.campaign_id, active: true }, "-updated_date", 1);
       setCombat(list[0] || null);
     };
 
     load();
 
-    const unsub = base44.entities.Initiative.subscribe(() => load());
+    const unsub = appClient.entities.Initiative.subscribe(() => load());
     return () => unsub();
   }, [currentUser?.campaign_id]);
 
