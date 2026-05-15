@@ -3,10 +3,11 @@ import { appClient } from "@/api/appClient";
 import LoreCard from "@/components/lore/LoreCard";
 import LoreDetail from "@/components/lore/LoreDetail";
 import LoreEditor from "@/components/lore/LoreEditor";
+import MoveFolderDialog from "@/components/lore/MoveFolderDialog";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Folder, Grid2X2, List, Plus, Search } from "lucide-react";
+import { Folder, Grid2X2, List, MoveRight, Plus, Search } from "lucide-react";
 
 const CATEGORIES = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
 
@@ -14,10 +15,27 @@ function plainText(value = "") {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+const emptyFolderKey = (campaignId) => `sleepless_empty_lore_folders_${campaignId || "default"}`;
+const readEmptyFolders = (campaignId) => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(emptyFolderKey(campaignId)) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+const writeEmptyFolders = (campaignId, folders) => {
+  localStorage.setItem(emptyFolderKey(campaignId), JSON.stringify([...new Set(folders.filter(Boolean))].sort()));
+};
+
 export default function Lore() {
   const [items, setItems] = useState([]);
+  const [campaignId, setCampaignId] = useState("");
+  const [emptyFolders, setEmptyFolders] = useState([]);
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
+  const [moving, setMoving] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [folder, setFolder] = useState("all");
@@ -29,6 +47,8 @@ export default function Lore() {
     const isSuperuser = user?.email === "ameliapaisleyspam123@gmail.com";
     const dmOverride = localStorage.getItem("dm_override") === "true";
     setIsAdmin(user?.campaign_role === "dm" || (isSuperuser && dmOverride));
+    setCampaignId(user.campaign_id);
+    setEmptyFolders(readEmptyFolders(user.campaign_id));
     setItems(await appClient.entities.LoreEntry.filter({ campaign_id: user.campaign_id }, "-updated_date", 200));
   };
 
@@ -36,7 +56,7 @@ export default function Lore() {
     load();
   }, []);
 
-  const folders = [...new Set(items.map((item) => item.folder).filter(Boolean))].sort();
+  const folders = [...new Set([...items.map((item) => item.folder).filter(Boolean), ...emptyFolders])].sort();
   const filtered = items.filter((item) => {
     const q = query.trim().toLowerCase();
     const matchesQuery = !q || item.title?.toLowerCase().includes(q) || plainText(item.content).toLowerCase().includes(q) || item.tags?.some((tag) => tag.toLowerCase().includes(q));
@@ -54,8 +74,36 @@ export default function Lore() {
     await load();
   };
 
+  const createFolder = () => {
+    const name = window.prompt("New lore folder name");
+    const folderName = name?.trim();
+    if (!folderName) return;
+    const next = [...new Set([...emptyFolders, folderName])].sort();
+    setEmptyFolders(next);
+    writeEmptyFolders(campaignId, next);
+    setFolder(folderName);
+  };
+
+  const moveEntry = async (targetFolder) => {
+    if (!moving?.id) return;
+    await appClient.entities.LoreEntry.update(moving.id, { folder: targetFolder || "" });
+    if (targetFolder) {
+      const next = [...new Set([...emptyFolders, targetFolder])].sort();
+      setEmptyFolders(next);
+      writeEmptyFolders(campaignId, next);
+    }
+    setMoving(null);
+    setContextMenu(null);
+    await load();
+  };
+
+  const openContextMenu = (event, entry) => {
+    if (!isAdmin) return;
+    setContextMenu({ x: event.clientX, y: event.clientY, entry });
+  };
+
   return (
-    <div className="p-6 lg:p-10 space-y-5">
+    <div className="p-6 lg:p-10 space-y-5" onClick={() => setContextMenu(null)}>
       <PageHeader
         eyebrow="World"
         title="Lore & Maps"
@@ -114,6 +162,16 @@ export default function Lore() {
                   <span className="text-[10px] leading-tight text-center max-w-20 break-words">{name.split("/").pop()}</span>
                 </button>
               ))}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={createFolder}
+                  className="flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border border-dashed border-border text-muted-foreground hover:text-accent hover:border-accent/60 hover:bg-accent/5 transition-all"
+                >
+                  <Plus className="w-7 h-7" strokeWidth={1.7} />
+                  <span className="text-[10px] leading-tight text-center">New Folder</span>
+                </button>
+              )}
             </div>
 
             <div className="flex border border-border rounded-sm overflow-hidden shrink-0">
@@ -141,6 +199,7 @@ export default function Lore() {
                   viewMode={viewMode}
                   canManage={isAdmin}
                   onClick={() => setViewing(entry)}
+                  onContextMenu={openContextMenu}
                   onEdit={() => setEditing(entry)}
                   onDelete={() => deleteEntry(entry)}
                 />
@@ -151,6 +210,15 @@ export default function Lore() {
       </div>
 
       <LoreEditor open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)} entry={editing?.id ? editing : null} onSaved={load} />
+      <MoveFolderDialog
+        open={Boolean(moving)}
+        onOpenChange={(open) => !open && setMoving(null)}
+        entry={moving}
+        allFolderPaths={folders}
+        onMove={moveEntry}
+        title="Move Lore Entry"
+        rootLabel="All Lore (root)"
+      />
       <LoreDetail
         open={Boolean(viewing)}
         onOpenChange={(open) => !open && setViewing(null)}
@@ -163,6 +231,24 @@ export default function Lore() {
         onDelete={() => viewing && deleteEntry(viewing)}
         isAdmin={isAdmin}
       />
+      {contextMenu && isAdmin && (
+        <div
+          className="fixed z-[120] min-w-44 rounded-sm border border-border bg-card shadow-2xl p-1"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setMoving(contextMenu.entry);
+              setContextMenu(null);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-sm"
+          >
+            <MoveRight className="w-4 h-4 text-accent" /> Move to folder
+          </button>
+        </div>
+      )}
     </div>
   );
 }

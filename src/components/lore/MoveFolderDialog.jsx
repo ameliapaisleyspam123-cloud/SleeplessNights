@@ -4,7 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Folder, FolderOpen, ChevronRight, ChevronDown, Home, Plus } from "lucide-react";
 
-export default function MoveFolderDialog({ open, onOpenChange, entry, allFolderPaths, onMove }) {
+export default function MoveFolderDialog({
+  open,
+  onOpenChange,
+  entry,
+  allFolderPaths,
+  onMove,
+  title = "Move Entry",
+  itemLabel = "Moving",
+  rootLabel = "Root",
+}) {
   const [selected, setSelected] = useState(entry?.folder || null);
   const [expanded, setExpanded] = useState(new Set());
   const [newFolderParent, setNewFolderParent] = useState(null);
@@ -131,11 +140,11 @@ export default function MoveFolderDialog({ open, onOpenChange, entry, allFolderP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Move Entry</DialogTitle>
+          <DialogTitle className="font-display text-xl">{title}</DialogTitle>
         </DialogHeader>
 
         <p className="text-xs text-muted-foreground -mt-1">
-          Moving: <span className="text-foreground font-medium">{entry?.title}</span>
+          {itemLabel}: <span className="text-foreground font-medium">{entry?.title || entry?.name}</span>
         </p>
 
         <div className="border border-border rounded-sm bg-secondary/20 overflow-y-auto thin-scroll" style={{ maxHeight: "280px" }}>
@@ -147,7 +156,7 @@ export default function MoveFolderDialog({ open, onOpenChange, entry, allFolderP
           >
             <span className="w-4 h-4 shrink-0" />
             <Home className="w-4 h-4 shrink-0 text-accent" />
-            <span className="text-sm">All Lore (root)</span>
+            <span className="text-sm">{rootLabel}</span>
             <button
               className="ml-auto opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
               title="New root folder"

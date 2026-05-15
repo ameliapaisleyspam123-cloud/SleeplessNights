@@ -5,10 +5,14 @@ import { Shield, Swords, Zap, Lock, EyeOff } from "lucide-react";
 const STAT_MOD = (v) => Math.floor((v - 10) / 2);
 const fmtMod = (m) => (m >= 0 ? `+${m}` : `${m}`);
 
-export default function CharacterSheetCard({ sheet, onClick }) {
+export default function CharacterSheetCard({ sheet, onClick, onContextMenu }) {
   return (
     <button
       onClick={onClick}
+      onContextMenu={onContextMenu ? (event) => {
+        event.preventDefault();
+        onContextMenu(event, sheet);
+      } : undefined}
       className="group text-left border border-border rounded-sm bg-card hover:border-accent/60 transition-all p-5 flex flex-col gap-3 min-h-[180px]"
     >
       <div className="flex items-start gap-3">
