@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Pencil, Lock, EyeOff, Users, Heart, Minus, Plus, Loader2, Swords } from "lucide-react";
 import InventoryManager from "@/components/characters/InventoryManager";
+import AttackManager from "@/components/characters/AttackManager";
 import { appClient } from "@/api/appClient";
 
 const STATS = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
@@ -306,7 +307,7 @@ function SpellSlotsBlock({ slotsJson, onSave }) {
   );
 }
 
-export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit, onEdit }) {
+export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit, onEdit, onDuplicate }) {
   const [inspired, setInspired] = useState(Boolean(sheet?.inspiration));
   const [savingInspiration, setSavingInspiration] = useState(false);
 
@@ -371,6 +372,11 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
                   <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
                 </Button>
               )}
+              {canEdit && (
+                <Button size="sm" variant="outline" onClick={onDuplicate}>
+                  Duplicate
+                </Button>
+              )}
               {sheet.campaign_id && <AddToInitiativeButton sheet={sheet} />}
               <button onClick={toggleInspiration} disabled={savingInspiration} className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-sm border text-xs font-medium transition-all disabled:opacity-50 ${inspired ? "bg-amber-400/20 border-amber-400/60 text-amber-400 hover:bg-amber-400/10" : "border-border text-muted-foreground hover:border-amber-400/40 hover:text-amber-400/70"}`}>
                 {savingInspiration ? <Loader2 className="w-3 h-3 animate-spin" /> : <span>*</span>}
@@ -417,7 +423,7 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
               </div>
             </div>
 
-            <TextSection label="Attacks & Weapons" content={sheet.attacks} />
+            {sheet.attacks && sheet.attacks !== "[]" && <AttackManager value={sheet.attacks} readOnly />}
             {sheet.inventory && sheet.inventory !== "[]" && <InventoryManager value={sheet.inventory} readOnly />}
 
             {(sheet.equipment || sheet.gp || sheet.sp || sheet.cp || sheet.ep || sheet.pp) && (

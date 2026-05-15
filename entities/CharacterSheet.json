@@ -197,7 +197,8 @@
       "description": "Free text list of spells"
     },
     "attacks": {
-      "type": "string"
+      "type": "string",
+      "description": "JSON array of attacks [{name, hit, damage, damageType}]"
     },
     "notes": {
       "type": "string"

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Loader2, Eye, Lock, EyeOff, Users } from "lucide-react";
 import InventoryManager from "@/components/characters/InventoryManager";
+import AttackManager from "@/components/characters/AttackManager";
 
 const ALIGNMENTS = ["Lawful Good", "Neutral Good", "Chaotic Good", "Lawful Neutral", "True Neutral", "Chaotic Neutral", "Lawful Evil", "Neutral Evil", "Chaotic Evil"];
 const ABILITY_SCORES = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
@@ -347,7 +348,7 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
 
           <section className="space-y-2">
             <div className="text-[10px] uppercase tracking-widest text-accent font-medium">Attacks & Weapons</div>
-            <RichEditor value={form.attacks} onChange={(value) => set("attacks", value)} placeholder="Longsword: +5 to hit, 1d8+3 slashing" />
+            <AttackManager value={form.attacks} onChange={(value) => set("attacks", value)} />
           </section>
 
           <section className="space-y-2">
