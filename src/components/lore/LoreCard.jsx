@@ -60,8 +60,14 @@ export default function LoreCard({ entry, onClick, onContextMenu, onEdit, viewMo
           <div className="flex items-center gap-1.5">
             {entry.visibility === "dm_only" && <Lock className="w-3 h-3 text-amber-400" title="DM Only" />}
             {entry.visibility === "archived" && <EyeOff className="w-3 h-3 text-muted-foreground" title="Archived" />}
-            <button type="button" onClick={handleEdit} className="w-7 h-7 rounded-sm border border-border text-muted-foreground hover:text-accent hover:border-accent/60 hover:bg-accent/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Edit lore entry">
-              <Pencil className="w-3.5 h-3.5 mx-auto" />
+            <button
+              type="button"
+              onClick={handleEdit}
+              className="h-7 px-2 rounded-sm border border-border bg-background/60 text-muted-foreground hover:text-accent hover:border-accent/60 hover:bg-accent/10 transition-all inline-flex items-center gap-1.5"
+              title="Edit lore entry"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span className="text-[10px] uppercase tracking-[0.16em] hidden sm:inline">Edit</span>
             </button>
           </div>
         </div>

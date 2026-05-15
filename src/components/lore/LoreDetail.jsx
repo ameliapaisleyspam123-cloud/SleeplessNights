@@ -26,8 +26,15 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, isAdmin 
           </div>
         )}
         <div className="p-6 md:p-8">
-          <div className="text-[10px] uppercase tracking-[0.28em] text-accent mb-2">{entry.category}</div>
-          <h2 className="font-display text-3xl md:text-4xl">{entry.title}</h2>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.28em] text-accent mb-2">{entry.category}</div>
+              <h2 className="font-display text-3xl md:text-4xl leading-tight">{entry.title}</h2>
+            </div>
+            <Button variant="outline" onClick={onEdit} className="shrink-0">
+              <Pencil className="w-4 h-4 mr-1.5" /> Edit
+            </Button>
+          </div>
           {entry.tags?.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-3">
               {entry.tags.map((t) => (
@@ -58,9 +65,6 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, isAdmin 
                 <Radio className="w-4 h-4 mr-1.5" /> Broadcast
               </Button>
             )}
-            <Button onClick={onEdit}>
-              <Pencil className="w-4 h-4 mr-1.5" /> Edit
-            </Button>
           </div>
         </div>
 

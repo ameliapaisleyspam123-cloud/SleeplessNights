@@ -49,20 +49,25 @@ export default function DiceRoller({ onClose }) {
   const idRef = useRef(0);
 
   const roll = (sides) => {
-    const newRolls = Array.from({ length: count }, () => ({
+    const rolls = Array.from({ length: count }, () => ({
       sides,
       value: rollDie(sides),
       id: ++idRef.current,
     }));
+    const newGroup = {
+      id: ++idRef.current,
+      sides,
+      count,
+      rolls,
+      total: rolls.reduce((sum, roll) => sum + roll.value, 0),
+    };
     setRolling(true);
     setLastRolled(sides);
-    setResults((prev) => [...newRolls, ...prev].slice(0, 40));
+    setResults((prev) => [newGroup, ...prev].slice(0, 20));
     setTimeout(() => setRolling(false), 700);
   };
 
-  const latestSides = results[0]?.sides;
-  const latestGroup = results.filter((r) => r.sides === latestSides && results.indexOf(r) < count);
-  const latestTotal = latestGroup.reduce((s, r) => s + r.value, 0);
+  const latestGroup = results[0];
 
   return (
     <div className="flex flex-col h-full">
@@ -133,15 +138,17 @@ export default function DiceRoller({ onClose }) {
       {results.length > 0 && (
         <div className="px-3 pb-2 shrink-0">
           <div className="bg-secondary/50 rounded-sm p-3 text-center border border-border/50">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">{count > 1 ? `${count}d${latestSides}` : `d${latestSides}`}</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+              {latestGroup.count > 1 ? `${latestGroup.count}d${latestGroup.sides}` : `d${latestGroup.sides}`}
+            </div>
             <div className="flex items-center justify-center gap-2 flex-wrap">
-              {latestGroup.map((r) => (
+              {latestGroup.rolls.map((r) => (
                 <AnimatedResult key={r.id} sides={r.sides} final={r.value} rolling={rolling} />
               ))}
             </div>
-            {count > 1 && (
+            {latestGroup.count > 1 && (
               <div className="text-xs text-muted-foreground mt-1">
-                Total: <span className="text-foreground font-medium">{rolling ? "..." : latestTotal}</span>
+                Total: <span className="text-foreground font-medium">{rolling ? "..." : latestGroup.total}</span>
               </div>
             )}
           </div>
@@ -158,10 +165,12 @@ export default function DiceRoller({ onClose }) {
           </div>
           <div className="flex-1 overflow-y-auto thin-scroll px-3 py-2">
             <div className="space-y-1">
-              {results.slice(count).map((r) => (
-                <div key={r.id} className="flex items-center justify-between text-xs px-2 py-1 rounded bg-secondary/30 text-muted-foreground">
-                  <span>d{r.sides}</span>
-                  <span className="font-medium text-foreground">{r.value}</span>
+              {results.slice(1).map((group) => (
+                <div key={group.id} className="flex items-center justify-between gap-3 text-xs px-2 py-1.5 rounded bg-secondary/30 text-muted-foreground">
+                  <span>{group.count > 1 ? `${group.count}d${group.sides}` : `d${group.sides}`}</span>
+                  <span className="font-medium text-foreground tabular-nums">
+                    {group.count > 1 ? `${group.rolls.map((r) => r.value).join(" + ")} = ${group.total}` : group.total}
+                  </span>
                 </div>
               ))}
             </div>
