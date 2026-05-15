@@ -1,25 +1,40 @@
 import React, { useEffect, useRef, useState } from "react";
 import { appClient } from "@/api/appClient";
 import { Textarea } from "@/components/ui/textarea";
-import { X, NotebookPen, Loader2, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { X, NotebookPen, Loader2, Check, BookOpen, Dices, Plus, ScrollText } from "lucide-react";
 
 export default function PlayerNotesPanel({ onClose, currentUser }) {
+  const fullPage = !onClose;
   const [content, setContent] = useState("");
   const [noteId, setNoteId] = useState(null);
+  const [notes, setNotes] = useState([]);
+  const [campaign, setCampaign] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const saveTimeout = useRef(null);
 
-  useEffect(() => {
+  const loadNotes = async () => {
     if (!currentUser?.campaign_id) return;
-    appClient.entities.PlayerNote.filter({ campaign_id: currentUser.campaign_id, created_by: currentUser.email }, "-created_date", 1)
-      .then((notes) => {
-        if (notes.length > 0) {
-          setContent(notes[0].content || "");
-          setNoteId(notes[0].id);
-        }
-      })
-      .catch(() => {});
+    const [playerNotes, campaigns] = await Promise.all([
+      appClient.entities.PlayerNote.filter({ campaign_id: currentUser.campaign_id, created_by: currentUser.email }, "created_date", 100),
+      appClient.entities.Campaign.list("-created_date", 50).catch(() => []),
+    ]);
+    setCampaign(campaigns.find((item) => item.id === currentUser.campaign_id) || null);
+    setNotes(playerNotes);
+
+    const selected = noteId ? playerNotes.find((note) => note.id === noteId) : playerNotes[0];
+    if (selected) {
+      setContent(selected.content || "");
+      setNoteId(selected.id);
+    } else {
+      setContent("");
+      setNoteId(null);
+    }
+  };
+
+  useEffect(() => {
+    loadNotes().catch(() => {});
   }, [currentUser]);
 
   const save = async (val) => {
@@ -28,10 +43,12 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
     setSaving(true);
     try {
       if (noteId) {
-        await appClient.entities.PlayerNote.update(noteId, { content: v });
+        const updated = await appClient.entities.PlayerNote.update(noteId, { content: v });
+        setNotes((items) => items.map((item) => (item.id === updated.id ? updated : item)));
       } else {
-        const created = await appClient.entities.PlayerNote.create({ campaign_id: currentUser.campaign_id, content: v });
+        const created = await appClient.entities.PlayerNote.create({ campaign_id: currentUser.campaign_id, session_label: "Session 1", content: v });
         setNoteId(created.id);
+        setNotes([created]);
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -46,6 +63,119 @@ export default function PlayerNotesPanel({ onClose, currentUser }) {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => save(newContent), 1200);
   };
+
+  const selectNote = (note) => {
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    setSaved(false);
+    setNoteId(note.id);
+    setContent(note.content || "");
+  };
+
+  const createSessionLog = async () => {
+    if (!currentUser?.campaign_id) return;
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    if (noteId) await save(content);
+    const nextIndex = notes.length + 1;
+    const created = await appClient.entities.PlayerNote.create({
+      campaign_id: currentUser.campaign_id,
+      session_label: `Session ${nextIndex}`,
+      content: "",
+    });
+    setNotes((items) => [...items, created]);
+    setNoteId(created.id);
+    setContent("");
+    setSaved(false);
+  };
+
+  const activeNote = notes.find((note) => note.id === noteId);
+  const activeLabel = activeNote?.session_label || "Session 1";
+  const campaignName = campaign?.name || "Sleepless Nights";
+
+  if (fullPage) {
+    return (
+      <div className="min-h-full bg-background text-foreground">
+        <div className="flex items-start justify-between gap-4 px-6 lg:px-10 pt-6 lg:pt-8 pb-8 lg:pb-11 border-b border-border/70">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.5em] text-accent font-semibold mb-4">Campaign: {campaignName}</div>
+            <h1 className="font-display text-5xl md:text-6xl text-foreground leading-none">Grimoire</h1>
+            <p className="mt-5 text-lg text-muted-foreground">Your private field notes - visible only to you.</p>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
+            <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent("toggle-dice-roller"))} className="h-11 px-5">
+              <Dices className="w-4 h-4" /> Dice
+            </Button>
+            <Button onClick={createSessionLog} className="h-11 px-5">
+              <Plus className="w-4 h-4" /> New Session Log
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-[276px_1fr] min-h-[calc(100vh-12.25rem)]">
+          <aside className="border-r border-border/70 bg-card/20 flex flex-col min-h-[220px]">
+            <div className="flex items-center justify-between px-4 py-5 border-b border-border/60">
+              <div className="flex items-center gap-3 text-[12px] uppercase tracking-[0.28em] text-muted-foreground">
+                <ScrollText className="w-4 h-4 text-accent" />
+                Chronicles
+              </div>
+              <button type="button" onClick={createSessionLog} className="w-8 h-8 rounded-sm text-muted-foreground hover:text-accent hover:bg-accent/10 transition-colors" title="New session log">
+                <Plus className="w-4 h-4 mx-auto" />
+              </button>
+            </div>
+            <div className="flex-1 py-2">
+              {notes.length === 0 ? (
+                <button type="button" onClick={createSessionLog} className="w-full px-4 py-3 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors">
+                  Create your first session log
+                </button>
+              ) : (
+                notes.map((note, index) => {
+                  const selected = note.id === noteId;
+                  return (
+                    <button
+                      key={note.id}
+                      type="button"
+                      onClick={() => selectNote(note)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-colors ${
+                        selected ? "bg-accent/10 text-foreground border-l-2 border-accent" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50 border-l-2 border-transparent"
+                      }`}
+                    >
+                      <BookOpen className={`w-4 h-4 shrink-0 ${selected ? "text-accent" : ""}`} />
+                      {note.session_label || `Session ${index + 1}`}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <div className="p-3 border-t border-border/60 sm:hidden">
+              <Button onClick={createSessionLog} className="w-full">
+                <Plus className="w-4 h-4" /> New Session Log
+              </Button>
+            </div>
+          </aside>
+
+          <main className="px-5 lg:px-12 py-6 lg:py-7 min-w-0">
+            <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-5 mb-6">
+              <div>
+                <h2 className="font-display text-2xl md:text-3xl text-foreground leading-tight">{activeLabel}</h2>
+                <p className="mt-2 text-sm italic text-muted-foreground">{campaignName} · Your private field notes</p>
+              </div>
+              <div className="flex items-center gap-2 h-8">
+                {saving && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />}
+                {saved && <Check className="w-4 h-4 text-accent" />}
+              </div>
+            </div>
+
+            <Textarea
+              value={content}
+              onChange={(event) => autosave(event.target.value)}
+              placeholder="What transpired this session? Jot down clues, suspicions, NPC names, and secrets only you know..."
+              className="min-h-[42vh] lg:min-h-[50vh] resize-none rounded-sm bg-background/55 border-border/90 text-base leading-relaxed p-4 focus-visible:ring-1 focus-visible:ring-accent/50"
+            />
+            <p className="text-xs text-muted-foreground mt-3 italic">Auto-inscribed. Visible only to you.</p>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

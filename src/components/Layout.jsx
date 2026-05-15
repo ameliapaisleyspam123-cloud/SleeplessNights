@@ -97,6 +97,12 @@ function LayoutInner() {
     setMobileOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    const toggleDice = () => setDiceOpen((open) => !open);
+    window.addEventListener("toggle-dice-roller", toggleDice);
+    return () => window.removeEventListener("toggle-dice-roller", toggleDice);
+  }, []);
+
   const SUPERUSER_EMAIL = "ameliapaisleyspam123@gmail.com";
   const isSuperuser = user?.email === SUPERUSER_EMAIL;
   const [dmOverride, setDmOverride] = useState(() => localStorage.getItem("dm_override") === "true");
