@@ -10,7 +10,6 @@ import Notes from "@/pages/Notes";
 import Broadcast from "@/pages/Broadcast";
 import DmVault from "@/pages/DmVault";
 import Documents from "@/pages/Documents";
-import DataImport from "@/pages/DataImport";
 import PageNotFound from "@/lib/PageNotFound";
 
 export default function App() {
@@ -26,7 +25,6 @@ export default function App() {
         <Route path="broadcast" element={<Broadcast />} />
         <Route path="vault" element={<DmVault />} />
         <Route path="documents" element={<Documents />} />
-        <Route path="import" element={<DataImport />} />
       </Route>
       <Route path="/home" element={<Navigate to="/" replace />} />
       <Route path="*" element={<PageNotFound />} />

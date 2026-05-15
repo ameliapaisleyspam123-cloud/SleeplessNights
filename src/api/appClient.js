@@ -105,6 +105,14 @@ function currentSession() {
   return user;
 }
 
+function findUserByEmail(store, email) {
+  return store.User.find((user) => user.email?.toLowerCase() === email?.toLowerCase());
+}
+
+function saveUserSession(email) {
+  if (email) localStorage.setItem(SESSION_KEY, email);
+}
+
 function sortRecords(records, sort) {
   if (!sort) return [...records];
   const descending = sort.startsWith("-");
@@ -226,9 +234,52 @@ export const appClient = {
       if (!user) throw new Error("No local user exists");
       return user;
     },
+    async login({ email, full_name, display_name }) {
+      const store = readStore();
+      const cleanEmail = email.trim().toLowerCase();
+      if (!cleanEmail) throw new Error("Email is required");
+      let user = findUserByEmail(store, cleanEmail);
+      if (user) {
+        user = {
+          ...user,
+          full_name: full_name || user.full_name || display_name || cleanEmail,
+          display_name: display_name || full_name || user.display_name || cleanEmail,
+          updated_date: now(),
+        };
+        store.User = store.User.map((existing) => (existing.id === user.id ? user : existing));
+      } else {
+        user = {
+          id: id("user"),
+          email: cleanEmail,
+          full_name: full_name || display_name || cleanEmail,
+          display_name: display_name || full_name || cleanEmail,
+          role: "user",
+          campaign_role: "",
+          created_date: now(),
+          updated_date: now(),
+        };
+        store.User.push(user);
+      }
+      writeStore(store);
+      saveUserSession(cleanEmail);
+      notify("User", { type: "update", data: user });
+      return user;
+    },
     async updateMe(patch) {
       const user = await this.me();
       return entities.User.update(user.id, patch);
+    },
+    async switchCampaign({ email, display_name, campaign_id, campaign_role, role }) {
+      const user = await this.login({ email, display_name, full_name: display_name });
+      const updated = await entities.User.update(user.id, {
+        display_name: display_name || user.display_name,
+        full_name: display_name || user.full_name,
+        campaign_id,
+        campaign_role,
+        role,
+      });
+      saveUserSession(updated.email);
+      return updated;
     },
     logout() {
       localStorage.removeItem(SESSION_KEY);

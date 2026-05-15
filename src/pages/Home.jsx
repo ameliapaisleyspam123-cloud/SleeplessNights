@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { appClient } from "@/api/appClient";
-import { ScrollText, MessageSquare, Radio, ArrowUpRight, User, Lock, Swords, NotebookPen, Database } from "lucide-react";
+import { ScrollText, MessageSquare, Radio, ArrowUpRight, User, Lock, Swords, NotebookPen } from "lucide-react";
 import { useCampaign } from "@/hooks/useCampaign";
 import PageHeader from "@/components/PageHeader";
 
@@ -101,16 +101,6 @@ export default function Home() {
               </div>
             </div>
             <ArrowUpRight className="w-4 h-4 text-accent group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0" />
-          </Link>
-          <Link to="/import" className="group relative overflow-hidden rounded-sm border border-border bg-card hover:border-accent/60 active:bg-accent/10 transition-all p-4 md:p-6 flex items-center justify-between md:col-span-2">
-            <div className="flex items-center gap-3 md:gap-4">
-              <Database className="w-5 h-5 text-accent shrink-0" />
-              <div>
-                <div className="font-display text-lg md:text-xl">Import Campaign Data</div>
-                <div className="text-xs md:text-sm opacity-70 text-muted-foreground">Load exported records into this standalone app.</div>
-              </div>
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-accent group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0" />
           </Link>
         </div>
       )}

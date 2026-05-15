@@ -20,7 +20,6 @@ import {
   Settings,
   NotebookPen,
   Columns,
-  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BroadcastOverlay from "./broadcast/BroadcastOverlay";
@@ -46,7 +45,6 @@ const GM_NAV = [
   { to: "/lore", label: "Lore & Maps", icon: ScrollText },
   { to: "/notes", label: "Grimoire", icon: NotebookPen },
   { to: "/vault", label: "DM Vault", icon: Lock, gmOnly: true },
-  { to: "/import", label: "Data Import", icon: Database, gmOnly: true },
 ];
 
 export default function Layout() {
