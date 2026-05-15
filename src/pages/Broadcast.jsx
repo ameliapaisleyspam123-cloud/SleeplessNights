@@ -7,6 +7,32 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Image, Loader2, Radio, Users, Video, X } from "lucide-react";
 
+function videoPreview(url = "") {
+  const clean = url.trim();
+  if (!clean) return null;
+  const directVideo = /\.(mp4|webm|ogg)(\?.*)?$/i.test(clean) || clean.startsWith("data:video/");
+  if (directVideo) return { type: "video", url: clean };
+  try {
+    const parsed = new URL(clean);
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") {
+      const id = parsed.pathname.split("/").filter(Boolean)[0];
+      if (id) return { type: "embed", url: `https://www.youtube.com/embed/${id}` };
+    }
+    if (host.endsWith("youtube.com")) {
+      const id = parsed.searchParams.get("v") || parsed.pathname.split("/").filter(Boolean).pop();
+      if (id) return { type: "embed", url: `https://www.youtube.com/embed/${id}` };
+    }
+    if (host.endsWith("vimeo.com")) {
+      const id = parsed.pathname.split("/").filter(Boolean).pop();
+      if (id) return { type: "embed", url: `https://player.vimeo.com/video/${id}` };
+    }
+  } catch {
+    return { type: "video", url: clean };
+  }
+  return { type: "video", url: clean };
+}
+
 export default function Broadcast() {
   const [broadcast, setBroadcast] = useState({ title: "", message: "", image_url: "", video_url: "", active: false });
   const [users, setUsers] = useState([]);
@@ -60,6 +86,7 @@ export default function Broadcast() {
 
   const clearMedia = () => setBroadcast((current) => ({ ...current, image_url: "", video_url: "" }));
   const hasMedia = broadcast.image_url || broadcast.video_url;
+  const video = videoPreview(broadcast.video_url || "");
 
   return (
     <div className="p-6 lg:p-10">
@@ -90,8 +117,12 @@ export default function Broadcast() {
           <Label className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Image / Video</Label>
           {hasMedia ? (
             <div className="relative rounded-sm overflow-hidden border border-border bg-background/70">
-              {broadcast.video_url ? (
-                <video src={broadcast.video_url} controls className="w-full max-h-[360px] bg-black" />
+              {video?.type === "video" ? (
+                <video src={video.url} controls playsInline className="w-full max-h-[360px] bg-black" />
+              ) : video?.type === "embed" ? (
+                <div className="aspect-video bg-black">
+                  <iframe src={video.url} title="Broadcast video preview" allow="encrypted-media; picture-in-picture" allowFullScreen className="w-full h-full border-0" />
+                </div>
               ) : (
                 <img src={broadcast.image_url} alt={broadcast.title || "Broadcast media"} className="w-full max-h-[360px] object-cover" />
               )}

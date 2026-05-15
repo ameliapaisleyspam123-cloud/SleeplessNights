@@ -59,6 +59,7 @@ export default function Lore() {
       <PageHeader
         eyebrow="World"
         title="Lore & Maps"
+        description="Browse the annals of the world — places, people, events, and ancient secrets."
         action={
           isAdmin ? (
             <Button onClick={() => setEditing({})}>

@@ -6,7 +6,7 @@ import CharacterSheetView from "@/components/characters/CharacterSheetView";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Copy, Download, Plus } from "lucide-react";
+import { Copy, Download, Folder, Plus } from "lucide-react";
 
 function cloneSheet(sheet, campaignId, suffix = "Copy") {
   const {
@@ -31,6 +31,7 @@ export default function Characters() {
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [folder, setFolder] = useState("all");
 
   const load = async () => {
     const currentUser = await appClient.auth.me();
@@ -66,12 +67,15 @@ export default function Characters() {
 
   const importableSheets = allSheets.filter((sheet) => sheet.campaign_id && sheet.campaign_id !== user?.campaign_id);
   const campaignName = (campaignId) => campaigns.find((campaign) => campaign.id === campaignId)?.name || "Unknown campaign";
+  const folders = [...new Set(items.map((item) => item.folder).filter(Boolean))].sort();
+  const filteredItems = items.filter((item) => folder === "all" || item.folder === folder);
 
   return (
-    <div className="p-6 lg:p-10">
+    <div className="p-6 lg:p-10 space-y-5">
       <PageHeader
         eyebrow="Roster"
         title="Characters"
+        description="Track your heroes — stats, spells, and stories."
         action={
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setImportOpen(true)}>
@@ -83,15 +87,45 @@ export default function Characters() {
           </div>
         }
       />
-      {items.length === 0 ? (
-        <Empty label="No character sheets yet." />
-      ) : (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {items.map((sheet) => (
-            <CharacterSheetCard key={sheet.id} sheet={sheet} onClick={() => setViewing(sheet)} />
+
+      <div className="border border-border bg-card/50 rounded-sm overflow-hidden">
+        <div className="flex gap-2 overflow-x-auto thin-scroll border-b border-border p-3">
+          <button
+            type="button"
+            onClick={() => setFolder("all")}
+            className={`flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${folder === "all" ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
+          >
+            <Folder className="w-7 h-7" strokeWidth={1.7} />
+            <span className="text-[10px] leading-tight text-center">All Characters</span>
+          </button>
+          {folders.map((name) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => setFolder(name)}
+              className={`flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${folder === name ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
+              title={name}
+            >
+              <Folder className="w-7 h-7" strokeWidth={1.7} />
+              <span className="text-[10px] leading-tight text-center max-w-20 break-words">{name.split("/").pop()}</span>
+            </button>
           ))}
         </div>
-      )}
+
+        <div className="p-4">
+          {items.length === 0 ? (
+            <Empty label="No character sheets yet." />
+          ) : filteredItems.length === 0 ? (
+            <Empty label="No characters in this folder." />
+          ) : (
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filteredItems.map((sheet) => (
+                <CharacterSheetCard key={sheet.id} sheet={sheet} onClick={() => setViewing(sheet)} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
       <CharacterSheetEditor open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)} sheet={editing?.id ? editing : null} onSaved={load} onDuplicate={() => duplicateSheet(editing)} />
       <CharacterSheetView
         open={Boolean(viewing)}

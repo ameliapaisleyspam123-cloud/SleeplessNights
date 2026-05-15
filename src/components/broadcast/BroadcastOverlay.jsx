@@ -2,6 +2,34 @@ import React, { useEffect, useState } from "react";
 import { appClient } from "@/api/appClient";
 import { Radio } from "lucide-react";
 
+function videoSource(url = "") {
+  const clean = url.trim();
+  if (!clean) return null;
+  const directVideo = /\.(mp4|webm|ogg)(\?.*)?$/i.test(clean) || clean.startsWith("data:video/");
+  if (directVideo) return { type: "video", url: clean };
+
+  try {
+    const parsed = new URL(clean);
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") {
+      const id = parsed.pathname.split("/").filter(Boolean)[0];
+      if (id) return { type: "embed", url: `https://www.youtube.com/embed/${id}?autoplay=1&rel=0` };
+    }
+    if (host.endsWith("youtube.com")) {
+      const id = parsed.searchParams.get("v") || parsed.pathname.split("/").filter(Boolean).pop();
+      if (id) return { type: "embed", url: `https://www.youtube.com/embed/${id}?autoplay=1&rel=0` };
+    }
+    if (host.endsWith("vimeo.com")) {
+      const id = parsed.pathname.split("/").filter(Boolean).pop();
+      if (id) return { type: "embed", url: `https://player.vimeo.com/video/${id}?autoplay=1` };
+    }
+  } catch {
+    return { type: "video", url: clean };
+  }
+
+  return { type: "video", url: clean };
+}
+
 export default function BroadcastOverlay({ user }) {
   const [broadcast, setBroadcast] = useState(null);
   const [dismissed, setDismissed] = useState(false);
@@ -30,6 +58,8 @@ export default function BroadcastOverlay({ user }) {
     return null;
   }
 
+  const video = videoSource(broadcast.video_url);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300">
       <div className="absolute inset-0 bg-background/97 backdrop-blur-md" />
@@ -48,13 +78,25 @@ export default function BroadcastOverlay({ user }) {
           </span>
         </div>
 
-        {broadcast.video_url && (
+        {video?.type === "video" && (
           <div className="bg-black">
-            <video src={broadcast.video_url} autoPlay controls className="w-full max-h-[55vh]" />
+            <video src={video.url} autoPlay controls playsInline className="w-full max-h-[55vh]" />
           </div>
         )}
 
-        {!broadcast.video_url && broadcast.image_url && (
+        {video?.type === "embed" && (
+          <div className="aspect-video bg-black">
+            <iframe
+              src={video.url}
+              title={broadcast.title || "Broadcast video"}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              className="w-full h-full border-0"
+            />
+          </div>
+        )}
+
+        {!video && broadcast.image_url && (
           <div className="aspect-[16/9] overflow-hidden bg-muted">
             <img src={broadcast.image_url} alt={broadcast.title} className="w-full h-full object-cover" />
           </div>

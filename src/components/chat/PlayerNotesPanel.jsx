@@ -193,25 +193,28 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
 
   if (fullPage) {
     return (
-      <div className="min-h-full bg-background text-foreground">
-        <div className="flex items-start justify-between gap-4 px-6 lg:px-10 pt-6 lg:pt-8 pb-8 lg:pb-11 border-b border-border/70">
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.5em] text-accent font-semibold mb-4">Campaign: {campaignName}</div>
-            <h1 className="font-display text-5xl md:text-6xl text-foreground leading-none">Grimoire</h1>
-            <p className="mt-5 text-lg text-muted-foreground">Your private field notes - visible only to you.</p>
+      <div className="min-h-full p-6 lg:p-10 space-y-5">
+        <div className="mb-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.28em] text-accent font-medium mb-3">Campaign: {campaignName}</div>
+              <h1 className="font-display text-4xl md:text-5xl text-foreground leading-tight">Grimoire</h1>
+              <p className="text-muted-foreground mt-3 max-w-xl text-[15px] leading-relaxed">Your private field notes - visible only to you.</p>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent("toggle-dice-roller"))} className="h-10 px-4">
+                <Dices className="w-4 h-4" /> Dice
+              </Button>
+              <Button onClick={createSessionLog} className="h-10 px-4">
+                <Plus className="w-4 h-4" /> New Session Log
+              </Button>
+            </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 shrink-0">
-            <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent("toggle-dice-roller"))} className="h-11 px-5">
-              <Dices className="w-4 h-4" /> Dice
-            </Button>
-            <Button onClick={createSessionLog} className="h-11 px-5">
-              <Plus className="w-4 h-4" /> New Session Log
-            </Button>
-          </div>
+          <div className="ink-divider mt-8" />
         </div>
 
-        <div className="grid lg:grid-cols-[276px_1fr] min-h-[calc(100vh-12.25rem)]">
-          <aside className="border-r border-border/70 bg-card/20 flex flex-col min-h-[220px]">
+        <div className="grid lg:grid-cols-[276px_1fr] min-h-[calc(100vh-16rem)] border border-border bg-card/50 rounded-sm overflow-hidden">
+          <aside className="border-r border-border/70 bg-background/20 flex flex-col min-h-[220px]">
             <div className="flex items-center justify-between px-4 py-5 border-b border-border/60">
               <div className="flex items-center gap-3 text-[12px] uppercase tracking-[0.28em] text-muted-foreground">
                 <ScrollText className="w-4 h-4 text-accent" />
