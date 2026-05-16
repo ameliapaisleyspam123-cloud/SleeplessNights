@@ -93,6 +93,7 @@ export interface CharacterSheet extends AppRecord {
   image_url?: string;
   visibility?: SharedVisibility;
   allowed_emails?: string[];
+  assigned_to_email?: string;
 }
 
 export type DocumentVisibility = "public" | "private";
