@@ -9,4 +9,7 @@ export default defineConfig({
       "@": path.resolve(process.cwd(), "src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1600, // Increase limit to 1600 KB
+  },
 });
