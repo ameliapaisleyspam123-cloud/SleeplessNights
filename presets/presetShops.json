@@ -1,0 +1,18 @@
+[
+  {
+    "name": "General Goods",
+    "description": "A shop for general adventuring gear.",
+    "items": [
+      { "name": "Torch", "price": 1 },
+      { "name": "Rations (1 day)", "price": 5 }
+    ]
+  },
+  {
+    "name": "Weapon Smith",
+    "description": "A specialized shop for weapons and armor.",
+    "items": [
+      { "name": "Longsword", "price": 15 },
+      { "name": "Shield", "price": 10 }
+    ]
+  }
+]
