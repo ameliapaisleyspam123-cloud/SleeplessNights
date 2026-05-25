@@ -66,14 +66,14 @@ export default function BroadcastOverlay({ user }) {
 
       <div
         className="relative max-w-3xl w-full max-h-[90vh] overflow-y-auto thin-scroll rounded-sm shadow-2xl sculk-pulse"
-        style={{ border: "1px solid hsl(190 100% 38% / 0.5)", background: "hsl(222 42% 9%)" }}
+        style={{ border: "1px solid hsl(var(--accent) / 0.5)", background: "hsl(var(--card))" }}
       >
         <div
           className="px-6 py-3 border-b flex items-center gap-2"
-          style={{ borderColor: "hsl(190 100% 38% / 0.3)", background: "hsl(190 100% 38% / 0.06)" }}
+          style={{ borderColor: "hsl(var(--accent) / 0.3)", background: "hsl(var(--accent) / 0.06)" }}
         >
-          <Radio className="w-4 h-4 animate-pulse" style={{ color: "hsl(190 100% 38%)" }} />
-          <span className="text-[10px] uppercase tracking-[0.28em] font-medium" style={{ color: "hsl(190 100% 38%)" }}>
+          <Radio className="w-4 h-4 animate-pulse" style={{ color: "hsl(var(--accent))" }} />
+          <span className="text-[10px] uppercase tracking-[0.28em] font-medium" style={{ color: "hsl(var(--accent))" }}>
             Gamemaster Override
           </span>
         </div>
@@ -104,22 +104,22 @@ export default function BroadcastOverlay({ user }) {
 
         <div className="p-6 md:p-10">
           {broadcast.title && (
-            <h2 className="font-display text-3xl md:text-5xl leading-tight" style={{ color: "hsl(195 70% 85%)" }}>
+            <h2 className="font-display text-3xl md:text-5xl leading-tight" style={{ color: "hsl(var(--foreground))" }}>
               {broadcast.title}
             </h2>
           )}
           {broadcast.message && (
-            <div className="mt-5 text-[15px] leading-relaxed whitespace-pre-wrap" style={{ color: "hsl(195 70% 75%)" }}>
+            <div className="mt-5 text-[15px] leading-relaxed whitespace-pre-wrap" style={{ color: "hsl(var(--foreground) / 0.82)" }}>
               {broadcast.message}
             </div>
           )}
 
           {isAdmin ? (
-            <div className="mt-8 pt-5 flex justify-end" style={{ borderTop: "1px solid hsl(222 35% 16%)" }}>
+            <div className="mt-8 pt-5 flex justify-end" style={{ borderTop: "1px solid hsl(var(--border))" }}>
               <button
                 onClick={() => setDismissed(true)}
                 className="text-sm px-5 py-2 rounded-sm font-medium transition-all hover:opacity-80"
-                style={{ background: "hsl(190 100% 38%)", color: "hsl(222 45% 5%)" }}
+                style={{ background: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))" }}
               >
                 Close Preview
               </button>
@@ -127,7 +127,7 @@ export default function BroadcastOverlay({ user }) {
           ) : (
             <div
               className="mt-8 pt-5 text-xs text-center"
-              style={{ borderTop: "1px solid hsl(222 35% 16%)", color: "hsl(210 25% 48%)" }}
+              style={{ borderTop: "1px solid hsl(var(--border))", color: "hsl(var(--muted-foreground))" }}
             >
               Awaiting the Gamemaster's release...
             </div>

@@ -22,6 +22,7 @@ import {
   Columns,
   Dices,
   Store,
+  Palette,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BroadcastOverlay from "./broadcast/BroadcastOverlay";
@@ -30,6 +31,7 @@ import InitiativeTracker from "./initiative/InitiativeTracker";
 import DiceRoller from "./DiceRoller";
 import ProfileNameModal from "./ProfileNameModal";
 import CampaignSettingsModal from "./CampaignSettingsModal";
+import ThemeSettingsModal from "./ThemeSettingsModal";
 import { InitiativeProvider, useInitiative } from "@/lib/InitiativeContext";
 
 const PLAYER_NAV = [
@@ -67,6 +69,7 @@ function LayoutInner() {
   const [collapsed, setCollapsed] = useState(false);
   const [nameModalOpen, setNameModalOpen] = useState(false);
   const [campaignModalOpen, setCampaignModalOpen] = useState(false);
+  const [themeModalOpen, setThemeModalOpen] = useState(false);
   const [diceOpen, setDiceOpen] = useState(false);
   const [userLoaded, setUserLoaded] = useState(false);
   const location = useLocation();
@@ -144,6 +147,7 @@ function LayoutInner() {
     onToggleCollapse: () => setCollapsed((c) => !c),
     onEditName: () => setNameModalOpen(true),
     onCampaignSettings: () => setCampaignModalOpen(true),
+    onThemeSettings: () => setThemeModalOpen(true),
     splitOpen,
     onToggleSplit: () => setSplitOpen((s) => !s),
     isSuperuser,
@@ -227,6 +231,7 @@ function LayoutInner() {
       )}
       <ProfileNameModal open={nameModalOpen} onOpenChange={setNameModalOpen} currentUser={user} onSaved={loadUser} />
       {isAdmin && <CampaignSettingsModal open={campaignModalOpen} onOpenChange={setCampaignModalOpen} campaign={campaign} onSaved={handleCampaignSaved} />}
+      <ThemeSettingsModal open={themeModalOpen} onOpenChange={setThemeModalOpen} />
     </div>
   );
 }
@@ -240,6 +245,7 @@ function SidebarContent({
   onToggleCollapse,
   onEditName,
   onCampaignSettings,
+  onThemeSettings,
   splitOpen,
   onToggleSplit,
   isSuperuser,
@@ -324,6 +330,11 @@ function SidebarContent({
             {!collapsed && <span>Campaign Settings</span>}
           </button>
         )}
+
+        <button onClick={onThemeSettings} className={`flex items-center gap-2 text-xs text-muted-foreground hover:text-accent transition-colors mb-1 px-1 w-full ${collapsed ? "justify-center" : ""}`} title="Colour Scheme">
+          <Palette className="w-3.5 h-3.5 shrink-0" />
+          {!collapsed && <span>Colour Scheme</span>}
+        </button>
 
         <button onClick={onToggleSplit} className={`flex items-center gap-2 text-xs transition-colors mb-1 px-1 w-full ${collapsed ? "justify-center" : ""} ${splitOpen ? "text-accent" : "text-muted-foreground hover:text-accent"}`} title="Toggle Initiative Split-Screen">
           <Columns className="w-3.5 h-3.5 shrink-0" />

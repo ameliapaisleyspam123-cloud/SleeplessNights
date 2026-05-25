@@ -10,19 +10,19 @@
         theme: {
           extend: {
             colors: {
-              border: "hsl(188 35% 20%)",
-              background: "hsl(196 55% 5%)",
-              foreground: "hsl(176 32% 88%)",
-              card: "hsl(192 48% 8%)",
-              primary: "hsl(183 94% 38%)",
-              "primary-foreground": "hsl(196 55% 5%)",
-              secondary: "hsl(190 45% 12%)",
-              muted: "hsl(190 42% 14%)",
-              "muted-foreground": "hsl(181 18% 64%)",
-              accent: "hsl(178 100% 48%)",
-              "accent-foreground": "hsl(196 55% 5%)",
-              destructive: "hsl(0 74% 48%)",
-              "destructive-foreground": "hsl(0 0% 100%)"
+              border: "hsl(var(--border) / <alpha-value>)",
+              background: "hsl(var(--background) / <alpha-value>)",
+              foreground: "hsl(var(--foreground) / <alpha-value>)",
+              card: "hsl(var(--card) / <alpha-value>)",
+              primary: "hsl(var(--primary) / <alpha-value>)",
+              "primary-foreground": "hsl(var(--primary-foreground) / <alpha-value>)",
+              secondary: "hsl(var(--secondary) / <alpha-value>)",
+              muted: "hsl(var(--muted) / <alpha-value>)",
+              "muted-foreground": "hsl(var(--muted-foreground) / <alpha-value>)",
+              accent: "hsl(var(--accent) / <alpha-value>)",
+              "accent-foreground": "hsl(var(--accent-foreground) / <alpha-value>)",
+              destructive: "hsl(var(--destructive) / <alpha-value>)",
+              "destructive-foreground": "hsl(var(--destructive-foreground) / <alpha-value>)"
             },
             fontFamily: {
               display: ["Georgia", "serif"],
