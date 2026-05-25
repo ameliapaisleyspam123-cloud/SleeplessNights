@@ -7,7 +7,7 @@ import MoveFolderDialog from "@/components/lore/MoveFolderDialog";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Copy, Download, Folder, MoveRight, Plus } from "lucide-react";
+import { Copy, Download, Folder, MoveRight, Plus, Trash2 } from "lucide-react";
 
 function cloneSheet(sheet, campaignId, suffix = "Copy") {
   const {
@@ -113,6 +113,34 @@ export default function Characters() {
     await load();
   };
 
+  const deleteSheet = async (sheet) => {
+    if (!sheet?.id) return;
+    const confirmed = window.confirm(`Delete ${sheet.name || "this character"}? This cannot be undone.`);
+    if (!confirmed) return;
+    await appClient.entities.CharacterSheet.delete(sheet.id);
+    setViewing(null);
+    setEditing(null);
+    setContextMenu(null);
+    await load();
+  };
+
+  const deleteFolder = async (folderName) => {
+    if (!folderName || !user?.campaign_id) return;
+    const count = items.filter((item) => item.folder === folderName).length;
+    const confirmed = window.confirm(
+      count > 0
+        ? `Delete the "${folderName}" folder and move ${count} character${count === 1 ? "" : "s"} back to All Characters?`
+        : `Delete the "${folderName}" folder?`,
+    );
+    if (!confirmed) return;
+    await Promise.all(items.filter((item) => item.folder === folderName).map((item) => appClient.entities.CharacterSheet.update(item.id, { folder: "" })));
+    const next = emptyFolders.filter((name) => name !== folderName);
+    setEmptyFolders(next);
+    writeEmptyFolders(user.campaign_id, next);
+    if (folder === folderName) setFolder("all");
+    await load();
+  };
+
   const openContextMenu = (event, sheet) => {
     if (!isAdmin) return;
     setContextMenu({ x: event.clientX, y: event.clientY, sheet });
@@ -147,16 +175,28 @@ export default function Characters() {
             <span className="text-[10px] leading-tight text-center">All Characters</span>
           </button>
           {folders.map((name) => (
-            <button
+            <div
               key={name}
-              type="button"
-              onClick={() => setFolder(name)}
-              className={`flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${folder === name ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
+              className={`relative flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${folder === name ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
               title={name}
             >
+              <button type="button" onClick={() => setFolder(name)} className="absolute inset-0" aria-label={`Open ${name}`} />
               <Folder className="w-7 h-7" strokeWidth={1.7} />
               <span className="text-[10px] leading-tight text-center max-w-20 break-words">{name.split("/").pop()}</span>
-            </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    deleteFolder(name);
+                  }}
+                  className="absolute top-1 right-1 z-10 p-1 rounded-sm text-muted-foreground hover:text-destructive hover:bg-background/80"
+                  title="Delete folder"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           ))}
           {isAdmin && (
             <button
@@ -249,6 +289,13 @@ export default function Characters() {
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-sm"
           >
             <MoveRight className="w-4 h-4 text-accent" /> Move to folder
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteSheet(contextMenu.sheet)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-destructive hover:bg-secondary rounded-sm"
+          >
+            <Trash2 className="w-4 h-4" /> Delete character
           </button>
         </div>
       )}
