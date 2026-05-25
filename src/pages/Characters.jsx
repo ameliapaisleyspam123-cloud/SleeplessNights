@@ -165,7 +165,7 @@ export default function Characters() {
       />
 
       <div className="border border-border bg-card/50 rounded-sm overflow-hidden">
-        <div className="flex gap-2 overflow-x-auto thin-scroll border-b border-border p-3">
+        <div className="flex flex-wrap gap-2 border-b border-border p-3">
           <button
             type="button"
             onClick={() => setFolder("all")}
@@ -224,7 +224,14 @@ export default function Characters() {
           )}
         </div>
       </div>
-      <CharacterSheetEditor open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)} sheet={editing?.id ? editing : null} onSaved={load} onDuplicate={() => duplicateSheet(editing)} />
+      <CharacterSheetEditor
+        open={Boolean(editing)}
+        onOpenChange={(open) => !open && setEditing(null)}
+        sheet={editing?.id ? editing : null}
+        onSaved={load}
+        onDuplicate={() => duplicateSheet(editing)}
+        onDelete={isAdmin && editing?.id ? () => deleteSheet(editing) : undefined}
+      />
       <MoveFolderDialog
         open={Boolean(moving)}
         onOpenChange={(open) => !open && setMoving(null)}

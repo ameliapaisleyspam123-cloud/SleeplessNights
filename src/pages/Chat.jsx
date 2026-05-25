@@ -40,7 +40,7 @@ export default function Chat() {
         />
       </div>
 
-      <div className={`min-h-0 flex-1 grid overflow-x-auto ${sideOpen ? "grid-cols-[240px_minmax(420px,1fr)_340px] xl:grid-cols-[296px_minmax(0,1fr)_376px]" : "grid-cols-[240px_minmax(420px,1fr)] md:grid-cols-[280px_1fr]"}`}>
+      <div className={`min-h-0 flex-1 grid overflow-hidden ${sideOpen ? "grid-cols-[minmax(0,240px)_minmax(0,1fr)_minmax(0,340px)] xl:grid-cols-[minmax(0,296px)_minmax(0,1fr)_minmax(0,376px)]" : "grid-cols-[minmax(0,240px)_minmax(0,1fr)] md:grid-cols-[minmax(0,280px)_minmax(0,1fr)]"}`}>
         <aside className="border-r border-border min-h-0">
           <ChannelList users={users} currentUser={currentUser} activeChannel={activeChannel} onSelect={setActiveChannel} isAdmin={isAdmin} />
         </aside>

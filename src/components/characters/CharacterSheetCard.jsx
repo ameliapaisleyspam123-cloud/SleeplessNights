@@ -26,7 +26,7 @@ export default function CharacterSheetCard({ sheet, onClick, onContextMenu }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <div className="font-display text-xl leading-tight truncate group-hover:text-accent transition-colors">{sheet.name}</div>
-            {sheet.visibility === "dm_only" && <Lock className="w-3 h-3 text-amber-400 shrink-0" title="DM Only" />}
+            {sheet.visibility === "dm_only" && <Lock className="w-3 h-3 text-accent shrink-0" title="DM Only" />}
             {sheet.visibility === "archived" && <EyeOff className="w-3 h-3 text-muted-foreground shrink-0" title="Archived" />}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">

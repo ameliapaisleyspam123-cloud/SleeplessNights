@@ -37,20 +37,20 @@ import { InitiativeProvider, useInitiative } from "@/lib/InitiativeContext";
 const PLAYER_NAV = [
   { to: "/", label: "Hearth", icon: Home },
   { to: "/characters", label: "Characters", icon: User },
-  { to: "/shop", label: "Shop", icon: Store },
   { to: "/chat", label: "Correspondence", icon: MessageSquare },
   { to: "/lore", label: "Lore & Maps", icon: ScrollText },
   { to: "/notes", label: "Grimoire", icon: NotebookPen },
+  { to: "/shop", label: "Shop", icon: Store },
 ];
 
 const GM_NAV = [
   { to: "/", label: "Hearth", icon: Home },
   { to: "/broadcast", label: "Override", icon: Radio, gmOnly: true },
   { to: "/characters", label: "Characters", icon: User },
-  { to: "/shop", label: "Shop", icon: Store },
   { to: "/chat", label: "Correspondence", icon: MessageSquare },
   { to: "/lore", label: "Lore & Maps", icon: ScrollText },
   { to: "/notes", label: "Grimoire", icon: NotebookPen },
+  { to: "/shop", label: "Shop", icon: Store },
   { to: "/vault", label: "DM Vault", icon: Lock, gmOnly: true },
 ];
 
@@ -191,7 +191,7 @@ function LayoutInner() {
         </div>
       )}
 
-      <main className="flex-1 min-w-0 pt-14 lg:pt-0 overflow-auto">
+      <main className="flex-1 min-w-0 pt-14 lg:pt-0 overflow-x-hidden overflow-y-auto">
         <Outlet />
       </main>
 
@@ -225,7 +225,7 @@ function LayoutInner() {
         Dice
       </button>
       {diceOpen && (
-        <div className="fixed bottom-20 right-4 z-50 w-[min(22rem,calc(100vw-2rem))] max-h-[min(38rem,calc(100vh-6rem))] overflow-hidden rounded-sm border border-border bg-card shadow-2xl sculk-glow">
+        <div className="fixed bottom-20 right-4 z-50 w-[min(22rem,calc(100vw-2rem))] h-[min(38rem,calc(100vh-6rem))] overflow-hidden rounded-sm border border-border bg-card shadow-2xl sculk-glow">
           <DiceRoller onClose={() => setDiceOpen(false)} />
         </div>
       )}

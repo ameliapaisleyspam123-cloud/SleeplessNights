@@ -38,16 +38,22 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  const isAdmin = user?.campaign_role === "dm";
+  const isAdmin = user?.campaign_role === "dm" || user?.role === "admin";
   const role = user?.campaign_role;
 
-  const tiles = [
+  const baseTiles = [
     { to: "/lore", icon: ScrollText, title: "Lore & Maps", count: counts.lore, label: "entries", desc: "Chronicle your world, maps, places, and events." },
     { to: "/characters", icon: User, title: "Characters", count: counts.characters, label: "sheets", desc: "Track your party's heroes, stats, and stories." },
-    { to: "/shop", icon: Store, title: "Shop", count: counts.shops, label: "stores", desc: "Buy supplies, spend coin, and keep a DM receipt trail." },
     { to: "/chat", icon: MessageSquare, title: "Correspondence", count: counts.messages, label: "new", desc: "New hall messages and whispers since you last checked." },
     { to: "/notes", icon: NotebookPen, title: "Grimoire", count: null, label: "", desc: "Private field notes, session logs, and secrets." },
+    { to: "/shop", icon: Store, title: "Shop", count: counts.shops, label: "stores", desc: "Buy supplies, spend coin, and keep a DM receipt trail." },
+    { to: "/campaign", icon: Swords, title: "Campaign", count: null, label: "", desc: "Switch realms, join a table, or review your campaign access." },
   ];
+  const dmTiles = [
+    { to: "/vault", icon: Lock, title: "DM Vault", count: null, label: "", desc: "Sealed documents, past overrides, and campaign management." },
+    { to: "/broadcast", icon: Radio, title: "Gamemaster Override", count: null, label: "", desc: "Take command of every viewer's screen.", featured: true },
+  ];
+  const tiles = isAdmin ? [...baseTiles, ...dmTiles] : baseTiles;
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-10 py-8 md:py-16">
@@ -69,54 +75,37 @@ export default function Home() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
-        {tiles.map((tile, index) => (
-          <Link key={tile.to} to={tile.to} className={`group relative overflow-hidden rounded-sm border border-border bg-card hover:border-accent/60 active:bg-accent/10 transition-all p-4 md:p-6 min-h-[140px] md:min-h-[180px] flex flex-col ${tiles.length % 4 !== 0 && index === tiles.length - 1 ? "lg:col-span-2" : ""}`}>
+      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-5">
+        {tiles.map((tile) => (
+          <Link
+            key={tile.to}
+            to={tile.to}
+            className={`group relative overflow-hidden rounded-sm border transition-all p-4 md:p-6 min-h-[168px] md:min-h-[190px] flex flex-col ${
+              tile.featured
+                ? "border-accent/50 bg-primary text-primary-foreground hover:border-accent"
+                : "border-border bg-card hover:border-accent/60 active:bg-accent/10"
+            }`}
+          >
             <div className="flex items-start justify-between">
-              <tile.icon className="w-5 h-5 text-accent" strokeWidth={1.5} />
-              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-accent group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all" />
+              <tile.icon className={`w-5 h-5 ${tile.featured ? "text-primary-foreground" : "text-accent"}`} strokeWidth={1.5} />
+              <ArrowUpRight className={`w-4 h-4 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all ${tile.featured ? "text-primary-foreground/70 group-hover:text-primary-foreground" : "text-muted-foreground group-hover:text-accent"}`} />
             </div>
             <div className="mt-auto">
               <div className="font-display text-xl md:text-2xl">{tile.title}</div>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1 leading-relaxed hidden sm:block">{tile.desc}</p>
-              <div className="mt-2 md:mt-4 text-[11px] uppercase tracking-widest text-muted-foreground">
+              <p className={`text-xs md:text-sm mt-1 leading-relaxed hidden sm:block ${tile.featured ? "text-primary-foreground/75" : "text-muted-foreground"}`}>{tile.desc}</p>
+              <div className={`mt-2 md:mt-4 text-[11px] uppercase tracking-widest ${tile.featured ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
                 {tile.count !== null ? (
                   <>
-                    <span className="text-foreground font-medium">{tile.count}</span> {tile.label}
+                    <span className={tile.featured ? "text-primary-foreground font-medium" : "text-foreground font-medium"}>{tile.count}</span> {tile.label}
                   </>
                 ) : (
-                  <span className="invisible">0 entries</span>
+                  <span aria-hidden="true">&nbsp;</span>
                 )}
               </div>
             </div>
           </Link>
         ))}
       </div>
-
-      {isAdmin && (
-        <div className="mt-3 md:mt-5 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
-          <Link to="/vault" className="group relative overflow-hidden rounded-sm border border-border bg-card hover:border-accent/60 active:bg-accent/10 transition-all p-4 md:p-6 flex items-center justify-between">
-            <div className="flex items-center gap-3 md:gap-4">
-              <Lock className="w-5 h-5 text-accent shrink-0" />
-              <div>
-                <div className="font-display text-lg md:text-xl">DM Vault</div>
-                <div className="text-xs md:text-sm opacity-70 text-muted-foreground">Sealed documents, your eyes only.</div>
-              </div>
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-accent group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0" />
-          </Link>
-          <Link to="/broadcast" className="group relative overflow-hidden rounded-sm border border-accent/40 bg-primary text-primary-foreground p-4 md:p-6 flex items-center justify-between">
-            <div className="flex items-center gap-3 md:gap-4">
-              <Radio className="w-5 h-5 text-accent shrink-0" />
-              <div>
-                <div className="font-display text-lg md:text-xl">Gamemaster Override</div>
-                <div className="text-xs md:text-sm opacity-70">Take command of every viewer's screen.</div>
-              </div>
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-accent group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0" />
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

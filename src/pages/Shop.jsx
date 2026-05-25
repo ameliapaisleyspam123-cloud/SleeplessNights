@@ -107,7 +107,6 @@ export default function Shop() {
     setShops(campaignShops);
     setCharacters(campaignCharacters);
     setSelectedShopId((current) => current || campaignShops.find((shop) => shop.status !== "closed")?.id || campaignShops[0]?.id || "");
-    setSelectedCharacterId((current) => current || campaignCharacters[0]?.id || "");
   };
 
   useEffect(() => {
@@ -116,8 +115,9 @@ export default function Shop() {
 
   const isSuperuser = user?.email === "ameliapaisleyspam123@gmail.com";
   const isAdmin = user?.campaign_role === "dm" || (isSuperuser && localStorage.getItem("dm_override") === "true");
+  const availableCharacters = characters.filter((character) => isAdmin || character.assigned_to_email === user?.email);
   const selectedShop = shops.find((shop) => shop.id === selectedShopId);
-  const selectedCharacter = characters.find((character) => character.id === selectedCharacterId);
+  const selectedCharacter = availableCharacters.find((character) => character.id === selectedCharacterId);
   const openShops = shops.filter((shop) => shop.status !== "closed");
   const allLogs = useMemo(
     () =>
@@ -126,6 +126,12 @@ export default function Shop() {
         .sort((a, b) => String(b.created_date || "").localeCompare(String(a.created_date || ""))),
     [shops],
   );
+
+  useEffect(() => {
+    if (!user) return;
+    const stillValid = availableCharacters.some((character) => character.id === selectedCharacterId);
+    if (!stillValid) setSelectedCharacterId(availableCharacters[0]?.id || "");
+  }, [availableCharacters, selectedCharacterId, user]);
 
   const startNewShop = (withDefaults = false) => {
     setEditing({
@@ -255,7 +261,7 @@ export default function Shop() {
                 <Select value={selectedCharacterId} onValueChange={setSelectedCharacterId}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {characters.map((character) => (
+                    {availableCharacters.map((character) => (
                       <SelectItem key={character.id} value={character.id}>{character.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -271,8 +277,8 @@ export default function Shop() {
 
             {!selectedShop ? (
               <EmptyState label={isAdmin ? "No stores yet. Create one from scratch or start with the default store." : "No open stores yet."} />
-            ) : characters.length === 0 ? (
-              <EmptyState label="Create a character sheet before shopping." />
+            ) : availableCharacters.length === 0 ? (
+              <EmptyState label={isAdmin ? "Create a character sheet before shopping." : "Claim a character before shopping."} />
             ) : (
               <div className="p-4 space-y-4">
                 <div>

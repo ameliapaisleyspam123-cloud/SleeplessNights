@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import ReactQuill from "react-quill";
 import { appClient } from "@/api/appClient";
 import { Button } from "@/components/ui/button";
-import { X, NotebookPen, Loader2, Check, BookOpen, Dices, Pencil, Plus, ScrollText, Trash2 } from "lucide-react";
+import { X, NotebookPen, Loader2, Check, BookOpen, Pencil, Plus, ScrollText, Trash2 } from "lucide-react";
 
 const quillModules = { toolbar: [["bold", "italic"], [{ list: "bullet" }, { list: "ordered" }], ["clean"]] };
 const quillClass = "[&_.ql-container]:border-border [&_.ql-container]:text-sm [&_.ql-editor]:bg-background/55 [&_.ql-editor]:text-foreground [&_.ql-toolbar]:border-border [&_.ql-toolbar]:bg-card/60 [&_.ql-stroke]:stroke-muted-foreground [&_.ql-fill]:fill-muted-foreground [&_.ql-picker]:text-muted-foreground";
@@ -202,9 +202,6 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
               <p className="text-muted-foreground mt-3 max-w-xl text-[15px] leading-relaxed">Your private field notes - visible only to you.</p>
             </div>
             <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent("toggle-dice-roller"))} className="h-10 px-4">
-                <Dices className="w-4 h-4" /> Dice
-              </Button>
               <Button onClick={createSessionLog} className="h-10 px-4">
                 <Plus className="w-4 h-4" /> New Session Log
               </Button>
@@ -335,7 +332,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
         </div>
         <div className="flex items-center gap-2">
           {saving && <Loader2 className="w-3.5 h-3.5 text-muted-foreground animate-spin" />}
-          {saved && <Check className="w-3.5 h-3.5 text-green-500" />}
+          {saved && <Check className="w-3.5 h-3.5 text-accent" />}
           {onClose && (
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
               <X className="w-4 h-4" />

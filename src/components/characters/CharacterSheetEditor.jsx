@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Loader2, Eye, Lock, EyeOff, Users, Copy } from "lucide-react";
+import { Upload, Loader2, Eye, Lock, EyeOff, Users, Copy, Trash2 } from "lucide-react";
 import InventoryManager from "@/components/characters/InventoryManager";
 import AttackManager from "@/components/characters/AttackManager";
 import SpellManager from "@/components/characters/SpellManager";
@@ -167,7 +167,7 @@ function RichEditor({ value, onChange, placeholder, min = 100 }) {
   );
 }
 
-export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSaved, onDuplicate }) {
+export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSaved, onDuplicate, onDelete }) {
   const [form, setForm] = useState(defaultForm());
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -231,13 +231,6 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
     onOpenChange(false);
   };
 
-  const archive = async () => {
-    if (!sheet?.id) return;
-    await appClient.entities.CharacterSheet.update(sheet.id, { visibility: "archived" });
-    onSaved?.();
-    onOpenChange(false);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto thin-scroll p-0">
@@ -283,7 +276,7 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
               <Field label="XP"><Input type="number" min={0} value={form.experience_points} onChange={(event) => setNum("experience_points", event.target.value)} /></Field>
               <Field label="Hit Dice"><Input value={form.hit_dice} onChange={(event) => set("hit_dice", event.target.value)} /></Field>
               <Field label="Inspiration">
-                <button type="button" onClick={() => set("inspiration", !form.inspiration)} className={`w-full h-9 rounded-sm border text-sm font-medium transition-colors ${form.inspiration ? "bg-accent text-accent-foreground border-accent" : "border-border text-muted-foreground"}`}>
+                <button type="button" onClick={() => set("inspiration", !form.inspiration)} className={`w-full h-9 rounded-sm border text-sm font-medium transition-colors ${form.inspiration ? "bg-accent text-accent-foreground border-accent" : "border-border bg-card text-foreground hover:border-accent/60 hover:bg-accent/10"}`}>
                   {form.inspiration ? "Inspired" : "No Inspiration"}
                 </button>
               </Field>
@@ -322,9 +315,9 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                     ["Failures", "death_save_failures", "red"],
                   ].map(([label, key, color]) => (
                     <div key={key}>
-                      <div className={`${color === "green" ? "text-green-400" : "text-red-400"} text-[9px] mb-1 text-center`}>{label}</div>
+                      <div className={`${color === "green" ? "text-accent" : "text-destructive"} text-[9px] mb-1 text-center`}>{label}</div>
                       <div className="flex gap-1">
-                        {[0, 1, 2].map((index) => <button key={index} type="button" onClick={() => set(key, index < (form[key] || 0) ? index : index + 1)} className={`w-5 h-5 rounded-full border-2 ${index < (form[key] || 0) ? (color === "green" ? "bg-green-500 border-green-500" : "bg-red-500 border-red-500") : "border-border"}`} />)}
+                        {[0, 1, 2].map((index) => <button key={index} type="button" onClick={() => set(key, index < (form[key] || 0) ? index : index + 1)} className={`w-5 h-5 rounded-full border-2 ${index < (form[key] || 0) ? (color === "green" ? "bg-accent border-accent" : "bg-destructive border-destructive") : "border-border"}`} />)}
                       </div>
                     </div>
                   ))}
@@ -463,9 +456,9 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                 <Copy className="w-4 h-4 mr-1.5" /> Duplicate
               </Button>
             )}
-            {sheet?.id && sheet.visibility !== "archived" ? (
-              <Button variant="ghost" size="sm" onClick={archive} className="text-muted-foreground hover:text-foreground">
-                <EyeOff className="w-4 h-4 mr-1.5" /> Archive
+            {sheet?.id && onDelete ? (
+              <Button variant="ghost" size="sm" onClick={onDelete} className="text-muted-foreground hover:text-destructive">
+                <Trash2 className="w-4 h-4 mr-1.5" /> Delete
               </Button>
             ) : null}
           </div>

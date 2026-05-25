@@ -68,7 +68,7 @@ export default function LoreCard({ entry, onClick, onContextMenu, onEdit, onDele
             {meta.label}
           </div>
           <div className="flex items-center gap-1.5">
-            {entry.visibility === "dm_only" && <Lock className="w-3 h-3 text-amber-400" title="DM Only" />}
+            {entry.visibility === "dm_only" && <Lock className="w-3 h-3 text-accent" title="DM Only" />}
             {entry.visibility === "archived" && <EyeOff className="w-3 h-3 text-muted-foreground" title="Archived" />}
             {canManage && (
               <>
