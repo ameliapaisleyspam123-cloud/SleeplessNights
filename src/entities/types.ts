@@ -162,6 +162,41 @@ export interface PlayerNote extends AppRecord {
   content?: string;
 }
 
+export interface ShopItem {
+  id?: string;
+  name: string;
+  description?: string;
+  quantity?: number;
+  cp?: number;
+  sp?: number;
+  ep?: number;
+  gp?: number;
+  pp?: number;
+}
+
+export interface ShopPurchaseLog extends AppRecord {
+  shop_id?: string;
+  shop_name?: string;
+  character_id?: string;
+  character_name?: string;
+  player_email?: string;
+  item_name?: string;
+  quantity?: number;
+  total_cp?: number;
+  price_label?: string;
+  currency_before?: Record<string, number>;
+  currency_after?: Record<string, number>;
+}
+
+export interface Shop extends AppRecord {
+  campaign_id?: string;
+  name: string;
+  description?: string;
+  status?: "open" | "closed";
+  items?: ShopItem[];
+  purchase_log?: ShopPurchaseLog[];
+}
+
 export type EntityName =
   | "Broadcast"
   | "Campaign"
@@ -170,4 +205,5 @@ export type EntityName =
   | "Initiative"
   | "LoreEntry"
   | "Message"
-  | "PlayerNote";
+  | "PlayerNote"
+  | "Shop";

@@ -1,0 +1,35 @@
+{
+  "name": "Shop",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Campaign this shop belongs to"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "closed"
+      ],
+      "default": "open"
+    },
+    "items": {
+      "type": "array",
+      "description": "Shop inventory [{id, name, description, quantity, cp, sp, ep, gp, pp}]"
+    },
+    "purchase_log": {
+      "type": "array",
+      "description": "DM-readable purchase history"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

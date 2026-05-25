@@ -21,6 +21,7 @@ import {
   NotebookPen,
   Columns,
   Dices,
+  Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BroadcastOverlay from "./broadcast/BroadcastOverlay";
@@ -34,6 +35,7 @@ import { InitiativeProvider, useInitiative } from "@/lib/InitiativeContext";
 const PLAYER_NAV = [
   { to: "/", label: "Hearth", icon: Home },
   { to: "/characters", label: "Characters", icon: User },
+  { to: "/shop", label: "Shop", icon: Store },
   { to: "/chat", label: "Correspondence", icon: MessageSquare },
   { to: "/lore", label: "Lore & Maps", icon: ScrollText },
   { to: "/notes", label: "Grimoire", icon: NotebookPen },
@@ -43,6 +45,7 @@ const GM_NAV = [
   { to: "/", label: "Hearth", icon: Home },
   { to: "/broadcast", label: "Override", icon: Radio, gmOnly: true },
   { to: "/characters", label: "Characters", icon: User },
+  { to: "/shop", label: "Shop", icon: Store },
   { to: "/chat", label: "Correspondence", icon: MessageSquare },
   { to: "/lore", label: "Lore & Maps", icon: ScrollText },
   { to: "/notes", label: "Grimoire", icon: NotebookPen },

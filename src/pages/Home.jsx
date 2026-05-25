@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { appClient } from "@/api/appClient";
-import { ScrollText, MessageSquare, Radio, ArrowUpRight, User, Lock, Swords, NotebookPen } from "lucide-react";
+import { ScrollText, MessageSquare, Radio, ArrowUpRight, User, Lock, Swords, NotebookPen, Store } from "lucide-react";
 import { useCampaign } from "@/hooks/useCampaign";
 import PageHeader from "@/components/PageHeader";
 
 export default function Home() {
   const [user, setUser] = useState(null);
-  const [counts, setCounts] = useState({ lore: 0, docs: 0, messages: 0, characters: 0 });
+  const [counts, setCounts] = useState({ lore: 0, docs: 0, messages: 0, characters: 0, shops: 0 });
   const { campaign } = useCampaign();
 
   useEffect(() => {
@@ -21,7 +21,8 @@ export default function Home() {
           appClient.entities.Document.filter({ campaign_id: cid }, "-created_date", 500),
           appClient.entities.Message.filter({ campaign_id: cid }, "-created_date", 500),
           appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 500),
-        ]).then(([lore, docs, messages, characters]) => setCounts({ lore: lore.length, docs: docs.length, messages: messages.length, characters: characters.length }));
+          appClient.entities.Shop.filter({ campaign_id: cid }, "-created_date", 500),
+        ]).then(([lore, docs, messages, characters, shops]) => setCounts({ lore: lore.length, docs: docs.length, messages: messages.length, characters: characters.length, shops: shops.length }));
       })
       .catch(() => {});
   }, []);
@@ -32,6 +33,7 @@ export default function Home() {
   const tiles = [
     { to: "/lore", icon: ScrollText, title: "Lore & Maps", count: counts.lore, label: "entries", desc: "Chronicle your world, maps, places, and events." },
     { to: "/characters", icon: User, title: "Characters", count: counts.characters, label: "sheets", desc: "Track your party's heroes, stats, and stories." },
+    { to: "/shop", icon: Store, title: "Shop", count: counts.shops, label: "stores", desc: "Buy supplies, spend coin, and keep a DM receipt trail." },
     { to: "/chat", icon: MessageSquare, title: "Correspondence", count: counts.messages, label: "messages", desc: "Speak to the assembly or whisper to one." },
     { to: "/notes", icon: NotebookPen, title: "Grimoire", count: null, label: "", desc: "Private field notes, session logs, and secrets." },
   ];

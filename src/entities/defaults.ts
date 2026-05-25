@@ -7,6 +7,7 @@ import type {
   LoreEntry,
   Message,
   PlayerNote,
+  Shop,
 } from "./types";
 
 export const broadcastDefaults: Partial<Broadcast> = {
@@ -76,4 +77,10 @@ export const messageDefaults: Partial<Message> = {};
 
 export const playerNoteDefaults: Partial<PlayerNote> = {
   content: "",
+};
+
+export const shopDefaults: Partial<Shop> = {
+  status: "open",
+  items: [],
+  purchase_log: [],
 };

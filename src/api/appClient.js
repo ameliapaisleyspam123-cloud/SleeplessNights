@@ -10,6 +10,7 @@ export const ENTITY_NAMES = [
   "LoreEntry",
   "Message",
   "PlayerNote",
+  "Shop",
   "User",
 ];
 
@@ -66,6 +67,7 @@ function defaultStore() {
     LoreEntry: [],
     Message: [],
     PlayerNote: [],
+    Shop: [],
   };
 }
 
