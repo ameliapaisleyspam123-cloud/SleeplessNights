@@ -22,7 +22,18 @@ export default function Home() {
           appClient.entities.Message.filter({ campaign_id: cid }, "-created_date", 500),
           appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 500),
           appClient.entities.Shop.filter({ campaign_id: cid }, "-created_date", 500),
-        ]).then(([lore, docs, messages, characters, shops]) => setCounts({ lore: lore.length, docs: docs.length, messages: messages.length, characters: characters.length, shops: shops.length }));
+        ]).then(([lore, docs, messages, characters, shops]) => {
+          const read = JSON.parse(localStorage.getItem("chat_read") || "{}");
+          const isDm = currentUser.campaign_role === "dm" || currentUser.role === "admin";
+          const newMessages = messages.filter((message) => {
+            if (message.created_by === currentUser.email) return false;
+            const visible = isDm || message.channel === "group" || message.channel?.split("|").includes(currentUser.email);
+            if (!visible) return false;
+            const lastRead = read[message.channel] || 0;
+            return new Date(message.created_date || 0).getTime() > lastRead;
+          });
+          setCounts({ lore: lore.filter((entry) => entry.visibility !== "dm_only").length, docs: docs.filter((doc) => doc.visibility === "public").length, messages: newMessages.length, characters: characters.length, shops: shops.length });
+        });
       })
       .catch(() => {});
   }, []);
@@ -34,7 +45,7 @@ export default function Home() {
     { to: "/lore", icon: ScrollText, title: "Lore & Maps", count: counts.lore, label: "entries", desc: "Chronicle your world, maps, places, and events." },
     { to: "/characters", icon: User, title: "Characters", count: counts.characters, label: "sheets", desc: "Track your party's heroes, stats, and stories." },
     { to: "/shop", icon: Store, title: "Shop", count: counts.shops, label: "stores", desc: "Buy supplies, spend coin, and keep a DM receipt trail." },
-    { to: "/chat", icon: MessageSquare, title: "Correspondence", count: counts.messages, label: "messages", desc: "Speak to the assembly or whisper to one." },
+    { to: "/chat", icon: MessageSquare, title: "Correspondence", count: counts.messages, label: "new", desc: "New hall messages and whispers since you last checked." },
     { to: "/notes", icon: NotebookPen, title: "Grimoire", count: null, label: "", desc: "Private field notes, session logs, and secrets." },
   ];
 

@@ -40,10 +40,11 @@ export default function Broadcast() {
 
   const load = async () => {
     const [list, me] = await Promise.all([
-      appClient.entities.Broadcast.list("-updated_date", 1),
+      appClient.entities.Broadcast.list("-updated_date", 100),
       appClient.auth.me().catch(() => null),
     ]);
-    if (list[0]) setBroadcast(list[0]);
+    const reusable = list.find((item) => !item.archived) || list[0];
+    if (reusable) setBroadcast(reusable);
     if (me?.campaign_id) {
       const allUsers = await appClient.entities.User.filter({ campaign_id: me.campaign_id }, "display_name", 200).catch(() => []);
       setUsers(allUsers.filter((user) => user.email !== me.email && user.role !== "admin"));
@@ -55,7 +56,10 @@ export default function Broadcast() {
   }, []);
 
   const save = async (active = broadcast.active) => {
-    const payload = { ...broadcast, active };
+    const me = await appClient.auth.me().catch(() => null);
+    const all = await appClient.entities.Broadcast.list("-updated_date", 100);
+    await Promise.all(all.filter((item) => item.active && item.id !== broadcast.id).map((item) => appClient.entities.Broadcast.update(item.id, { active: false })));
+    const payload = { ...broadcast, active, campaign_id: me?.campaign_id, archived: false };
     const saved = broadcast.id ? await appClient.entities.Broadcast.update(broadcast.id, payload) : await appClient.entities.Broadcast.create(payload);
     setBroadcast(saved);
   };

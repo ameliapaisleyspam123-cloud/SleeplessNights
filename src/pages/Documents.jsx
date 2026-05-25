@@ -11,7 +11,8 @@ export default function Documents() {
 
   const load = async () => {
     const user = await appClient.auth.me();
-    setDocuments(await appClient.entities.Document.filter({ campaign_id: user.campaign_id }, "-updated_date", 200));
+    const docs = await appClient.entities.Document.filter({ campaign_id: user.campaign_id }, "-updated_date", 200);
+    setDocuments(docs.filter((doc) => doc.visibility === "public" || (doc.visibility === "private" && doc.allowed_emails?.includes(user.email))));
   };
 
   useEffect(() => {

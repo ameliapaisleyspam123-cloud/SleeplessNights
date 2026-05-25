@@ -6,6 +6,7 @@ export interface AppRecord {
 }
 
 export interface Broadcast extends AppRecord {
+  campaign_id?: string;
   active?: boolean;
   title?: string;
   message?: string;
@@ -13,6 +14,7 @@ export interface Broadcast extends AppRecord {
   video_url?: string;
   lore_entry_id?: string;
   target_emails?: string[];
+  archived?: boolean;
 }
 
 export interface Campaign extends AppRecord {
@@ -96,7 +98,7 @@ export interface CharacterSheet extends AppRecord {
   assigned_to_email?: string;
 }
 
-export type DocumentVisibility = "public" | "private";
+export type DocumentVisibility = "public" | "private" | "archived";
 
 export interface Document extends AppRecord {
   campaign_id?: string;

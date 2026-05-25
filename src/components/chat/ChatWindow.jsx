@@ -34,6 +34,9 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
     if (!key) return;
     const res = await appClient.functions.invoke("getMessages", { channel: key });
     setMessages(res.data?.messages || []);
+    const stored = JSON.parse(localStorage.getItem("chat_read") || "{}");
+    stored[key] = Date.now();
+    localStorage.setItem("chat_read", JSON.stringify(stored));
   };
 
   useEffect(() => {

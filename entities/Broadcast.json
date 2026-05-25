@@ -2,6 +2,10 @@
   "name": "Broadcast",
   "type": "object",
   "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Campaign this broadcast belongs to"
+    },
     "active": {
       "type": "boolean",
       "default": false
@@ -29,6 +33,10 @@
         "type": "string"
       },
       "description": "If set, only show to these player emails. Empty = show to all."
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false
     }
   },
   "required": []

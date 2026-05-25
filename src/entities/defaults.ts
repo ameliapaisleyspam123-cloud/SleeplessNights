@@ -13,6 +13,7 @@ import type {
 export const broadcastDefaults: Partial<Broadcast> = {
   active: false,
   target_emails: [],
+  archived: false,
 };
 
 export const campaignDefaults: Partial<Campaign> = {

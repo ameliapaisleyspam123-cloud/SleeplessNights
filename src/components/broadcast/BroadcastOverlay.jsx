@@ -35,14 +35,14 @@ export default function BroadcastOverlay({ user }) {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    appClient.entities.Broadcast.list("-updated_date", 1).then((list) => {
-      const active = list[0]?.active ? list[0] : null;
+    appClient.entities.Broadcast.list("-updated_date", 100).then((list) => {
+      const active = list.find((item) => item.active) || null;
       setBroadcast(active);
     });
 
     const unsubscribe = appClient.entities.Broadcast.subscribe(() => {
-      appClient.entities.Broadcast.list("-updated_date", 1).then((list) => {
-        const active = list[0]?.active ? list[0] : null;
+      appClient.entities.Broadcast.list("-updated_date", 100).then((list) => {
+        const active = list.find((item) => item.active) || null;
         setBroadcast(active);
         if (!active) setDismissed(false);
       });
@@ -53,7 +53,7 @@ export default function BroadcastOverlay({ user }) {
 
   if (!broadcast || dismissed) return null;
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.campaign_role === "dm";
   if (!isAdmin && broadcast.target_emails?.length > 0 && !broadcast.target_emails.includes(user?.email)) {
     return null;
   }

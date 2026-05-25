@@ -10,10 +10,19 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
   if (!entry) return null;
 
   const broadcast = async () => {
-    const existing = await appClient.entities.Broadcast.list("-created_date", 1);
-    const payload = { active: true, title: entry.title, message: entry.content, image_url: entry.image_url, lore_entry_id: entry.id };
-    if (existing[0]) await appClient.entities.Broadcast.update(existing[0].id, payload);
-    else await appClient.entities.Broadcast.create(payload);
+    const all = await appClient.entities.Broadcast.list("-updated_date", 100);
+    await Promise.all(all.filter((item) => item.active).map((item) => appClient.entities.Broadcast.update(item.id, { active: false })));
+    const user = await appClient.auth.me().catch(() => null);
+    await appClient.entities.Broadcast.create({
+      active: true,
+      archived: false,
+      campaign_id: user?.campaign_id,
+      title: entry.title,
+      message: entry.content,
+      image_url: entry.image_url,
+      lore_entry_id: entry.id,
+      target_emails: [],
+    });
     onOpenChange(false);
   };
 

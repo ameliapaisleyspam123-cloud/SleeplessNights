@@ -19,7 +19,8 @@
       "type": "string",
       "enum": [
         "public",
-        "private"
+        "private",
+        "archived"
       ],
       "default": "public",
       "description": "public = everyone, private = only specified users"
