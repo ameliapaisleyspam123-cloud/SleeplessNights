@@ -110,26 +110,31 @@ function normalizeStore(store) {
 async function readStoreAsync() {
   if (!supabase) return readStore();
 
-  const { data, error } = await supabase.from(SUPABASE_TABLE).select("entity,data");
-  if (error) {
-    console.warn("Supabase read failed; falling back to browser storage.", error);
+  try {
+    const { data, error } = await supabase.from(SUPABASE_TABLE).select("entity,data");
+    if (error) {
+      console.warn("Supabase read failed; falling back to browser storage.", error);
+      return readStore();
+    }
+
+    const store = emptyStore();
+    for (const row of data || []) {
+      if (ENTITY_NAMES.includes(row.entity) && row.data) store[row.entity].push(row.data);
+    }
+
+    const hasRemoteData = Object.values(store).some((records) => records.length > 0);
+    if (!hasRemoteData) {
+      const local = readStore();
+      await writeStoreAsync(local);
+      return local;
+    }
+
+    writeStore(store);
+    return store;
+  } catch (err) {
+    console.warn("Supabase read threw error; using local storage:", err);
     return readStore();
   }
-
-  const store = emptyStore();
-  for (const row of data || []) {
-    if (ENTITY_NAMES.includes(row.entity) && row.data) store[row.entity].push(row.data);
-  }
-
-  const hasRemoteData = Object.values(store).some((records) => records.length > 0);
-  if (!hasRemoteData) {
-    const local = readStore();
-    await writeStoreAsync(local);
-    return local;
-  }
-
-  writeStore(store);
-  return store;
 }
 
 async function writeStoreAsync(store) {
@@ -137,84 +142,72 @@ async function writeStoreAsync(store) {
   writeStore(normalized);
   if (!supabase) return normalized;
 
-  const rows = ENTITY_NAMES.flatMap((entity) =>
-    (normalized[entity] || []).map((record) => ({
-      id: recordKey(entity, record.id),
-      entity,
-      record_id: record.id,
-      data: record,
-      created_date: record.created_date || now(),
-      updated_date: record.updated_date || now(),
-    })),
-  );
+  try {
+    const rows = ENTITY_NAMES.flatMap((entity) =>
+      (normalized[entity] || []).map((record) => ({
+        id: recordKey(entity, record.id),
+        entity,
+        record_id: record.id,
+        data: record,
+        created_date: record.created_date || now(),
+        updated_date: record.updated_date || now(),
+      })),
+    );
 
-  if (rows.length === 0) return normalized;
-  const { error } = await supabase.from(SUPABASE_TABLE).upsert(rows, { onConflict: "id" });
-  if (error) {
-    console.error("Supabase writeStoreAsync error:", {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-      fullError: error,
-    });
-    throw error;
+    if (rows.length === 0) return normalized;
+    const { error } = await supabase.from(SUPABASE_TABLE).upsert(rows, { onConflict: "id" });
+    if (error) {
+      console.warn("Supabase writeStoreAsync failed; continuing with local storage only:", error);
+    }
+  } catch (err) {
+    console.warn("Supabase writeStoreAsync threw error; continuing with local storage only:", err);
   }
   return normalized;
 }
 
 async function clearRemoteStore() {
   if (!supabase) return;
-  const { error } = await supabase.from(SUPABASE_TABLE).delete().neq("id", "");
-  if (error) {
-    console.error("Supabase clearRemoteStore error:", {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-      fullError: error,
-    });
-    throw error;
+  try {
+    const { error } = await supabase.from(SUPABASE_TABLE).delete().neq("id", "");
+    if (error) {
+      console.warn("Supabase clearRemoteStore failed:", error);
+    }
+  } catch (err) {
+    console.warn("Supabase clearRemoteStore threw error:", err);
   }
 }
 
 async function upsertRemoteRecord(entity, record) {
   if (!supabase) return;
-  const { error } = await supabase.from(SUPABASE_TABLE).upsert(
-    {
-      id: recordKey(entity, record.id),
-      entity,
-      record_id: record.id,
-      data: record,
-      created_date: record.created_date || now(),
-      updated_date: record.updated_date || now(),
-    },
-    { onConflict: "id" },
-  );
-  if (error) {
-    console.error("Supabase upsertRemoteRecord error for entity:", entity, {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-      fullError: error,
-    });
-    throw error;
+  try {
+    const { error } = await supabase.from(SUPABASE_TABLE).upsert(
+      {
+        id: recordKey(entity, record.id),
+        entity,
+        record_id: record.id,
+        data: record,
+        created_date: record.created_date || now(),
+        updated_date: record.updated_date || now(),
+      },
+      { onConflict: "id" },
+    );
+    if (error) {
+      console.warn("Supabase upsert for", entity, "failed; continuing with local storage only:", error);
+    }
+  } catch (err) {
+    console.warn("Supabase upsert for", entity, "threw error; continuing with local storage only:", err);
   }
 }
 
 async function deleteRemoteRecord(entity, recordId) {
   if (!supabase) return;
-  const { error } = await supabase.from(SUPABASE_TABLE).delete().eq("id", recordKey(entity, recordId));
-  if (error) {
-    console.error("Supabase deleteRemoteRecord error:", {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-      fullError: error,
-    });
-    throw error;
+  try {
+    const { error } = await supabase.from(SUPABASE_TABLE).delete().eq("id", recordKey(entity, recordId));
+    if (error) {
+      console.warn("Supabase delete failed:", error);
+    }
+  } catch (err) {
+    console.warn("Supabase delete threw error:", err);
   }
 }
 
