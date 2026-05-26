@@ -155,7 +155,7 @@ function LayoutInner() {
 
   return (
     <div className="h-screen overflow-hidden parchment flex">
-      <aside className={`hidden lg:flex shrink-0 flex-col border-r border-border/60 bg-card/40 backdrop-blur-sm transition-all duration-300 sticky top-0 h-screen overflow-hidden ${collapsed ? "w-16" : "w-64"}`}>
+      <aside className={`hidden lg:flex shrink-0 flex-col border-r border-border/60 bg-card/40 backdrop-blur-sm transition-all duration-300 sticky top-0 h-screen overflow-hidden ${collapsed ? "w-[80px]" : "w-[280px]"}`}>
         <SidebarContent {...sidebarProps} />
       </aside>
 
@@ -284,29 +284,33 @@ function SidebarContent({
           </div>
         )}
         {collapsed && <div className="w-8 h-8 rounded-sm bg-primary text-primary-foreground flex items-center justify-center font-display text-lg">⚔</div>}
-        <div className={`hidden lg:flex shrink-0 ${collapsed ? "flex-col gap-2 ml-0" : "items-center gap-2 ml-2"}`}>
-          {isAdmin && (
-            <button onClick={onCampaignSettings} className="text-muted-foreground hover:text-accent transition-colors" title="Campaign Settings">
-              <Settings className="w-4 h-4" />
-            </button>
-          )}
-          <button onClick={onThemeSettings} className="text-muted-foreground hover:text-accent transition-colors" title="Colour Scheme">
-            <Palette className="w-4 h-4" />
-          </button>
-          <button onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground transition-colors" title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
-            {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-          </button>
-        </div>
+        <button onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground transition-colors" title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+          {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+        </button>
       </div>
 
       {!collapsed && (
-        <div className={`mx-3 mt-3 mb-1 px-3 py-2 rounded-sm flex items-center gap-2 shrink-0 ${isAdmin ? "bg-accent/10 border border-accent/30" : "bg-secondary border border-border"}`}>
-          {isAdmin ? <Shield className="w-3.5 h-3.5 text-accent shrink-0" /> : <Sword className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-          <span className={`text-[10px] uppercase tracking-widest font-medium ${isAdmin ? "text-accent" : "text-muted-foreground"}`}>
-            {isAdmin ? "Gamemaster" : "Player"}
-          </span>
-        </div>
+        <>
+          <div className={`mx-3 mt-3 mb-1 px-3 py-2 rounded-sm flex items-center gap-2 shrink-0 ${isAdmin ? "bg-accent/10 border border-accent/30" : "bg-secondary border border-border"}`}>
+            {isAdmin ? <Shield className="w-3.5 h-3.5 text-accent shrink-0" /> : <Sword className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+            <span className={`text-[10px] uppercase tracking-widest font-medium ${isAdmin ? "text-accent" : "text-muted-foreground"}`}>
+              {isAdmin ? "Gamemaster" : "Player"}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 px-4 py-2 mb-2">
+            {isAdmin && (
+              <button onClick={onCampaignSettings} className="text-muted-foreground hover:text-accent transition-colors" title="Campaign Settings">
+                <Settings className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={onThemeSettings} className="text-muted-foreground hover:text-accent transition-colors" title="Colour Scheme">
+              <Palette className="w-4 h-4" />
+            </button>
+          </div>
+        </>
       )}
+
       {collapsed && isAdmin && (
         <div className="flex justify-center mt-3 mb-1 shrink-0">
           <Shield className="w-4 h-4 text-accent" />
@@ -358,7 +362,7 @@ function SidebarContent({
           {!collapsed && <span>Switch Campaign</span>}
         </Link>
         {isSuperuser && (
-          <button onClick={onToggleDmOverride} className={`flex items-center gap-2 text-xs transition-colors mb-1 px-1 w-full ${collapsed ? "justify-center" : ""} ${dmOverride ? "text-accent" : "text-muted-foreground hover:text-accent"}`} title="Toggle DM View">
+          <button onClick={onToggleDmOverride} className={`flex items-center gap-2 text-xs transition-colors mb-1 px-1 w-full ${collapsed ? "justify-center" : ""} ${dmOverride ? "text-accent" : "text-muted-foreground hover:text-accent"}`}>
             <Shield className="w-3.5 h-3.5 shrink-0" />
             {!collapsed && <span>{dmOverride ? "DM View: On" : "DM View: Off"}</span>}
           </button>
