@@ -150,14 +150,32 @@ async function writeStoreAsync(store) {
 
   if (rows.length === 0) return normalized;
   const { error } = await supabase.from(SUPABASE_TABLE).upsert(rows, { onConflict: "id" });
-  if (error) throw error;
+  if (error) {
+    console.error("Supabase writeStoreAsync error:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      fullError: error,
+    });
+    throw error;
+  }
   return normalized;
 }
 
 async function clearRemoteStore() {
   if (!supabase) return;
   const { error } = await supabase.from(SUPABASE_TABLE).delete().neq("id", "");
-  if (error) throw error;
+  if (error) {
+    console.error("Supabase clearRemoteStore error:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      fullError: error,
+    });
+    throw error;
+  }
 }
 
 async function upsertRemoteRecord(entity, record) {
@@ -173,13 +191,31 @@ async function upsertRemoteRecord(entity, record) {
     },
     { onConflict: "id" },
   );
-  if (error) throw error;
+  if (error) {
+    console.error("Supabase upsertRemoteRecord error for entity:", entity, {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      fullError: error,
+    });
+    throw error;
+  }
 }
 
 async function deleteRemoteRecord(entity, recordId) {
   if (!supabase) return;
   const { error } = await supabase.from(SUPABASE_TABLE).delete().eq("id", recordKey(entity, recordId));
-  if (error) throw error;
+  if (error) {
+    console.error("Supabase deleteRemoteRecord error:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      fullError: error,
+    });
+    throw error;
+  }
 }
 
 function normalizeImportPayload(payload) {
