@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Archive, Coins, Plus, ReceiptText, Save, ShoppingBag, ShoppingCart, Store, Trash2 } from "lucide-react";
+import { Archive, Coins, Plus, ReceiptText, Save, ShoppingBag, ShoppingCart, Trash2 } from "lucide-react";
+import { PRESET_SHOPS } from "@/data/presetShops";
 
 const COINS = [
   ["pp", "PP", 1000],
@@ -14,15 +15,6 @@ const COINS = [
   ["ep", "EP", 50],
   ["sp", "SP", 10],
   ["cp", "CP", 1],
-];
-
-const DEFAULT_ITEMS = [
-  { name: "Potion of Healing", description: "Restores 2d4 + 2 hit points.", quantity: 6, gp: 50 },
-  { name: "Rations (1 day)", description: "Trail food for one adventurer.", quantity: 20, sp: 5 },
-  { name: "Torch", description: "Burns for 1 hour.", quantity: 30, cp: 1 },
-  { name: "Rope, hempen (50 ft)", description: "Standard adventuring rope.", quantity: 8, gp: 1 },
-  { name: "Arrows (20)", description: "A bundle of ammunition.", quantity: 12, gp: 1 },
-  { name: "Antitoxin", description: "Advantage on saves against poison for 1 hour.", quantity: 3, gp: 50 },
 ];
 
 const emptyShop = () => ({ name: "", description: "", status: "open", items: [], purchase_log: [] });
@@ -133,12 +125,23 @@ export default function Shop() {
     if (!stillValid) setSelectedCharacterId(availableCharacters[0]?.id || "");
   }, [availableCharacters, selectedCharacterId, user]);
 
-  const startNewShop = (withDefaults = false) => {
+  const startNewShop = () => {
     setEditing({
       ...emptyShop(),
-      name: withDefaults ? "General Goods" : "",
-      description: withDefaults ? "A dependable shop stocked with everyday adventuring supplies." : "",
-      items: withDefaults ? normalizeItems(DEFAULT_ITEMS) : [],
+      name: "",
+      description: "",
+      items: [],
+    });
+  };
+
+  const startPresetShop = (presetId) => {
+    const preset = PRESET_SHOPS.find((shop) => shop.id === presetId);
+    if (!preset) return;
+    setEditing({
+      ...emptyShop(),
+      name: preset.name,
+      description: preset.description,
+      items: normalizeItems(preset.items),
     });
   };
 
@@ -226,10 +229,19 @@ export default function Shop() {
         action={
           isAdmin ? (
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => startNewShop(true)}>
-                <Store className="w-4 h-4" /> Default Store
-              </Button>
-              <Button onClick={() => startNewShop(false)}>
+              <div className="w-56">
+                <Select value="" onValueChange={startPresetShop}>
+                  <SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Preset Shop...</SelectItem>
+                      {PRESET_SHOPS.map((preset) => (
+                        <SelectItem key={preset.id} value={preset.id}>{preset.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </SelectTrigger>
+                </Select>
+              </div>
+              <Button onClick={startNewShop}>
                 <Plus className="w-4 h-4" /> New Store
               </Button>
             </div>

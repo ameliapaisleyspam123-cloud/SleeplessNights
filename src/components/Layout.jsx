@@ -148,16 +148,14 @@ function LayoutInner() {
     onEditName: () => setNameModalOpen(true),
     onCampaignSettings: () => setCampaignModalOpen(true),
     onThemeSettings: () => setThemeModalOpen(true),
-    splitOpen,
-    onToggleSplit: () => setSplitOpen((s) => !s),
     isSuperuser,
     dmOverride,
     onToggleDmOverride: toggleDmOverride,
   };
 
   return (
-    <div className="min-h-screen parchment flex">
-      <aside className={`hidden lg:flex shrink-0 flex-col border-r border-border/60 bg-card/40 backdrop-blur-sm transition-all duration-300 sticky top-0 h-screen ${collapsed ? "w-16" : "w-64"}`}>
+    <div className="h-screen overflow-hidden parchment flex">
+      <aside className={`hidden lg:flex shrink-0 flex-col border-r border-border/60 bg-card/40 backdrop-blur-sm transition-all duration-300 sticky top-0 h-screen overflow-hidden ${collapsed ? "w-16" : "w-64"}`}>
         <SidebarContent {...sidebarProps} />
       </aside>
 
@@ -180,9 +178,19 @@ function LayoutInner() {
                 <div className="w-7 h-7 rounded-sm bg-primary text-primary-foreground flex items-center justify-center font-display text-lg shrink-0">⚔</div>
                 <span className="font-display text-base truncate">{campaign?.name || "The Grimoire"}</span>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
-                <X className="w-5 h-5" />
-              </Button>
+              <div className="flex items-center gap-1">
+                {isAdmin && (
+                  <Button variant="ghost" size="icon" onClick={() => setCampaignModalOpen(true)} title="Campaign Settings">
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" onClick={() => setThemeModalOpen(true)} title="Colour Scheme">
+                  <Palette className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto thin-scroll">
               <SidebarContent {...sidebarProps} collapsed={false} onToggleCollapse={() => {}} />
@@ -213,17 +221,30 @@ function LayoutInner() {
 
       <BroadcastOverlay user={user} />
       {!isAdmin && <CombatTurnIndicator currentUser={user} />}
-      <button
-        type="button"
-        onClick={() => setDiceOpen((open) => !open)}
-        className={`fixed bottom-4 right-4 z-50 h-11 px-4 rounded-sm border shadow-lg flex items-center gap-2 text-sm font-medium transition-all ${
-          diceOpen ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card text-foreground hover:border-accent/70 hover:text-accent"
-        }`}
-        title="Open dice roller"
-      >
-        <Dices className="w-4 h-4" />
-        Dice
-      </button>
+      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setSplitOpen((open) => !open)}
+          className={`hidden lg:flex h-11 px-4 rounded-sm border shadow-lg items-center gap-2 text-sm font-medium transition-all ${
+            splitOpen ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card text-foreground hover:border-accent/70 hover:text-accent"
+          }`}
+          title="Toggle initiative tracker"
+        >
+          <Columns className="w-4 h-4" />
+          Initiative
+        </button>
+        <button
+          type="button"
+          onClick={() => setDiceOpen((open) => !open)}
+          className={`h-11 px-4 rounded-sm border shadow-lg flex items-center gap-2 text-sm font-medium transition-all ${
+            diceOpen ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card text-foreground hover:border-accent/70 hover:text-accent"
+          }`}
+          title="Open dice roller"
+        >
+          <Dices className="w-4 h-4" />
+          Dice
+        </button>
+      </div>
       {diceOpen && (
         <div className="fixed bottom-20 right-4 z-50 w-[min(22rem,calc(100vw-2rem))] h-[min(38rem,calc(100vh-6rem))] overflow-hidden rounded-sm border border-border bg-card shadow-2xl sculk-glow">
           <DiceRoller onClose={() => setDiceOpen(false)} />
@@ -246,15 +267,13 @@ function SidebarContent({
   onEditName,
   onCampaignSettings,
   onThemeSettings,
-  splitOpen,
-  onToggleSplit,
   isSuperuser,
   dmOverride,
   onToggleDmOverride,
 }) {
   return (
-    <div className="flex flex-col h-full">
-      <div className={`hidden lg:flex items-center border-b border-border/60 h-16 shrink-0 ${collapsed ? "justify-center px-2" : "justify-between px-4"}`}>
+    <div className="flex flex-col h-full min-h-0">
+      <div className={`hidden lg:flex items-center border-b border-border/60 shrink-0 ${collapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"}`}>
         {!collapsed && (
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-sm bg-primary text-primary-foreground flex items-center justify-center font-display text-lg shrink-0">⚔</div>
@@ -265,9 +284,19 @@ function SidebarContent({
           </div>
         )}
         {collapsed && <div className="w-8 h-8 rounded-sm bg-primary text-primary-foreground flex items-center justify-center font-display text-lg">⚔</div>}
-        <button onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground transition-colors hidden lg:flex shrink-0 ml-1" title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
-          {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-        </button>
+        <div className={`hidden lg:flex shrink-0 ${collapsed ? "flex-col gap-2 ml-0" : "items-center gap-2 ml-2"}`}>
+          {isAdmin && (
+            <button onClick={onCampaignSettings} className="text-muted-foreground hover:text-accent transition-colors" title="Campaign Settings">
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
+          <button onClick={onThemeSettings} className="text-muted-foreground hover:text-accent transition-colors" title="Colour Scheme">
+            <Palette className="w-4 h-4" />
+          </button>
+          <button onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground transition-colors" title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
 
       {!collapsed && (
@@ -284,7 +313,7 @@ function SidebarContent({
         </div>
       )}
 
-      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-3 space-y-0.5">
         {nav.map((item) => (
           <NavLink
             key={item.to}
@@ -308,7 +337,7 @@ function SidebarContent({
         ))}
       </nav>
 
-      <div className={`border-t border-border/60 p-3 shrink-0 ${collapsed ? "flex flex-col items-center gap-2" : ""}`}>
+      <div className={`mt-auto border-t border-border/60 bg-card/30 p-3 shrink-0 ${collapsed ? "flex flex-col items-center gap-2" : ""}`}>
         {!collapsed && user && (
           <div className="mb-2 px-1">
             <div className="flex items-center gap-1 group">
@@ -323,23 +352,6 @@ function SidebarContent({
             </div>
           </div>
         )}
-
-        {isAdmin && (
-          <button onClick={onCampaignSettings} className={`flex items-center gap-2 text-xs text-muted-foreground hover:text-accent transition-colors mb-1 px-1 w-full ${collapsed ? "justify-center" : ""}`} title="Campaign Settings">
-            <Settings className="w-3.5 h-3.5 shrink-0" />
-            {!collapsed && <span>Campaign Settings</span>}
-          </button>
-        )}
-
-        <button onClick={onThemeSettings} className={`flex items-center gap-2 text-xs text-muted-foreground hover:text-accent transition-colors mb-1 px-1 w-full ${collapsed ? "justify-center" : ""}`} title="Colour Scheme">
-          <Palette className="w-3.5 h-3.5 shrink-0" />
-          {!collapsed && <span>Colour Scheme</span>}
-        </button>
-
-        <button onClick={onToggleSplit} className={`flex items-center gap-2 text-xs transition-colors mb-1 px-1 w-full ${collapsed ? "justify-center" : ""} ${splitOpen ? "text-accent" : "text-muted-foreground hover:text-accent"}`} title="Toggle Initiative Split-Screen">
-          <Columns className="w-3.5 h-3.5 shrink-0" />
-          {!collapsed && <span>{splitOpen ? "Close Initiative" : "Initiative Split"}</span>}
-        </button>
 
         <Link to="/campaign" className={`flex items-center gap-2 text-xs text-muted-foreground hover:text-accent transition-colors mb-1 px-1 ${collapsed ? "justify-center" : ""}`} title="Switch Campaign">
           <Swords className="w-3.5 h-3.5 shrink-0" />
