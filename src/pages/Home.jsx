@@ -54,6 +54,7 @@ export default function Home() {
     { to: "/broadcast", icon: Radio, title: "Gamemaster Override", count: null, label: "", desc: "Take command of every viewer's screen.", featured: true },
   ];
   const tiles = isAdmin ? [...baseTiles, ...dmTiles] : baseTiles;
+  const tileGridClass = isAdmin ? "grid sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-5" : "grid sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5 max-w-5xl mx-auto";
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-10 py-8 md:py-16">
@@ -75,7 +76,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-5">
+      <div className={tileGridClass}>
         {tiles.map((tile) => (
           <Link
             key={tile.to}
