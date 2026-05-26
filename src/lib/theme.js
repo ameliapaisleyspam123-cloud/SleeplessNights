@@ -20,7 +20,7 @@ export const THEME_PRESETS = [
   {
     id: "sculk",
     name: "Sleepless Sculk",
-    description: "The current deep teal campaign look.",
+    description: "Deep teal, glowing cyan, and shadowed stone.",
     colors: {
       background: "#06191f",
       foreground: "#d8ecea",
@@ -161,4 +161,3 @@ export function applyTheme(theme = getStoredTheme()) {
   }
   root.dataset.theme = resolved.id;
 }
-

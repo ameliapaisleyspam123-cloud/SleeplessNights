@@ -125,7 +125,7 @@ export default function Lore() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search lore..." className="pl-9 h-10 bg-background/60" />
             </div>
-            <div className="flex gap-2 overflow-x-auto thin-scroll pb-1 xl:pb-0">
+            <div className="flex flex-wrap gap-2 pb-1 xl:pb-0">
               {CATEGORIES.map((item) => (
                 <button
                   key={item}
@@ -142,7 +142,7 @@ export default function Lore() {
           </div>
 
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex gap-2 overflow-x-auto thin-scroll">
+            <div className="flex flex-wrap gap-2 min-w-0">
               <button
                 type="button"
                 onClick={() => setFolder("all")}

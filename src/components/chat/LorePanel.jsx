@@ -26,12 +26,12 @@ const STAT_MOD = (v) => Math.floor((v - 10) / 2);
 const fmtMod = (m) => (m >= 0 ? `+${m}` : `${m}`);
 
 const CATEGORY_META = {
-  map: { icon: MapIcon, label: "Map", color: "text-blue-400" },
-  character: { icon: User, label: "Character", color: "text-cyan-400" },
-  place: { icon: Castle, label: "Place", color: "text-teal-400" },
+  map: { icon: MapIcon, label: "Map", color: "text-accent" },
+  character: { icon: User, label: "Character", color: "text-accent" },
+  place: { icon: Castle, label: "Place", color: "text-accent" },
   event: { icon: Sparkles, label: "Event", color: "text-accent" },
-  artifact: { icon: Swords, label: "Artifact", color: "text-indigo-400" },
-  religion: { icon: Sparkles, label: "Religion", color: "text-sky-400" },
+  artifact: { icon: Swords, label: "Artifact", color: "text-accent" },
+  religion: { icon: Sparkles, label: "Religion", color: "text-accent" },
   other: { icon: Star, label: "Other", color: "text-muted-foreground" },
 };
 
@@ -257,7 +257,7 @@ function CharacterCard({ sheet }) {
           <div className="w-10 h-10 rounded-sm bg-secondary flex items-center justify-center shrink-0 font-display text-lg">{sheet.name?.[0] || "?"}</div>
         )}
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-cyan-400 flex items-center gap-1">
+          <div className="text-[10px] uppercase tracking-widest text-accent flex items-center gap-1">
             <User className="w-2.5 h-2.5" />
             Character
           </div>
@@ -288,7 +288,7 @@ function CharacterCard({ sheet }) {
               <div className="flex items-center gap-1">
                 <Zap className="w-3 h-3 text-accent" />
                 <button onClick={() => changeHp(-1)} className="w-5 h-5 rounded-sm border border-border bg-secondary/60 hover:bg-destructive/20 hover:border-destructive/50 text-muted-foreground hover:text-destructive transition-colors text-sm leading-none flex items-center justify-center">-</button>
-                <span className={`min-w-[2.5rem] text-center font-medium ${hp === 0 ? "text-destructive" : hp < sheet.hp_max * 0.33 ? "text-red-500" : hp < sheet.hp_max * 0.66 ? "text-yellow-500" : "text-green-500"}`}>
+                <span className={`min-w-[2.5rem] text-center font-medium ${hp === 0 ? "text-destructive" : hp < sheet.hp_max * 0.33 ? "text-destructive" : hp < sheet.hp_max * 0.66 ? "text-primary" : "text-accent"}`}>
                   {hp}/{sheet.hp_max}
                 </span>
                 <button onClick={() => changeHp(1)} className="w-5 h-5 rounded-sm border border-border bg-secondary/60 hover:bg-accent/20 hover:border-accent/50 text-muted-foreground hover:text-accent transition-colors text-sm leading-none flex items-center justify-center">+</button>
@@ -297,15 +297,15 @@ function CharacterCard({ sheet }) {
             <div className="flex items-center gap-2 text-[9px] text-accent flex-wrap">
               <span className="uppercase tracking-widest text-muted-foreground">Death Saves</span>
               <div className="flex items-center gap-1">
-                <span className="text-green-400">S</span>
+                <span className="text-accent">S</span>
                 {[...Array(3)].map((_, i) => (
-                  <button key={`success-${i}`} onClick={() => updateDeathSave("success", i < deathSaves.successes ? -1 : 1)} className={`w-4 h-4 rounded-full border-2 transition-colors ${i < deathSaves.successes ? "bg-green-500/30 border-green-500" : "border-border hover:border-green-500/50"}`} />
+                  <button key={`success-${i}`} onClick={() => updateDeathSave("success", i < deathSaves.successes ? -1 : 1)} className={`w-4 h-4 rounded-full border-2 transition-colors ${i < deathSaves.successes ? "bg-accent/30 border-accent" : "border-border hover:border-accent/50"}`} />
                 ))}
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-red-400">F</span>
+                <span className="text-destructive">F</span>
                 {[...Array(3)].map((_, i) => (
-                  <button key={`failure-${i}`} onClick={() => updateDeathSave("failure", i < deathSaves.failures ? -1 : 1)} className={`w-4 h-4 rounded-full border-2 transition-colors ${i < deathSaves.failures ? "bg-red-500/30 border-red-500" : "border-border hover:border-red-500/50"}`} />
+                  <button key={`failure-${i}`} onClick={() => updateDeathSave("failure", i < deathSaves.failures ? -1 : 1)} className={`w-4 h-4 rounded-full border-2 transition-colors ${i < deathSaves.failures ? "bg-destructive/30 border-destructive" : "border-border hover:border-destructive/50"}`} />
                 ))}
               </div>
               {savingDeathSaves && <span className="text-muted-foreground">Saving...</span>}
@@ -396,7 +396,7 @@ export default function LorePanel({ onClose }) {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
-        <div className="flex gap-1 min-w-0 overflow-x-auto thin-scroll">
+        <div className="flex flex-wrap gap-1 min-w-0">
           <button onClick={() => setMainTab("lore")} className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm transition-colors whitespace-nowrap ${mainTab === "lore" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
             <ScrollText className="w-3.5 h-3.5" /> Lore & Maps
           </button>
@@ -426,7 +426,7 @@ export default function LorePanel({ onClose }) {
               <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search..." className="pl-8 h-8 text-xs" />
             </div>
             {mainTab === "lore" && (
-              <div className="flex gap-1 overflow-x-auto thin-scroll">
+              <div className="flex flex-wrap gap-1">
                 {cats.map((c) => (
                   <button
                     key={c}

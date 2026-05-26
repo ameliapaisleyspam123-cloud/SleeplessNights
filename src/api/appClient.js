@@ -102,22 +102,29 @@ function normalizeImportPayload(payload) {
 
 function currentSession() {
   const store = readStore();
-  const savedEmail = localStorage.getItem(SESSION_KEY);
+  const savedEmail = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
   if (savedEmail) {
     const found = store.User.find((u) => u.email === savedEmail);
     if (found) return found;
   }
-  const user = store.User[0];
-  if (user) localStorage.setItem(SESSION_KEY, user.email);
-  return user;
+  return null;
 }
 
 function findUserByEmail(store, email) {
   return store.User.find((user) => user.email?.toLowerCase() === email?.toLowerCase());
 }
 
-function saveUserSession(email) {
-  if (email) localStorage.setItem(SESSION_KEY, email);
+function saveUserSession(email, keepSignedIn = true) {
+  if (!email) return;
+  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_KEY);
+  const storage = keepSignedIn ? localStorage : sessionStorage;
+  storage.setItem(SESSION_KEY, email);
+}
+
+function ensurePasswordMatches(user, password) {
+  if (!user.password) return true;
+  return user.password === password;
 }
 
 function sortRecords(records, sort) {
@@ -241,34 +248,46 @@ export const appClient = {
       if (!user) throw new Error("No local user exists");
       return user;
     },
-    async login({ email, full_name, display_name }) {
+    async createAccount({ email, password, full_name, display_name, keepSignedIn = true }) {
+      const store = readStore();
+      const cleanEmail = email.trim().toLowerCase();
+      if (!cleanEmail) throw new Error("Email is required");
+      if (!password?.trim()) throw new Error("Password is required");
+      if (findUserByEmail(store, cleanEmail)) throw new Error("An account already exists for this email");
+      const user = {
+        id: id("user"),
+        email: cleanEmail,
+        password,
+        full_name: full_name || display_name || cleanEmail,
+        display_name: display_name || full_name || cleanEmail,
+        role: "user",
+        campaign_role: "",
+        created_date: now(),
+        updated_date: now(),
+      };
+      store.User.push(user);
+      writeStore(store);
+      saveUserSession(cleanEmail, keepSignedIn);
+      notify("User", { type: "create", data: user });
+      return user;
+    },
+    async login({ email, password = "", full_name, display_name, keepSignedIn = true }) {
       const store = readStore();
       const cleanEmail = email.trim().toLowerCase();
       if (!cleanEmail) throw new Error("Email is required");
       let user = findUserByEmail(store, cleanEmail);
-      if (user) {
-        user = {
-          ...user,
-          full_name: full_name || user.full_name || display_name || cleanEmail,
-          display_name: display_name || full_name || user.display_name || cleanEmail,
-          updated_date: now(),
-        };
-        store.User = store.User.map((existing) => (existing.id === user.id ? user : existing));
-      } else {
-        user = {
-          id: id("user"),
-          email: cleanEmail,
-          full_name: full_name || display_name || cleanEmail,
-          display_name: display_name || full_name || cleanEmail,
-          role: "user",
-          campaign_role: "",
-          created_date: now(),
-          updated_date: now(),
-        };
-        store.User.push(user);
-      }
+      if (!user) throw new Error("No account exists for this email");
+      if (!ensurePasswordMatches(user, password)) throw new Error("Invalid email or password");
+      user = {
+        ...user,
+        full_name: full_name || user.full_name || display_name || cleanEmail,
+        display_name: display_name || full_name || user.display_name || cleanEmail,
+        password: user.password || password || user.password,
+        updated_date: now(),
+      };
+      store.User = store.User.map((existing) => (existing.id === user.id ? user : existing));
       writeStore(store);
-      saveUserSession(cleanEmail);
+      saveUserSession(cleanEmail, keepSignedIn);
       notify("User", { type: "update", data: user });
       return user;
     },
@@ -277,7 +296,17 @@ export const appClient = {
       return entities.User.update(user.id, patch);
     },
     async switchCampaign({ email, display_name, campaign_id, campaign_role, role }) {
-      const user = await this.login({ email, display_name, full_name: display_name });
+      const store = readStore();
+      const cleanEmail = email.trim().toLowerCase();
+      let user = findUserByEmail(store, cleanEmail);
+      if (!user) {
+        user = await this.createAccount({
+          email: cleanEmail,
+          password: id("password"),
+          display_name,
+          full_name: display_name,
+        });
+      }
       const updated = await entities.User.update(user.id, {
         display_name: display_name || user.display_name,
         full_name: display_name || user.full_name,
@@ -285,10 +314,11 @@ export const appClient = {
         campaign_role,
         role,
       });
-      saveUserSession(updated.email);
+      saveUserSession(updated.email, Boolean(localStorage.getItem(SESSION_KEY)));
       return updated;
     },
     logout() {
+      sessionStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(SESSION_KEY);
       window.location.assign("/campaign");
     },

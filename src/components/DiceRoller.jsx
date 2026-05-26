@@ -67,7 +67,14 @@ export default function DiceRoller({ onClose }) {
     setTimeout(() => setRolling(false), 700);
   };
 
+  const clearHistory = () => {
+    setResults([]);
+    setLastRolled(null);
+    setRolling(false);
+  };
+
   const latestGroup = results[0];
+  const previousResults = results.slice(1);
 
   return (
     <div className="flex flex-col h-full">
@@ -155,28 +162,36 @@ export default function DiceRoller({ onClose }) {
         </div>
       )}
 
-      {results.length > 0 && (
-        <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">History</div>
-            <button onClick={() => setResults([])} className="text-[10px] text-muted-foreground hover:text-destructive transition-colors">
-              Clear
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roll History</div>
+            <button
+              onClick={clearHistory}
+              disabled={results.length === 0}
+              className="text-[10px] text-muted-foreground hover:text-destructive transition-colors disabled:opacity-40 disabled:hover:text-muted-foreground"
+            >
+              Clear History
             </button>
           </div>
           <div className="flex-1 overflow-y-auto thin-scroll px-3 py-2">
-            <div className="space-y-1">
-              {results.slice(1).map((group) => (
+            {previousResults.length === 0 ? (
+              <div className="h-full min-h-24 flex items-center justify-center text-center text-xs text-muted-foreground">
+                Previous rolls will appear here.
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {previousResults.map((group) => (
                 <div key={group.id} className="flex items-center justify-between gap-3 text-xs px-2 py-1.5 rounded bg-secondary/30 text-muted-foreground">
                   <span>{group.count > 1 ? `${group.count}d${group.sides}` : `d${group.sides}`}</span>
                   <span className="font-medium text-foreground tabular-nums">
                     {group.count > 1 ? `${group.rolls.map((r) => r.value).join(" + ")} = ${group.total}` : group.total}
                   </span>
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

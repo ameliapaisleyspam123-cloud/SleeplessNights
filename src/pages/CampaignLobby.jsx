@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, Check, Copy, Dices, RefreshCw, Shield, Swords } from "lucide-react";
+import { ArrowRight, Check, Copy, Dices, LogIn, RefreshCw, Shield, Swords, UserPlus } from "lucide-react";
 
 const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -57,10 +57,14 @@ export default function CampaignLobby() {
   const [user, setUser] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [mode, setMode] = useState("join");
+  const [accountMode, setAccountMode] = useState("create");
   const [campaignName, setCampaignName] = useState("Sleepless Nights");
   const [description, setDescription] = useState("");
   const [displayName, setDisplayName] = useState("Player");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [joinCode, setJoinCode] = useState("");
   const [dmCode, setDmCode] = useState(() => makeCode());
   const [playerCode, setPlayerCode] = useState(() => makeCode());
@@ -73,6 +77,7 @@ export default function CampaignLobby() {
     if (me) {
       setEmail(me.email || "");
       setDisplayName(me.display_name || me.full_name || "Player");
+      setAccountMode("signed-in");
     }
   };
 
@@ -80,21 +85,70 @@ export default function CampaignLobby() {
     load();
   }, []);
 
-  const activeEmail = email.trim().toLowerCase() || user?.email || "";
+  const activeEmail = user?.email || "";
   const yourCampaigns = useMemo(() => {
-    if (!activeEmail) return campaigns;
+    if (!activeEmail) return [];
     return campaigns.filter((campaign) => campaign.dm_email === activeEmail || campaign.player_emails?.includes(activeEmail) || campaign.id === user?.campaign_id);
   }, [activeEmail, campaigns, user]);
 
   const loginDetails = () => ({
-    email: email.trim().toLowerCase(),
-    display_name: displayName.trim() || email.trim().toLowerCase(),
+    email: user?.email || email.trim().toLowerCase(),
+    display_name: displayName.trim() || user?.display_name || user?.full_name || email.trim().toLowerCase(),
   });
+
+  const handleAccountSubmit = async (event) => {
+    event.preventDefault();
+    setMessage("");
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = displayName.trim() || cleanEmail;
+
+    if (!cleanEmail) {
+      setMessage("Enter an email for your account.");
+      return;
+    }
+
+    try {
+      const nextUser =
+        accountMode === "create"
+          ? await appClient.auth.createAccount({
+              email: cleanEmail,
+              password,
+              full_name: cleanName,
+              display_name: cleanName,
+              keepSignedIn,
+            })
+          : await appClient.auth.login({
+              email: cleanEmail,
+              password,
+              full_name: cleanName,
+              display_name: cleanName,
+              keepSignedIn,
+            });
+
+      setUser(nextUser);
+      setDisplayName(nextUser.display_name || nextUser.full_name || cleanName);
+      setPassword("");
+      setConfirmPassword("");
+      setAccountMode("signed-in");
+      await load();
+    } catch (error) {
+      setMessage(error.message || "Something went wrong with your account.");
+    }
+  };
+
+  const createAccount = async (event) => {
+    if (accountMode === "create" && password !== confirmPassword) {
+      event.preventDefault();
+      setMessage("Passwords need to match.");
+      return;
+    }
+    await handleAccountSubmit(event);
+  };
 
   const enterCampaign = async (campaign, role) => {
     const login = loginDetails();
     if (!login.email) {
-      setMessage("Enter your email first.");
+      setMessage("Create or sign in to an account first.");
       return;
     }
     await appClient.auth.switchCampaign({
@@ -116,7 +170,7 @@ export default function CampaignLobby() {
     setMessage("");
     const login = loginDetails();
     if (!login.email) {
-      setMessage("Enter an email for the Dungeon Master login.");
+      setMessage("Create or sign in to an account first.");
       return;
     }
     const campaign = await appClient.entities.Campaign.create({
@@ -135,7 +189,7 @@ export default function CampaignLobby() {
     setMessage("");
     const login = loginDetails();
     if (!login.email) {
-      setMessage("Enter an email before joining.");
+      setMessage("Create or sign in to an account before joining.");
       return;
     }
 
@@ -173,7 +227,65 @@ export default function CampaignLobby() {
         </header>
 
         <section className="mb-10">
-          <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground mb-3">Your Campaigns</div>
+          <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground mb-3">Create Account</div>
+          <div className="border border-border bg-card/70 rounded-sm p-4 md:p-5">
+            {user ? (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-lg font-semibold text-foreground truncate">{user.display_name || user.full_name || "Adventurer"}</div>
+                  <div className="text-sm text-muted-foreground truncate">{user.email}</div>
+                </div>
+                <Button variant="outline" onClick={() => appClient.auth.logout()} className="shrink-0">
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={createAccount} className="space-y-4">
+                <div className="grid grid-cols-2 border border-border rounded-sm overflow-hidden">
+                  <button type="button" onClick={() => setAccountMode("create")} className={`h-11 text-sm font-semibold transition-colors ${accountMode === "create" ? "bg-primary text-primary-foreground" : "bg-background/35 text-muted-foreground hover:text-foreground"}`}>
+                    Create
+                  </button>
+                  <button type="button" onClick={() => setAccountMode("sign-in")} className={`h-11 text-sm font-semibold transition-colors ${accountMode === "sign-in" ? "bg-primary text-primary-foreground" : "bg-background/35 text-muted-foreground hover:text-foreground"}`}>
+                    Sign In
+                  </button>
+                </div>
+
+                <Field label="Display Name">
+                  <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Amelia" />
+                </Field>
+                <Field label="Email">
+                  <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
+                </Field>
+                <Field label="Password">
+                  <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Choose a password" />
+                </Field>
+                {accountMode === "create" && (
+                  <Field label="Confirm Password">
+                    <Input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Confirm your password" />
+                  </Field>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setKeepSignedIn((value) => !value)}
+                  className={`w-full h-11 rounded-sm border flex items-center justify-center gap-2 text-sm font-semibold transition-colors ${
+                    keepSignedIn ? "border-accent bg-accent/10 text-accent" : "border-border bg-background/35 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Check className={`w-4 h-4 ${keepSignedIn ? "opacity-100" : "opacity-30"}`} />
+                  Keep me signed in
+                </button>
+                <Button className="w-full h-12 text-base" type="submit">
+                  {accountMode === "create" ? <UserPlus className="w-5 h-5" /> : <LogIn className="w-5 h-5" />}
+                  {accountMode === "create" ? "Create Account" : "Sign In"}
+                </Button>
+              </form>
+            )}
+          </div>
+        </section>
+
+        {user && (
+          <section className="mb-10">
+            <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground mb-3">Your Campaigns</div>
           <div className="space-y-2.5">
             {yourCampaigns.length === 0 && (
               <div className="border border-border bg-card/70 rounded-sm p-4 text-sm text-muted-foreground">No campaigns yet. Create one or enter a code below.</div>
@@ -191,58 +303,58 @@ export default function CampaignLobby() {
               );
             })}
           </div>
-        </section>
+          </section>
+        )}
 
-        <div className="grid grid-cols-2 border border-border rounded-sm overflow-hidden mb-8">
-          <button onClick={() => setMode("join")} className={`h-12 text-base font-semibold transition-colors ${mode === "join" ? "bg-primary text-primary-foreground" : "bg-card/50 text-muted-foreground hover:text-foreground"}`}>
-            Join Campaign
-          </button>
-          <button onClick={() => setMode("create")} className={`h-12 text-base font-semibold transition-colors ${mode === "create" ? "bg-primary text-primary-foreground" : "bg-card/50 text-muted-foreground hover:text-foreground"}`}>
-            Create Campaign
-          </button>
-        </div>
+        {user && (
+          <>
+            <div className="grid grid-cols-2 border border-border rounded-sm overflow-hidden mb-8">
+              <button onClick={() => setMode("join")} className={`h-12 text-base font-semibold transition-colors ${mode === "join" ? "bg-primary text-primary-foreground" : "bg-card/50 text-muted-foreground hover:text-foreground"}`}>
+                Join Campaign
+              </button>
+              <button onClick={() => setMode("create")} className={`h-12 text-base font-semibold transition-colors ${mode === "create" ? "bg-primary text-primary-foreground" : "bg-card/50 text-muted-foreground hover:text-foreground"}`}>
+                Create Campaign
+              </button>
+            </div>
 
-        <div className="space-y-5">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label={mode === "create" ? "DM Name" : "Your Name"}>
-              <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Amelia" />
-            </Field>
-            <Field label={mode === "create" ? "DM Email" : "Your Email"}>
-              <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
-            </Field>
-          </div>
-
-          {mode === "join" ? (
-            <>
-              <Field label="Enter Code">
-                <Input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="ABCXYZ" className="text-center font-mono tracking-[0.35em] uppercase" />
-              </Field>
-              <p className="text-sm text-muted-foreground">DM code joins as Dungeon Master. Player code joins as a Player.</p>
-              <Button className="w-full h-12 text-base" onClick={joinCampaign}>
-                <Dices className="w-5 h-5" /> Enter the Realm
-              </Button>
-            </>
-          ) : (
-            <>
-              <Field label="Campaign Name">
-                <Input value={campaignName} onChange={(event) => setCampaignName(event.target.value)} placeholder="The Curse of Strahd..." />
-              </Field>
-              <Field label="Description (optional)">
-                <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="A gothic horror adventure..." className="min-h-[74px]" />
-              </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <CodeCard label="DM Code" value={dmCode} />
-                <CodeCard label="Player Code" value={playerCode} />
+            <div className="space-y-5">
+              <div className="border border-border bg-card/50 rounded-sm p-4 text-sm text-muted-foreground">
+                Campaign access will use <span className="text-foreground font-medium">{user.display_name || user.full_name}</span> at <span className="text-foreground font-medium">{user.email}</span>.
               </div>
-              <Button variant="outline" className="w-full h-10" onClick={regenerateCodes}>
-                <RefreshCw className="w-4 h-4" /> Regenerate Codes
-              </Button>
-              <Button className="w-full h-12 text-base" onClick={createCampaign}>
-                <Shield className="w-5 h-5" /> Forge Campaign
-              </Button>
-            </>
-          )}
-        </div>
+
+              {mode === "join" ? (
+                <>
+                  <Field label="Enter Code">
+                    <Input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="ABCXYZ" className="text-center font-mono tracking-[0.35em] uppercase" />
+                  </Field>
+                  <p className="text-sm text-muted-foreground">DM code joins as Dungeon Master. Player code joins as a Player.</p>
+                  <Button className="w-full h-12 text-base" onClick={joinCampaign}>
+                    <Dices className="w-5 h-5" /> Enter the Realm
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Field label="Campaign Name">
+                    <Input value={campaignName} onChange={(event) => setCampaignName(event.target.value)} placeholder="The Curse of Strahd..." />
+                  </Field>
+                  <Field label="Description (optional)">
+                    <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="A gothic horror adventure..." className="min-h-[74px]" />
+                  </Field>
+                  <div className="grid grid-cols-2 gap-4">
+                    <CodeCard label="DM Code" value={dmCode} />
+                    <CodeCard label="Player Code" value={playerCode} />
+                  </div>
+                  <Button variant="outline" className="w-full h-10" onClick={regenerateCodes}>
+                    <RefreshCw className="w-4 h-4" /> Regenerate Codes
+                  </Button>
+                  <Button className="w-full h-12 text-base" onClick={createCampaign}>
+                    <Shield className="w-5 h-5" /> Forge Campaign
+                  </Button>
+                </>
+              )}
+            </div>
+          </>
+        )}
 
         {message && <div className="mt-5 border border-border bg-secondary/50 rounded-sm p-3 text-sm text-muted-foreground">{message}</div>}
       </div>

@@ -105,14 +105,14 @@ function CurrencyBlock({ sheet }) {
       <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Currency</div>
       <div className="grid grid-cols-5 gap-2 text-center">
         {[
-          ["CP", sheet.cp, "text-slate-400"],
-          ["SP", sheet.sp, "text-slate-300"],
-          ["EP", sheet.ep, "text-emerald-400"],
-          ["GP", sheet.gp, "text-yellow-400"],
-          ["PP", sheet.pp, "text-purple-400"],
-        ].map(([label, value, cls]) => (
+          ["CP", sheet.cp],
+          ["SP", sheet.sp],
+          ["EP", sheet.ep],
+          ["GP", sheet.gp],
+          ["PP", sheet.pp],
+        ].map(([label, value]) => (
           <div key={label} className="border border-border rounded-sm bg-card p-2">
-            <div className={`text-sm font-medium ${cls}`}>{value || 0}</div>
+            <div className="text-sm font-medium text-foreground">{value || 0}</div>
             <div className="text-[8px] uppercase tracking-widest text-muted-foreground">{label}</div>
           </div>
         ))}
@@ -183,7 +183,7 @@ function HpBlock({ hp, hpMax, hpTemp, onSave }) {
   }, [hp, hpMax, hpTemp]);
 
   const pct = Math.max(0, Math.min(100, (current / (hpMax || 1)) * 100));
-  const barColor = pct > 50 ? "bg-green-500" : pct > 25 ? "bg-yellow-500" : "bg-red-500";
+  const barColor = pct > 50 ? "bg-accent" : pct > 25 ? "bg-primary" : "bg-destructive";
 
   const handleSave = async () => {
     setSaving(true);
@@ -253,13 +253,13 @@ function DeathSaveBlock({ successes, failures, onSave }) {
           ["Failures", "fail", fail, setFail, "red"],
         ].map(([label, key, value, setter, color]) => (
           <div className="flex items-center gap-2" key={key}>
-            <span className={`text-[9px] ${color === "green" ? "text-green-400" : "text-red-400"} w-16`}>{label}</span>
+            <span className={`text-[9px] ${color === "green" ? "text-accent" : "text-destructive"} w-16`}>{label}</span>
             <div className="flex gap-2">
               {[0, 1, 2].map((index) => (
                 <button
                   key={index}
                   onClick={() => setter(value > index ? index : index + 1)}
-                  className={`w-7 h-7 rounded-full border-2 transition-colors ${index < value ? (color === "green" ? "bg-green-500 border-green-500" : "bg-red-500 border-red-500") : `border-border ${color === "green" ? "hover:border-green-400" : "hover:border-red-400"}`}`}
+                  className={`w-7 h-7 rounded-full border-2 transition-colors ${index < value ? (color === "green" ? "bg-accent border-accent" : "bg-destructive border-destructive") : `border-border ${color === "green" ? "hover:border-accent/60" : "hover:border-destructive/60"}`}`}
                 />
               ))}
             </div>
@@ -382,7 +382,7 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="font-display text-4xl leading-tight">{sheet.name}</h2>
-                  {sheet.visibility === "dm_only" && <Lock className="w-3.5 h-3.5 text-amber-400" />}
+                  {sheet.visibility === "dm_only" && <Lock className="w-3.5 h-3.5 text-accent" />}
                   {sheet.visibility === "archived" && <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />}
                   {sheet.visibility === "specific_players" && <Users className="w-3.5 h-3.5 text-accent" />}
                 </div>
@@ -407,7 +407,7 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
                   <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
                 </Button>
               )}
-              <button onClick={toggleInspiration} disabled={savingInspiration} className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-sm border text-xs font-medium transition-all disabled:opacity-50 ${inspired ? "bg-amber-400/20 border-amber-400/60 text-amber-400 hover:bg-amber-400/10" : "border-border text-muted-foreground hover:border-amber-400/40 hover:text-amber-400/70"}`}>
+              <button onClick={toggleInspiration} disabled={savingInspiration} className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-sm border text-xs font-medium transition-all disabled:opacity-50 ${inspired ? "bg-accent text-accent-foreground border-accent hover:bg-accent/90" : "border-border bg-card text-foreground hover:border-accent/60 hover:bg-accent/10"}`}>
                 {savingInspiration ? <Loader2 className="w-3 h-3 animate-spin" /> : <span>*</span>}
                 {inspired ? "Inspired" : "Inspiration"}
               </button>

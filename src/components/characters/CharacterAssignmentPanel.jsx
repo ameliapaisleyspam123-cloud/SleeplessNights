@@ -85,7 +85,7 @@ export default function CharacterAssignmentPanel({
           </div>
 
           {error && (
-            <div className="mb-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
+            <div className="mb-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded px-2 py-1">
               {error}
             </div>
           )}
@@ -102,7 +102,7 @@ export default function CharacterAssignmentPanel({
                 <button
                   onClick={handleUnassign}
                   disabled={isLoading}
-                  className="text-red-400 hover:text-red-300 disabled:opacity-50 text-xs font-medium ml-2 shrink-0"
+                  className="text-destructive hover:text-destructive/80 disabled:opacity-50 text-xs font-medium ml-2 shrink-0"
                 >
                   {isLoading ? (
                     <Loader2 className="w-3 h-3 animate-spin" />

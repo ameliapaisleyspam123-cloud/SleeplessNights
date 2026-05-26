@@ -393,7 +393,7 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
                   {sp.casterName && <div className="text-[10px] text-muted-foreground mb-1.5">{sp.casterName}</div>}
                   <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden mb-1">
                     <div
-                      className={`h-full rounded-full transition-all ${pct > 50 ? "bg-accent" : pct > 25 ? "bg-yellow-500" : "bg-red-500"}`}
+                      className={`h-full rounded-full transition-all ${pct > 50 ? "bg-accent" : pct > 25 ? "bg-primary" : "bg-destructive"}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>

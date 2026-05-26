@@ -4,7 +4,7 @@ import DocumentEditor from "@/components/documents/DocumentEditor";
 import LoreDetail from "@/components/lore/LoreDetail";
 import LoreEditor from "@/components/lore/LoreEditor";
 import { Button } from "@/components/ui/button";
-import { Archive, Box, FileText, Lock, Plus, Radio, Swords, Users, Wand2 } from "lucide-react";
+import { Archive, Box, FileText, Lock, Plus, Radio, Swords, Users } from "lucide-react";
 
 const TABS = [
   { id: "documents", label: "Documents", icon: Lock },
@@ -112,9 +112,6 @@ export default function DmVault() {
             <p className="text-muted-foreground mt-4 text-lg">Sealed documents, past overrides, and campaign management.</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => window.dispatchEvent(new Event("toggle-dice-roller"))}>
-              <Wand2 className="w-4 h-4" /> Dice
-            </Button>
             <Button onClick={() => setUploadOpen(true)}>
               <Plus className="w-4 h-4" /> Upload
             </Button>
@@ -122,7 +119,7 @@ export default function DmVault() {
         </div>
       </div>
 
-      <div className="border-b border-border flex gap-4 overflow-x-auto thin-scroll">
+      <div className="border-b border-border flex flex-wrap gap-x-4 gap-y-1">
         {TABS.map((item) => (
           <button
             key={item.id}

@@ -12,8 +12,7 @@ export function SelectTrigger({ className, children }) {
 }
 
 export function SelectValue() {
-  const context = React.useContext(SelectContext);
-  return <span>{context?.value}</span>;
+  return null;
 }
 
 export function SelectContent({ className, children }) {
