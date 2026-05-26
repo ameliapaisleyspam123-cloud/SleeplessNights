@@ -1,5 +1,8 @@
+import { supabase } from "@/supabase";
+
 const STORAGE_KEY = "sleepless_nights_store_v1";
 const SESSION_KEY = "sleepless_nights_user_v1";
+const SUPABASE_TABLE = "app_records";
 
 export const ENTITY_NAMES = [
   "Broadcast",
@@ -15,6 +18,10 @@ export const ENTITY_NAMES = [
 ];
 
 const subscribers = new Map();
+
+function emptyStore() {
+  return Object.fromEntries(ENTITY_NAMES.map((name) => [name, []]));
+}
 
 function id(prefix = "rec") {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
@@ -90,6 +97,91 @@ function writeStore(store) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
+function recordKey(entity, recordId) {
+  return `${entity}:${recordId}`;
+}
+
+function normalizeStore(store) {
+  const normalized = emptyStore();
+  for (const name of ENTITY_NAMES) normalized[name] = Array.isArray(store?.[name]) ? store[name] : [];
+  return normalized;
+}
+
+async function readStoreAsync() {
+  if (!supabase) return readStore();
+
+  const { data, error } = await supabase.from(SUPABASE_TABLE).select("entity,data");
+  if (error) {
+    console.warn("Supabase read failed; falling back to browser storage.", error);
+    return readStore();
+  }
+
+  const store = emptyStore();
+  for (const row of data || []) {
+    if (ENTITY_NAMES.includes(row.entity) && row.data) store[row.entity].push(row.data);
+  }
+
+  const hasRemoteData = Object.values(store).some((records) => records.length > 0);
+  if (!hasRemoteData) {
+    const local = readStore();
+    await writeStoreAsync(local);
+    return local;
+  }
+
+  writeStore(store);
+  return store;
+}
+
+async function writeStoreAsync(store) {
+  const normalized = normalizeStore(store);
+  writeStore(normalized);
+  if (!supabase) return normalized;
+
+  const rows = ENTITY_NAMES.flatMap((entity) =>
+    (normalized[entity] || []).map((record) => ({
+      id: recordKey(entity, record.id),
+      entity,
+      record_id: record.id,
+      data: record,
+      created_date: record.created_date || now(),
+      updated_date: record.updated_date || now(),
+    })),
+  );
+
+  if (rows.length === 0) return normalized;
+  const { error } = await supabase.from(SUPABASE_TABLE).upsert(rows, { onConflict: "id" });
+  if (error) throw error;
+  return normalized;
+}
+
+async function clearRemoteStore() {
+  if (!supabase) return;
+  const { error } = await supabase.from(SUPABASE_TABLE).delete().neq("id", "");
+  if (error) throw error;
+}
+
+async function upsertRemoteRecord(entity, record) {
+  if (!supabase) return;
+  const { error } = await supabase.from(SUPABASE_TABLE).upsert(
+    {
+      id: recordKey(entity, record.id),
+      entity,
+      record_id: record.id,
+      data: record,
+      created_date: record.created_date || now(),
+      updated_date: record.updated_date || now(),
+    },
+    { onConflict: "id" },
+  );
+  if (error) throw error;
+}
+
+async function deleteRemoteRecord(entity, recordId) {
+  if (!supabase) return;
+  const { error } = await supabase.from(SUPABASE_TABLE).delete().eq("id", recordKey(entity, recordId));
+  if (error) throw error;
+}
+
 function normalizeImportPayload(payload) {
   const source = payload?.entities || payload?.data || payload;
   const normalized = Object.fromEntries(ENTITY_NAMES.map((name) => [name, []]));
@@ -102,6 +194,16 @@ function normalizeImportPayload(payload) {
 
 function currentSession() {
   const store = readStore();
+  const savedEmail = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+  if (savedEmail) {
+    const found = store.User.find((u) => u.email === savedEmail);
+    if (found) return found;
+  }
+  return null;
+}
+
+async function currentSessionAsync() {
+  const store = await readStoreAsync();
   const savedEmail = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
   if (savedEmail) {
     const found = store.User.find((u) => u.email === savedEmail);
@@ -149,17 +251,20 @@ function notify(entity, event) {
 function entityApi(entity) {
   return {
     async list(sort = "-created_date", limit = 1000) {
-      return sortRecords(readStore()[entity] || [], sort).slice(0, limit);
+      const store = await readStoreAsync();
+      return sortRecords(store[entity] || [], sort).slice(0, limit);
     },
     async filter(query = {}, sort = "-created_date", limit = 1000) {
-      return sortRecords((readStore()[entity] || []).filter((record) => matches(record, query)), sort).slice(0, limit);
+      const store = await readStoreAsync();
+      return sortRecords((store[entity] || []).filter((record) => matches(record, query)), sort).slice(0, limit);
     },
     async get(recordId) {
-      return (readStore()[entity] || []).find((record) => record.id === recordId) || null;
+      const store = await readStoreAsync();
+      return (store[entity] || []).find((record) => record.id === recordId) || null;
     },
     async create(data) {
-      const store = readStore();
-      const user = currentSession();
+      const store = await readStoreAsync();
+      const user = await currentSessionAsync();
       const record = {
         ...data,
         id: data.id || id(entity.toLowerCase()),
@@ -169,23 +274,26 @@ function entityApi(entity) {
       };
       store[entity].push(record);
       writeStore(store);
+      await upsertRemoteRecord(entity, record);
       notify(entity, { type: "create", data: record });
       return record;
     },
     async update(recordId, patch) {
-      const store = readStore();
+      const store = await readStoreAsync();
       const index = store[entity].findIndex((record) => record.id === recordId);
       if (index === -1) throw new Error(`${entity} record not found`);
       const record = { ...store[entity][index], ...patch, updated_date: now() };
       store[entity][index] = record;
       writeStore(store);
+      await upsertRemoteRecord(entity, record);
       notify(entity, { type: "update", data: record });
       return record;
     },
     async delete(recordId) {
-      const store = readStore();
+      const store = await readStoreAsync();
       store[entity] = store[entity].filter((record) => record.id !== recordId);
       writeStore(store);
+      await deleteRemoteRecord(entity, recordId);
       notify(entity, { type: "delete", data: { id: recordId } });
       return true;
     },
@@ -212,12 +320,12 @@ const entities = Object.fromEntries(ENTITY_NAMES.map((name) => [name, entityApi(
 export const appClient = {
   entities,
   data: {
-    export() {
-      return readStore();
+    async export() {
+      return readStoreAsync();
     },
-    import(payload, { mode = "merge" } = {}) {
+    async import(payload, { mode = "merge" } = {}) {
       const incoming = normalizeImportPayload(payload);
-      const current = mode === "replace" ? Object.fromEntries(ENTITY_NAMES.map((name) => [name, []])) : readStore();
+      const current = mode === "replace" ? emptyStore() : await readStoreAsync();
       for (const name of ENTITY_NAMES) {
         const byId = new Map((current[name] || []).map((record) => [record.id, record]));
         for (const record of incoming[name]) {
@@ -231,25 +339,27 @@ export const appClient = {
         }
         current[name] = [...byId.values()];
       }
-      writeStore(current);
+      if (mode === "replace") await clearRemoteStore();
+      await writeStoreAsync(current);
       for (const name of ENTITY_NAMES) notify(name, { type: "import", data: null });
       return current;
     },
-    reset() {
+    async reset() {
       const fresh = defaultStore();
-      writeStore(fresh);
+      await clearRemoteStore();
+      await writeStoreAsync(fresh);
       localStorage.removeItem(SESSION_KEY);
       return fresh;
     },
   },
   auth: {
     async me() {
-      const user = currentSession();
+      const user = await currentSessionAsync();
       if (!user) throw new Error("No local user exists");
       return user;
     },
     async createAccount({ email, password, full_name, display_name, keepSignedIn = true }) {
-      const store = readStore();
+      const store = await readStoreAsync();
       const cleanEmail = email.trim().toLowerCase();
       if (!cleanEmail) throw new Error("Email is required");
       if (!password?.trim()) throw new Error("Password is required");
@@ -267,12 +377,13 @@ export const appClient = {
       };
       store.User.push(user);
       writeStore(store);
+      await upsertRemoteRecord("User", user);
       saveUserSession(cleanEmail, keepSignedIn);
       notify("User", { type: "create", data: user });
       return user;
     },
     async login({ email, password = "", full_name, display_name, keepSignedIn = true }) {
-      const store = readStore();
+      const store = await readStoreAsync();
       const cleanEmail = email.trim().toLowerCase();
       if (!cleanEmail) throw new Error("Email is required");
       let user = findUserByEmail(store, cleanEmail);
@@ -287,6 +398,7 @@ export const appClient = {
       };
       store.User = store.User.map((existing) => (existing.id === user.id ? user : existing));
       writeStore(store);
+      await upsertRemoteRecord("User", user);
       saveUserSession(cleanEmail, keepSignedIn);
       notify("User", { type: "update", data: user });
       return user;
@@ -296,7 +408,7 @@ export const appClient = {
       return entities.User.update(user.id, patch);
     },
     async switchCampaign({ email, display_name, campaign_id, campaign_role, role }) {
-      const store = readStore();
+      const store = await readStoreAsync();
       const cleanEmail = email.trim().toLowerCase();
       let user = findUserByEmail(store, cleanEmail);
       if (!user) {

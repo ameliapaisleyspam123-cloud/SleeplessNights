@@ -1,18 +1,895 @@
 [
   {
-    "name": "General Goods",
-    "description": "A shop for general adventuring gear.",
+    "id": "blacksmith-armory",
+    "name": "Blacksmith / Armory",
+    "description": "Armor, melee weapons, shields, metal tools, and hard-wearing adventuring gear.",
     "items": [
-      { "name": "Torch", "price": 1 },
-      { "name": "Rations (1 day)", "price": 5 }
+      {
+        "name": "Studded Leather",
+        "quantity": 2,
+        "gp": 45
+      },
+      {
+        "name": "Chain Shirt",
+        "quantity": 2,
+        "gp": 50
+      },
+      {
+        "name": "Scale Mail",
+        "quantity": 2,
+        "gp": 50
+      },
+      {
+        "name": "Breastplate",
+        "quantity": 1,
+        "gp": 400
+      },
+      {
+        "name": "Half Plate",
+        "quantity": 1,
+        "gp": 750
+      },
+      {
+        "name": "Ring Mail",
+        "quantity": 1,
+        "gp": 30
+      },
+      {
+        "name": "Chain Mail",
+        "quantity": 1,
+        "gp": 75
+      },
+      {
+        "name": "Splint",
+        "quantity": 1,
+        "gp": 200
+      },
+      {
+        "name": "Plate",
+        "quantity": 1,
+        "gp": 1500
+      },
+      {
+        "name": "Shield",
+        "quantity": 4,
+        "gp": 10
+      },
+      {
+        "name": "Dagger",
+        "quantity": 6,
+        "gp": 2
+      },
+      {
+        "name": "Handaxe",
+        "quantity": 4,
+        "gp": 5
+      },
+      {
+        "name": "Javelin",
+        "quantity": 8,
+        "sp": 5
+      },
+      {
+        "name": "Light Hammer",
+        "quantity": 4,
+        "gp": 2
+      },
+      {
+        "name": "Mace",
+        "quantity": 3,
+        "gp": 5
+      },
+      {
+        "name": "Spear",
+        "quantity": 5,
+        "gp": 1
+      },
+      {
+        "name": "Battleaxe",
+        "quantity": 2,
+        "gp": 10
+      },
+      {
+        "name": "Longsword",
+        "quantity": 2,
+        "gp": 15
+      },
+      {
+        "name": "Warhammer",
+        "quantity": 2,
+        "gp": 15
+      },
+      {
+        "name": "Crowbar",
+        "quantity": 4,
+        "gp": 2
+      },
+      {
+        "name": "Grappling Hook",
+        "quantity": 3,
+        "gp": 2
+      },
+      {
+        "name": "Hunting Trap",
+        "quantity": 2,
+        "gp": 5
+      },
+      {
+        "name": "Manacles",
+        "quantity": 2,
+        "gp": 2
+      },
+      {
+        "name": "Smith's Tools",
+        "quantity": 1,
+        "gp": 20
+      }
     ]
   },
   {
-    "name": "Weapon Smith",
-    "description": "A specialized shop for weapons and armor.",
+    "id": "fletcher-bowyer",
+    "name": "Fletcher / Bowyer",
+    "description": "Bows, crossbows, ammunition, quivers, and travel gear for ranged fighters.",
     "items": [
-      { "name": "Longsword", "price": 15 },
-      { "name": "Shield", "price": 10 }
+      {
+        "name": "Crossbow, Light",
+        "quantity": 3,
+        "gp": 25
+      },
+      {
+        "name": "Shortbow",
+        "quantity": 4,
+        "gp": 25
+      },
+      {
+        "name": "Crossbow, Hand",
+        "quantity": 1,
+        "gp": 75
+      },
+      {
+        "name": "Crossbow, Heavy",
+        "quantity": 2,
+        "gp": 50
+      },
+      {
+        "name": "Longbow",
+        "quantity": 2,
+        "gp": 50
+      },
+      {
+        "name": "Arrows (20)",
+        "quantity": 10,
+        "gp": 1
+      },
+      {
+        "name": "Crossbow Bolts (20)",
+        "quantity": 8,
+        "gp": 1
+      },
+      {
+        "name": "Case, Crossbow Bolt",
+        "quantity": 5,
+        "gp": 1
+      },
+      {
+        "name": "Quiver",
+        "quantity": 6,
+        "gp": 1
+      },
+      {
+        "name": "Sling",
+        "quantity": 4,
+        "sp": 1
+      },
+      {
+        "name": "Waterskin",
+        "quantity": 8,
+        "sp": 2
+      },
+      {
+        "name": "Cobbler's Tools",
+        "quantity": 1,
+        "gp": 5
+      },
+      {
+        "name": "Leatherworker's Tools",
+        "quantity": 1,
+        "gp": 5
+      }
+    ]
+  },
+  {
+    "id": "adventuring-supplies",
+    "name": "Adventuring Supplies",
+    "description": "Everyday equipment for dungeon crawls, wilderness travel, and emergency planning.",
+    "items": [
+      {
+        "name": "Backpack",
+        "quantity": 8,
+        "gp": 2
+      },
+      {
+        "name": "Bedroll",
+        "quantity": 8,
+        "gp": 1
+      },
+      {
+        "name": "Blanket",
+        "quantity": 10,
+        "sp": 5
+      },
+      {
+        "name": "Block and Tackle",
+        "quantity": 3,
+        "gp": 1
+      },
+      {
+        "name": "Bottle, Glass",
+        "quantity": 8,
+        "gp": 2
+      },
+      {
+        "name": "Candle",
+        "quantity": 30,
+        "cp": 1
+      },
+      {
+        "name": "Case, Map or Scroll",
+        "quantity": 5,
+        "gp": 1
+      },
+      {
+        "name": "Chain (10 feet)",
+        "quantity": 3,
+        "gp": 5
+      },
+      {
+        "name": "Chest",
+        "quantity": 2,
+        "gp": 5
+      },
+      {
+        "name": "Climber's Kit",
+        "quantity": 2,
+        "gp": 25
+      },
+      {
+        "name": "Crowbar",
+        "quantity": 4,
+        "gp": 2
+      },
+      {
+        "name": "Flask or Tankard",
+        "quantity": 12,
+        "cp": 2
+      },
+      {
+        "name": "Grappling Hook",
+        "quantity": 4,
+        "gp": 2
+      },
+      {
+        "name": "Hammer",
+        "quantity": 4,
+        "gp": 1
+      },
+      {
+        "name": "Healer's Kit",
+        "quantity": 4,
+        "gp": 5
+      },
+      {
+        "name": "Hunting Trap",
+        "quantity": 2,
+        "gp": 5
+      },
+      {
+        "name": "Lantern, Bullseye",
+        "quantity": 3,
+        "gp": 10
+      },
+      {
+        "name": "Lantern, Hooded",
+        "quantity": 3,
+        "gp": 5
+      },
+      {
+        "name": "Lock",
+        "quantity": 3,
+        "gp": 10
+      },
+      {
+        "name": "Mess Kit",
+        "quantity": 8,
+        "sp": 2
+      },
+      {
+        "name": "Mirror, Steel",
+        "quantity": 2,
+        "gp": 5
+      },
+      {
+        "name": "Piton",
+        "quantity": 20,
+        "cp": 5
+      },
+      {
+        "name": "Rations (1 day)",
+        "quantity": 30,
+        "sp": 5
+      },
+      {
+        "name": "Rope, Hempen (50 feet)",
+        "quantity": 8,
+        "gp": 1
+      },
+      {
+        "name": "Torch",
+        "quantity": 30,
+        "cp": 1
+      }
+    ]
+  },
+  {
+    "id": "temple-faith",
+    "name": "Temple / Faith Supplies",
+    "description": "Religious tools, healing supplies, holy symbols, and temple spellcasting services.",
+    "items": [
+      {
+        "name": "Alms Box",
+        "quantity": 2,
+        "gp": 5
+      },
+      {
+        "name": "Bell",
+        "quantity": 4,
+        "gp": 1
+      },
+      {
+        "name": "Book, Scripture",
+        "quantity": 2,
+        "gp": 25
+      },
+      {
+        "name": "Candle",
+        "quantity": 40,
+        "cp": 1
+      },
+      {
+        "name": "Censer",
+        "quantity": 2,
+        "gp": 5
+      },
+      {
+        "name": "Chalk (1 piece)",
+        "quantity": 20,
+        "cp": 1
+      },
+      {
+        "name": "Healer's Kit",
+        "quantity": 6,
+        "gp": 5
+      },
+      {
+        "name": "Holy Symbol, Amulet",
+        "quantity": 4,
+        "gp": 5
+      },
+      {
+        "name": "Holy Symbol, Emblem",
+        "quantity": 4,
+        "gp": 5
+      },
+      {
+        "name": "Holy Symbol, Reliquary",
+        "quantity": 2,
+        "gp": 5
+      },
+      {
+        "name": "Holy Water (flask)",
+        "quantity": 6,
+        "gp": 25
+      },
+      {
+        "name": "Incense (1 block)",
+        "quantity": 10,
+        "cp": 1
+      },
+      {
+        "name": "Ink (1 ounce bottle)",
+        "quantity": 4,
+        "gp": 10
+      },
+      {
+        "name": "Lamp",
+        "quantity": 4,
+        "sp": 5
+      },
+      {
+        "name": "Oil (flask)",
+        "quantity": 12,
+        "sp": 1
+      },
+      {
+        "name": "Perfume (vial)",
+        "quantity": 3,
+        "gp": 5
+      },
+      {
+        "name": "Potion of Healing",
+        "quantity": 4,
+        "gp": 50
+      },
+      {
+        "name": "Herbalism Kit",
+        "quantity": 2,
+        "gp": 5
+      },
+      {
+        "name": "Cure Wounds (level 1)",
+        "quantity": 3,
+        "gp": 10
+      },
+      {
+        "name": "Lesser Restoration (level 2)",
+        "quantity": 2,
+        "gp": 50
+      },
+      {
+        "name": "Remove Curse (level 3)",
+        "quantity": 1,
+        "gp": 100
+      },
+      {
+        "name": "Revivify (level 3)",
+        "quantity": 1,
+        "gp": 400
+      }
+    ]
+  },
+  {
+    "id": "arcane-shop",
+    "name": "Arcane Shop",
+    "description": "Arcane focuses, writing supplies, spellbooks, scrolls, and magical services.",
+    "items": [
+      {
+        "name": "Arcane Focus, Crystal",
+        "quantity": 3,
+        "gp": 10
+      },
+      {
+        "name": "Arcane Focus, Orb",
+        "quantity": 2,
+        "gp": 20
+      },
+      {
+        "name": "Arcane Focus, Rod",
+        "quantity": 2,
+        "gp": 10
+      },
+      {
+        "name": "Arcane Focus, Staff",
+        "quantity": 2,
+        "gp": 5
+      },
+      {
+        "name": "Arcane Focus, Wand",
+        "quantity": 2,
+        "gp": 10
+      },
+      {
+        "name": "Druidic Focus, Sprig of Mistletoe",
+        "quantity": 4,
+        "gp": 1
+      },
+      {
+        "name": "Druidic Focus, Totem",
+        "quantity": 3,
+        "gp": 1
+      },
+      {
+        "name": "Druidic Focus, Wooden Staff",
+        "quantity": 2,
+        "gp": 5
+      },
+      {
+        "name": "Druidic Focus, Yew Wand",
+        "quantity": 2,
+        "gp": 10
+      },
+      {
+        "name": "Hourglass",
+        "quantity": 1,
+        "gp": 25
+      },
+      {
+        "name": "Ink (1 ounce bottle)",
+        "quantity": 8,
+        "gp": 10
+      },
+      {
+        "name": "Ink Pen",
+        "quantity": 12,
+        "cp": 2
+      },
+      {
+        "name": "Paper (one sheet)",
+        "quantity": 30,
+        "sp": 2
+      },
+      {
+        "name": "Parchment (one sheet)",
+        "quantity": 30,
+        "sp": 1
+      },
+      {
+        "name": "Pouch",
+        "quantity": 8,
+        "sp": 5
+      },
+      {
+        "name": "Robes",
+        "quantity": 4,
+        "gp": 1
+      },
+      {
+        "name": "Spellbook",
+        "quantity": 3,
+        "gp": 50
+      },
+      {
+        "name": "Vial",
+        "quantity": 12,
+        "gp": 1
+      },
+      {
+        "name": "Alchemist's Supplies",
+        "quantity": 1,
+        "gp": 50
+      },
+      {
+        "name": "Calligrapher's Supplies",
+        "quantity": 1,
+        "gp": 10
+      },
+      {
+        "name": "Spell Scroll, Cantrip",
+        "quantity": 4,
+        "gp": 50
+      },
+      {
+        "name": "Spell Scroll, Level 1",
+        "quantity": 3,
+        "gp": 100
+      },
+      {
+        "name": "Spell Scroll, Level 2",
+        "quantity": 2,
+        "gp": 250
+      },
+      {
+        "name": "Magic Appraisal (Identify)",
+        "quantity": 3,
+        "gp": 100
+      }
+    ]
+  },
+  {
+    "id": "shady-dealer",
+    "name": "Shady Dealer",
+    "description": "Questionable supplies, covert tools, and things sold in a quiet corner.",
+    "items": [
+      {
+        "name": "Acid (vial)",
+        "quantity": 4,
+        "gp": 25
+      },
+      {
+        "name": "Antitoxin (vial)",
+        "quantity": 4,
+        "gp": 50
+      },
+      {
+        "name": "Caltrops (bag of 20)",
+        "quantity": 8,
+        "gp": 1
+      },
+      {
+        "name": "Clothes, Costume",
+        "quantity": 4,
+        "gp": 5
+      },
+      {
+        "name": "Manacles",
+        "quantity": 3,
+        "gp": 2
+      },
+      {
+        "name": "Oil (flask)",
+        "quantity": 10,
+        "sp": 1
+      },
+      {
+        "name": "Poison, Basic (vial)",
+        "quantity": 2,
+        "gp": 100
+      },
+      {
+        "name": "Ram, Portable",
+        "quantity": 1,
+        "gp": 4
+      },
+      {
+        "name": "Spikes, Iron (10)",
+        "quantity": 6,
+        "gp": 1
+      },
+      {
+        "name": "Disguise Kit",
+        "quantity": 1,
+        "gp": 25
+      },
+      {
+        "name": "Forgery Kit",
+        "quantity": 1,
+        "gp": 15
+      },
+      {
+        "name": "Dice Set",
+        "quantity": 4,
+        "sp": 1
+      },
+      {
+        "name": "Playing Card Set",
+        "quantity": 4,
+        "sp": 5
+      },
+      {
+        "name": "Poisoner's Kit",
+        "quantity": 1,
+        "gp": 50
+      },
+      {
+        "name": "Thieves' Tools",
+        "quantity": 2,
+        "gp": 25
+      }
+    ]
+  },
+  {
+    "id": "tailor-textiles",
+    "name": "Tailor / Textiles",
+    "description": "Clothing, robes, sacks, tents, pouches, and textile tools.",
+    "items": [
+      {
+        "name": "Clothes, Common",
+        "quantity": 8,
+        "sp": 5
+      },
+      {
+        "name": "Clothes, Costume",
+        "quantity": 4,
+        "gp": 5
+      },
+      {
+        "name": "Clothes, Fine",
+        "quantity": 3,
+        "gp": 15
+      },
+      {
+        "name": "Clothes, Traveler's",
+        "quantity": 6,
+        "gp": 2
+      },
+      {
+        "name": "Component Pouch",
+        "quantity": 3,
+        "gp": 25
+      },
+      {
+        "name": "Pouch",
+        "quantity": 12,
+        "sp": 5
+      },
+      {
+        "name": "Robes",
+        "quantity": 6,
+        "gp": 1
+      },
+      {
+        "name": "Sack",
+        "quantity": 20,
+        "cp": 1
+      },
+      {
+        "name": "Tent, Two-person",
+        "quantity": 3,
+        "gp": 2
+      },
+      {
+        "name": "Weaver's Tools",
+        "quantity": 2,
+        "gp": 1
+      }
+    ]
+  },
+  {
+    "id": "jeweler-stonecutter",
+    "name": "Jeweler / Stonecutter",
+    "description": "Jewelry, gemstones, arcane trinkets, and gem-setting services.",
+    "items": [
+      {
+        "name": "Amulet or Necklace, Exquisite",
+        "quantity": 3,
+        "gp": 5
+      },
+      {
+        "name": "Amulet or Necklace, Mundane",
+        "quantity": 6,
+        "sp": 5
+      },
+      {
+        "name": "Earrings, Exquisite",
+        "quantity": 3,
+        "gp": 4
+      },
+      {
+        "name": "Earrings, Mundane",
+        "quantity": 6,
+        "sp": 4
+      },
+      {
+        "name": "Ring, Exquisite",
+        "quantity": 3,
+        "gp": 3
+      },
+      {
+        "name": "Ring, Mundane",
+        "quantity": 8,
+        "sp": 3
+      },
+      {
+        "name": "Signet Ring",
+        "quantity": 4,
+        "gp": 5
+      },
+      {
+        "name": "Jeweler's Tools",
+        "quantity": 1,
+        "gp": 25
+      },
+      {
+        "name": "Gemstone Appraisal (3 gems)",
+        "quantity": 5,
+        "gp": 5
+      },
+      {
+        "name": "Resizing Jewelry",
+        "quantity": 5,
+        "gp": 10
+      },
+      {
+        "name": "Set Gem (under 100 gp value)",
+        "quantity": 3,
+        "gp": 45
+      },
+      {
+        "name": "10 gp Gemstone",
+        "quantity": 8,
+        "gp": 10
+      },
+      {
+        "name": "50 gp Gemstone",
+        "quantity": 6,
+        "gp": 50
+      },
+      {
+        "name": "100 gp Gemstone",
+        "quantity": 4,
+        "gp": 100
+      },
+      {
+        "name": "500 gp Gemstone",
+        "quantity": 2,
+        "gp": 500
+      }
+    ]
+  },
+  {
+    "id": "art-and-games",
+    "name": "Art and Games",
+    "description": "Artisan tools, gaming sets, instruments, and lightweight travel goods.",
+    "items": [
+      {
+        "name": "Calligrapher's Supplies",
+        "quantity": 2,
+        "gp": 10
+      },
+      {
+        "name": "Glassblower's Tools",
+        "quantity": 1,
+        "gp": 30
+      },
+      {
+        "name": "Painter's Supplies",
+        "quantity": 2,
+        "gp": 10
+      },
+      {
+        "name": "Potter's Tools",
+        "quantity": 2,
+        "gp": 10
+      },
+      {
+        "name": "Weaver's Tools",
+        "quantity": 2,
+        "gp": 1
+      },
+      {
+        "name": "Woodcarver's Tools",
+        "quantity": 2,
+        "gp": 1
+      },
+      {
+        "name": "Disguise Kit",
+        "quantity": 1,
+        "gp": 25
+      },
+      {
+        "name": "Dice Set",
+        "quantity": 8,
+        "sp": 1
+      },
+      {
+        "name": "Dragonchess Set",
+        "quantity": 2,
+        "gp": 1
+      },
+      {
+        "name": "Playing Card Set",
+        "quantity": 6,
+        "sp": 5
+      },
+      {
+        "name": "Three-Dragon Ante Set",
+        "quantity": 2,
+        "gp": 1
+      },
+      {
+        "name": "Bagpipes",
+        "quantity": 1,
+        "gp": 30
+      },
+      {
+        "name": "Drum",
+        "quantity": 2,
+        "gp": 6
+      },
+      {
+        "name": "Flute",
+        "quantity": 3,
+        "gp": 2
+      },
+      {
+        "name": "Lute",
+        "quantity": 1,
+        "gp": 35
+      },
+      {
+        "name": "Lyre",
+        "quantity": 1,
+        "gp": 30
+      },
+      {
+        "name": "Horn",
+        "quantity": 2,
+        "gp": 3
+      },
+      {
+        "name": "Viol",
+        "quantity": 1,
+        "gp": 30
+      }
     ]
   }
 ]
