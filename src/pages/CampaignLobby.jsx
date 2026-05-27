@@ -69,9 +69,11 @@ export default function CampaignLobby() {
   const [dmCode, setDmCode] = useState(() => makeCode());
   const [playerCode, setPlayerCode] = useState(() => makeCode());
   const [message, setMessage] = useState("");
+  const [syncStatus, setSyncStatus] = useState(null);
 
   const load = async () => {
     const [me, allCampaigns] = await Promise.all([appClient.auth.me().catch(() => null), appClient.entities.Campaign.list("-created_date", 100)]);
+    setSyncStatus(appClient.system.getSyncStatus());
     setUser(me);
     setCampaigns(allCampaigns);
     if (me) {
@@ -227,6 +229,13 @@ export default function CampaignLobby() {
           <h1 className="font-display text-4xl md:text-5xl leading-tight text-foreground">The Grimoire</h1>
           <p className="text-muted-foreground text-lg mt-2">Your D&D campaign hub</p>
         </header>
+
+        {syncStatus && !syncStatus.connected && (
+          <div className="mb-6 border border-destructive/40 bg-destructive/10 rounded-sm p-3 text-sm text-foreground">
+            <div className="font-semibold">Shared storage is offline</div>
+            <div className="text-muted-foreground mt-1">{syncStatus.message}</div>
+          </div>
+        )}
 
         <section className="mb-10">
           <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground mb-3">Create Account</div>

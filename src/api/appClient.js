@@ -1,4 +1,4 @@
-import { supabase } from "@/supabase";
+import { supabase, supabaseConfigStatus } from "@/supabase";
 
 const STORAGE_KEY = "sleepless_nights_store_v1";
 const SESSION_KEY = "sleepless_nights_user_v1";
@@ -25,6 +25,11 @@ let cachedStore = null;
 let cachedStoreAt = 0;
 let storeReadPromise = null;
 let realtimeChannel = null;
+let syncStatus = {
+  configured: supabaseConfigStatus.configured,
+  connected: false,
+  message: supabaseConfigStatus.configured ? "Checking shared storage..." : "Supabase is not configured for this build.",
+};
 
 function emptyStore() {
   return Object.fromEntries(ENTITY_NAMES.map((name) => [name, []]));
@@ -173,7 +178,16 @@ function mergeStores(remoteStore, localStore) {
 
 async function readStoreAsync() {
   startRealtimeSync();
-  if (!supabase) return readStore();
+  if (!supabase) {
+    syncStatus = {
+      configured: false,
+      connected: false,
+      message: supabaseConfigStatus.hasUrl
+        ? "Supabase key is missing from the deployed app."
+        : "Supabase URL is missing from the deployed app.",
+    };
+    return readStore();
+  }
   const cached = getCachedStore();
   if (cached) return cached;
   if (storeReadPromise) return storeReadPromise;
@@ -182,6 +196,11 @@ async function readStoreAsync() {
     const { data, error } = await supabase.from(SUPABASE_TABLE).select("entity,data");
     if (error) {
       console.warn("Supabase read failed; falling back to browser storage.", error);
+      syncStatus = {
+        configured: true,
+        connected: false,
+        message: `Shared storage read failed: ${error.message || "unknown Supabase error"}`,
+      };
       return setCachedStore(readStore());
     }
 
@@ -200,6 +219,11 @@ async function readStoreAsync() {
     if (mergedChanged || adminChanged || !hasRemoteData) {
       await writeStoreAsync(adminStore);
     }
+    syncStatus = {
+      configured: true,
+      connected: true,
+      message: "Shared storage connected.",
+    };
     return adminStore;
   })();
 
@@ -207,6 +231,11 @@ async function readStoreAsync() {
     return await storeReadPromise;
   } catch (err) {
     console.warn("Supabase read threw error; using local storage:", err);
+    syncStatus = {
+      configured: true,
+      connected: false,
+      message: `Shared storage error: ${err.message || "unknown error"}`,
+    };
     return setCachedStore(readStore());
   } finally {
     storeReadPromise = null;
@@ -301,9 +330,19 @@ async function writeStoreAsync(store) {
     if (rows.length === 0) return normalized;
     const { error } = await supabase.from(SUPABASE_TABLE).upsert(rows, { onConflict: "id" });
     if (error) {
+      syncStatus = {
+        configured: true,
+        connected: false,
+        message: `Shared storage write failed: ${error.message || "unknown Supabase error"}`,
+      };
       console.warn("Supabase writeStoreAsync failed; continuing with local storage only:", error);
     }
   } catch (err) {
+    syncStatus = {
+      configured: true,
+      connected: false,
+      message: `Shared storage write error: ${err.message || "unknown error"}`,
+    };
     console.warn("Supabase writeStoreAsync threw error; continuing with local storage only:", err);
   }
   return normalized;
@@ -538,6 +577,11 @@ const entities = Object.fromEntries(ENTITY_NAMES.map((name) => [name, entityApi(
 
 export const appClient = {
   entities,
+  system: {
+    getSyncStatus() {
+      return syncStatus;
+    },
+  },
   data: {
     async export() {
       return readStoreAsync();
