@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { appClient } from "@/api/appClient";
+import CharacterClaimButton from "@/components/characters/CharacterClaimButton";
 import CharacterSheetCard from "@/components/characters/CharacterSheetCard";
 import CharacterSheetEditor from "@/components/characters/CharacterSheetEditor";
 import CharacterSheetView from "@/components/characters/CharacterSheetView";
@@ -87,9 +88,14 @@ export default function Characters() {
   const importableSheets = allSheets.filter((sheet) => sheet.campaign_id && sheet.campaign_id !== user?.campaign_id);
   const campaignName = (campaignId) => campaigns.find((campaign) => campaign.id === campaignId)?.name || "Unknown campaign";
   const isAdmin = isDmUser(user);
+  const currentCampaign = campaigns.find((campaign) => campaign.id === user?.campaign_id) || null;
   const visibleItems = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
   const folders = [...new Set([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders])].sort();
   const filteredItems = visibleItems.filter((item) => folder === "all" || item.folder === folder);
+  const userCharacterCounts = items.reduce((counts, sheet) => {
+    if (!sheet.assigned_to_email) return counts;
+    return { ...counts, [sheet.assigned_to_email]: (counts[sheet.assigned_to_email] || 0) + 1 };
+  }, {});
 
   const createFolder = () => {
     const name = window.prompt("New character folder name");
@@ -219,7 +225,22 @@ export default function Characters() {
           ) : (
             <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredItems.map((sheet) => (
-                <CharacterSheetCard key={sheet.id} sheet={sheet} onClick={() => setViewing(sheet)} onContextMenu={openContextMenu} />
+                <CharacterSheetCard
+                  key={sheet.id}
+                  sheet={sheet}
+                  onClick={() => setViewing(sheet)}
+                  onContextMenu={openContextMenu}
+                  action={
+                    <CharacterClaimButton
+                      sheet={sheet}
+                      campaign={currentCampaign}
+                      currentUserEmail={user?.email}
+                      isDM={isAdmin}
+                      onClaimChange={load}
+                      userCharacterCounts={userCharacterCounts}
+                    />
+                  }
+                />
               ))}
             </div>
           )}
@@ -232,6 +253,11 @@ export default function Characters() {
         onSaved={load}
         onDuplicate={() => duplicateSheet(editing)}
         onDelete={isAdmin && editing?.id ? () => deleteSheet(editing) : undefined}
+        currentUser={user}
+        isDM={isAdmin}
+        campaign={currentCampaign}
+        onClaimChange={load}
+        userCharacterCounts={userCharacterCounts}
       />
       <MoveFolderDialog
         open={Boolean(moving)}
@@ -248,6 +274,8 @@ export default function Characters() {
         onOpenChange={(open) => !open && setViewing(null)}
         sheet={viewing}
         canEdit
+        currentUser={user}
+        isDM={isAdmin}
         onEdit={() => {
           setEditing(viewing);
           setViewing(null);

@@ -37,6 +37,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
       const msg = event.data;
 
       if (msg.created_by === currentUser.email) return;
+      if (!isAdmin && msg.channel !== "group" && !msg.channel?.split("|").includes(currentUser.email)) return;
 
       const stored = JSON.parse(localStorage.getItem("chat_read") || "{}");
       const lastRead = stored[msg.channel] || 0;
@@ -48,7 +49,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, isAdmin]);
 
   return (
     <div className="flex flex-col h-full min-h-0">

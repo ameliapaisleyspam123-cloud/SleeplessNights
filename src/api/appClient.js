@@ -273,6 +273,17 @@ function matches(record, query = {}) {
   return Object.entries(query).every(([key, value]) => record[key] === value);
 }
 
+function isDmAccount(user) {
+  return user?.campaign_role === "dm" || user?.campaign_role === "DM" || user?.role === "admin";
+}
+
+function canAccessMessageChannel(user, channel) {
+  if (!user || !channel) return false;
+  if (channel === "group") return true;
+  if (isDmAccount(user)) return true;
+  return channel.split("|").includes(user.email);
+}
+
 function notify(entity, event) {
   for (const cb of subscribers.get(entity) || []) cb(event);
 }
@@ -474,11 +485,15 @@ export const appClient = {
         return { data: { users } };
       }
       if (name === "getMessages") {
-        const messages = await entities.Message.filter({ channel: payload.channel }, "created_date", 500);
+        const user = await appClient.auth.me();
+        if (!canAccessMessageChannel(user, payload.channel)) return { data: { messages: [] } };
+        const messages = (await entities.Message.filter({ channel: payload.channel }, "created_date", 500))
+          .filter((message) => message.campaign_id === user.campaign_id);
         return { data: { messages } };
       }
       if (name === "sendMessages") {
         const user = await appClient.auth.me();
+        if (!canAccessMessageChannel(user, payload.channel)) throw new Error("You cannot send messages to this channel");
         const file_url = payload.file?.data ? `data:${payload.file.type};base64,${payload.file.data}` : "";
         const message = await entities.Message.create({
           campaign_id: user.campaign_id,

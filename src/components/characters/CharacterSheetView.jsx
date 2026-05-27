@@ -121,7 +121,7 @@ function CurrencyBlock({ sheet }) {
   );
 }
 
-function AddToInitiativeButton({ sheet }) {
+function AddToInitiativeButton({ sheet, ownerEmail }) {
   const [state, setState] = useState("idle");
   const dexMod = mod(sheet.dexterity || 10);
   const initMod = sheet.initiative !== undefined && sheet.initiative !== 0 ? sheet.initiative : dexMod;
@@ -152,7 +152,7 @@ function AddToInitiativeButton({ sheet }) {
             total,
             isGroup: false,
             groupSize: 1,
-            ownerEmail: sheet.created_by || "",
+            ownerEmail,
             type: "character",
           },
         ].sort((a, b) => b.total - a.total);
@@ -344,7 +344,7 @@ function SpellSlotsBlock({ slotsJson, onSave }) {
   );
 }
 
-export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit, onEdit }) {
+export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit, onEdit, currentUser, isDM = false }) {
   const [inspired, setInspired] = useState(Boolean(sheet?.inspiration));
   const [savingInspiration, setSavingInspiration] = useState(false);
 
@@ -370,6 +370,9 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
     await saveField({ inspiration: next });
     setSavingInspiration(false);
   };
+
+  const canRollInitiative = isDM || sheet.assigned_to_email === currentUser?.email;
+  const initiativeOwnerEmail = sheet.assigned_to_email || "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -411,7 +414,7 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
                 {savingInspiration ? <Loader2 className="w-3 h-3 animate-spin" /> : <span>*</span>}
                 {inspired ? "Inspired" : "Inspiration"}
               </button>
-              {sheet.campaign_id && <AddToInitiativeButton sheet={sheet} />}
+              {sheet.campaign_id && canRollInitiative && <AddToInitiativeButton sheet={sheet} ownerEmail={initiativeOwnerEmail} />}
             </div>
           </div>
         </div>

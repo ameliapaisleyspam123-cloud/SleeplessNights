@@ -10,6 +10,7 @@ import { Upload, Loader2, Eye, Lock, EyeOff, Users, Copy, Trash2 } from "lucide-
 import InventoryManager from "@/components/characters/InventoryManager";
 import AttackManager from "@/components/characters/AttackManager";
 import SpellManager from "@/components/characters/SpellManager";
+import CharacterClaimButton from "@/components/characters/CharacterClaimButton";
 
 const ALIGNMENTS = ["Lawful Good", "Neutral Good", "Chaotic Good", "Lawful Neutral", "True Neutral", "Chaotic Neutral", "Lawful Evil", "Neutral Evil", "Chaotic Evil"];
 const ABILITY_SCORES = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
@@ -167,7 +168,7 @@ function RichEditor({ value, onChange, placeholder, min = 100 }) {
   );
 }
 
-export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSaved, onDuplicate, onDelete }) {
+export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSaved, onDuplicate, onDelete, currentUser, isDM = false, campaign, onClaimChange, userCharacterCounts = {} }) {
   const [form, setForm] = useState(defaultForm());
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -460,6 +461,19 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
               <Button variant="ghost" size="sm" onClick={onDuplicate} className="text-muted-foreground hover:text-foreground">
                 <Copy className="w-4 h-4 mr-1.5" /> Duplicate
               </Button>
+            )}
+            {sheet?.id && (
+              <CharacterClaimButton
+                sheet={{ ...form, id: sheet.id }}
+                campaign={campaign}
+                currentUserEmail={currentUser?.email}
+                isDM={isDM}
+                onClaimChange={() => {
+                  if (!isDM && currentUser?.email) setForm((current) => ({ ...current, assigned_to_email: currentUser.email }));
+                  onClaimChange?.();
+                }}
+                userCharacterCounts={userCharacterCounts}
+              />
             )}
             {sheet?.id && onDelete ? (
               <Button variant="ghost" size="sm" onClick={onDelete} className="text-muted-foreground hover:text-destructive">

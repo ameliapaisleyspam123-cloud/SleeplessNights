@@ -42,7 +42,7 @@ export function useCharacterAssignment() {
    * Player claims a character (only for unassigned)
    */
   const claimCharacter = useCallback(
-    async (sheetId, playerEmail, campaign) => {
+    async (sheetId, playerEmail) => {
       if (!sheetId || !playerEmail) {
         return { success: false, error: "Missing required fields" };
       }
@@ -50,7 +50,6 @@ export function useCharacterAssignment() {
       try {
         const sheet = await appClient.entities.CharacterSheet.get(sheetId);
 
-        // Check if character is available to claim
         if (sheet.assigned_to_email && sheet.assigned_to_email !== playerEmail) {
           return {
             success: false,
@@ -58,12 +57,10 @@ export function useCharacterAssignment() {
           };
         }
 
-        // If already assigned to this player, return success
         if (sheet.assigned_to_email === playerEmail) {
           return { success: true };
         }
 
-        // Check if player already has another character claimed
         const playerCharacters = await appClient.entities.CharacterSheet.filter(
           {
             campaign_id: sheet.campaign_id,
@@ -78,7 +75,6 @@ export function useCharacterAssignment() {
           };
         }
 
-        // Assign the character
         const updated = await appClient.entities.CharacterSheet.update(
           sheetId,
           {
@@ -94,6 +90,13 @@ export function useCharacterAssignment() {
     },
     []
   );
+
+  const canClaimCharacter = useCallback((sheet, currentUserEmail, isDM, userCharacterCounts = {}) => {
+    if (!sheet || !currentUserEmail || isDM) return false;
+    if (sheet.assigned_to_email === currentUserEmail) return true;
+    if (sheet.assigned_to_email) return false;
+    return (userCharacterCounts[currentUserEmail] || 0) === 0;
+  }, []);
 
   /**
    * Player unclaims their character
@@ -143,7 +146,7 @@ export function useCharacterAssignment() {
    */
   const getAssignmentStatus = useCallback((sheet, dmEmail) => {
     if (!sheet.assigned_to_email) {
-      return "Unassigned - DM can assign to a player";
+      return "DM controlled";
     }
     if (sheet.assigned_to_email === dmEmail) {
       return "Assigned to: DM (You)";
@@ -157,6 +160,7 @@ export function useCharacterAssignment() {
     claimCharacter,
     unclaimCharacter,
     canRollInitiativeForCharacter,
+    canClaimCharacter,
     getAssignmentStatus,
   };
 }

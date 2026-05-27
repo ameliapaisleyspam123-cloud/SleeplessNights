@@ -29,11 +29,7 @@ export default function CharacterClaimButton({
 
   const handleClaim = async () => {
     setClaiming(true);
-    const result = await claimCharacter(
-      sheet.id,
-      currentUserEmail,
-      campaign
-    );
+    const result = await claimCharacter(sheet.id, currentUserEmail, campaign);
     if (result.success) {
       onClaimChange?.();
     }
@@ -52,7 +48,7 @@ export default function CharacterClaimButton({
         >
           {claiming && <Loader2 className="w-3 h-3 animate-spin" />}
           <Users className="w-3.5 h-3.5" />
-          {isAssignedToMe ? "Your Character" : "Unassigned"}
+          {isAssignedToMe ? "Your Character" : "DM Controlled"}
         </Button>
       );
     }
@@ -65,24 +61,25 @@ export default function CharacterClaimButton({
   }
 
   // Player view
+  if (isAssignedToMe) {
+    return (
+      <Button
+        size="sm"
+        variant="default"
+        disabled
+        className="gap-1.5 bg-accent text-accent-foreground"
+      >
+        <Users className="w-3.5 h-3.5" />
+        Your Character
+      </Button>
+    );
+  }
+
   if (!canClaim) {
-    if (isAssignedToMe) {
-      return (
-        <Button
-          size="sm"
-          variant="default"
-          disabled
-          className="gap-1.5 bg-accent text-accent-foreground"
-        >
-          <Users className="w-3.5 h-3.5" />
-          Your Character
-        </Button>
-      );
-    }
     return (
       <Button size="sm" variant="outline" disabled className="gap-1.5">
         <Lock className="w-3.5 h-3.5" />
-        Already Claimed
+        {isUnassigned ? "Claimed Another" : "Already Claimed"}
       </Button>
     );
   }

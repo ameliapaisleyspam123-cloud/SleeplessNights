@@ -259,11 +259,7 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {!combat?.active ? (
-            <Button onClick={startCombat} className="gap-2">
-              <Play className="w-4 h-4" /> Start Combat
-            </Button>
-          ) : (
+          {combat?.active && (
             <>
               <Button variant="outline" size="sm" onClick={() => setSpellModal(true)} className="gap-1.5">
                 <Zap className="w-3.5 h-3.5" /> Track Spell
