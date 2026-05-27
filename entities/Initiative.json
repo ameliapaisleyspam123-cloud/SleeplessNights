@@ -31,6 +31,13 @@
         "type": "object"
       }
     },
+    "events": {
+      "type": "array",
+      "description": "JSON array of combat events such as damage, healing, and spell casts",
+      "items": {
+        "type": "object"
+      }
+    },
     "round": {
       "type": "number",
       "default": 1

@@ -140,16 +140,20 @@ function AddToInitiativeButton({ sheet, ownerEmail }) {
 
     const existing = (combat.entries || []).find((entry) => entry.id === sheet.id);
     const entries = existing
-      ? (combat.entries || []).map((entry) => (entry.id === sheet.id ? { ...entry, roll, total, modifier: initMod } : entry))
+      ? (combat.entries || []).map((entry) => (entry.id === sheet.id ? { ...entry, roll, total, modifier: initMod, hpCurrent: sheet.hp_current ?? sheet.hp_max ?? 0, hpMax: sheet.hp_max ?? 0, ac: sheet.ac ?? 10 } : entry))
       : [
           ...(combat.entries || []),
           {
             id: sheet.id,
+            characterId: sheet.id,
             name: sheet.name,
             image_url: sheet.image_url || "",
             roll,
             modifier: initMod,
             total,
+            hpCurrent: sheet.hp_current ?? sheet.hp_max ?? 0,
+            hpMax: sheet.hp_max ?? 0,
+            ac: sheet.ac ?? 10,
             isGroup: false,
             groupSize: 1,
             ownerEmail,
@@ -344,6 +348,64 @@ function SpellSlotsBlock({ slotsJson, onSave }) {
   );
 }
 
+function ClassResourcesBlock({ sheet, onSave }) {
+  const [values, setValues] = useState({
+    ki_points_current: sheet.ki_points_current || 0,
+    ki_points_max: sheet.ki_points_max || 0,
+    sorcery_points_current: sheet.sorcery_points_current || 0,
+    sorcery_points_max: sheet.sorcery_points_max || 0,
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setValues({
+      ki_points_current: sheet.ki_points_current || 0,
+      ki_points_max: sheet.ki_points_max || 0,
+      sorcery_points_current: sheet.sorcery_points_current || 0,
+      sorcery_points_max: sheet.sorcery_points_max || 0,
+    });
+  }, [sheet.ki_points_current, sheet.ki_points_max, sheet.sorcery_points_current, sheet.sorcery_points_max]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(values);
+    setSaving(false);
+  };
+
+  return (
+    <div className="mt-3">
+      <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center justify-between">
+        <span>Class Resources</span>
+        <button onClick={handleSave} disabled={saving} className="text-[10px] px-2 py-0.5 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
+        </button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {[
+          ["Ki Points", "ki_points_current", "ki_points_max"],
+          ["Sorcery Points", "sorcery_points_current", "sorcery_points_max"],
+        ].map(([label, currentKey, maxKey]) => (
+          <div key={label} className="border border-border rounded-sm bg-secondary/40 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">{label}</span>
+              <span className="text-sm font-medium">{values[currentKey] || 0}/{values[maxKey] || 0}</span>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <button onClick={() => setValues((current) => ({ ...current, [currentKey]: Math.max(0, (current[currentKey] || 0) - 1) }))} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
+                <Minus className="w-3 h-3" />
+              </button>
+              <button onClick={() => setValues((current) => ({ ...current, [currentKey]: Math.min(current[maxKey] || (current[currentKey] || 0) + 1, (current[currentKey] || 0) + 1) }))} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
+                <Plus className="w-3 h-3" />
+              </button>
+              <span className="text-[10px] text-muted-foreground ml-auto">Max {values[maxKey] || 0}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit, onEdit, currentUser, isDM = false }) {
   const [inspired, setInspired] = useState(Boolean(sheet?.inspiration));
   const [savingInspiration, setSavingInspiration] = useState(false);
@@ -486,6 +548,7 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
                 <span className="text-muted-foreground">Attack: <b className="text-foreground">{fmt(sheet.spell_attack_bonus || 0)}</b></span>
               </div>
               <SpellSlotsBlock slotsJson={sheet.spell_slots} onSave={saveField} />
+              <ClassResourcesBlock sheet={sheet} onSave={saveField} />
               <div className="mt-3">
                 {hasListData(sheet.spells_known) ? <SpellManager value={sheet.spells_known} readOnly /> : <EmptyBlock label="No spells recorded." />}
               </div>

@@ -192,6 +192,22 @@
       "type": "string",
       "description": "JSON string of {level: {total, used}}"
     },
+    "ki_points_current": {
+      "type": "number",
+      "default": 0
+    },
+    "ki_points_max": {
+      "type": "number",
+      "default": 0
+    },
+    "sorcery_points_current": {
+      "type": "number",
+      "default": 0
+    },
+    "sorcery_points_max": {
+      "type": "number",
+      "default": 0
+    },
     "spells_known": {
       "type": "string",
       "description": "JSON array of spells [{name, castingTime, rangeArea, components, duration}]"

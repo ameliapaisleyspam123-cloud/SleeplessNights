@@ -49,6 +49,10 @@ export const characterSheetDefaults: Partial<CharacterSheet> = {
   pp: 0,
   spell_save_dc: 8,
   spell_attack_bonus: 0,
+  ki_points_current: 0,
+  ki_points_max: 0,
+  sorcery_points_current: 0,
+  sorcery_points_max: 0,
   visibility: "public",
   allowed_emails: [],
 };
@@ -64,6 +68,7 @@ export const initiativeDefaults: Partial<Initiative> = {
   current_turn_index: 0,
   entries: [],
   spells: [],
+  events: [],
   round: 1,
 };
 
