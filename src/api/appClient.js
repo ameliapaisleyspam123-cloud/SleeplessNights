@@ -3,6 +3,7 @@ import { supabase } from "@/supabase";
 const STORAGE_KEY = "sleepless_nights_store_v1";
 const SESSION_KEY = "sleepless_nights_user_v1";
 const SUPABASE_TABLE = "app_records";
+const STORE_CACHE_TTL_MS = 8000;
 
 export const ENTITY_NAMES = [
   "Broadcast",
@@ -18,6 +19,9 @@ export const ENTITY_NAMES = [
 ];
 
 const subscribers = new Map();
+let cachedStore = null;
+let cachedStoreAt = 0;
+let storeReadPromise = null;
 
 function emptyStore() {
   return Object.fromEntries(ENTITY_NAMES.map((name) => [name, []]));
@@ -97,6 +101,18 @@ function writeStore(store) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
+function setCachedStore(store) {
+  cachedStore = normalizeStore(store);
+  cachedStoreAt = Date.now();
+  return cachedStore;
+}
+
+function getCachedStore() {
+  if (!cachedStore) return null;
+  if (Date.now() - cachedStoreAt > STORE_CACHE_TTL_MS) return null;
+  return cachedStore;
+}
+
 function recordKey(entity, recordId) {
   return `${entity}:${recordId}`;
 }
@@ -109,12 +125,15 @@ function normalizeStore(store) {
 
 async function readStoreAsync() {
   if (!supabase) return readStore();
+  const cached = getCachedStore();
+  if (cached) return cached;
+  if (storeReadPromise) return storeReadPromise;
 
-  try {
+  storeReadPromise = (async () => {
     const { data, error } = await supabase.from(SUPABASE_TABLE).select("entity,data");
     if (error) {
       console.warn("Supabase read failed; falling back to browser storage.", error);
-      return readStore();
+      return setCachedStore(readStore());
     }
 
     const store = emptyStore();
@@ -126,20 +145,27 @@ async function readStoreAsync() {
     if (!hasRemoteData) {
       const local = readStore();
       await writeStoreAsync(local);
-      return local;
+      return setCachedStore(local);
     }
 
     writeStore(store);
-    return store;
+    return setCachedStore(store);
+  })();
+
+  try {
+    return await storeReadPromise;
   } catch (err) {
     console.warn("Supabase read threw error; using local storage:", err);
-    return readStore();
+    return setCachedStore(readStore());
+  } finally {
+    storeReadPromise = null;
   }
 }
 
 async function writeStoreAsync(store) {
   const normalized = normalizeStore(store);
   writeStore(normalized);
+  setCachedStore(normalized);
   if (!supabase) return normalized;
 
   try {
@@ -178,6 +204,13 @@ async function clearRemoteStore() {
 }
 
 async function upsertRemoteRecord(entity, record) {
+  if (cachedStore) {
+    const current = normalizeStore(cachedStore);
+    const records = current[entity] || [];
+    const index = records.findIndex((item) => item.id === record.id);
+    current[entity] = index === -1 ? [...records, record] : records.map((item) => (item.id === record.id ? record : item));
+    setCachedStore(current);
+  }
   if (!supabase) return;
   try {
     const { error } = await supabase.from(SUPABASE_TABLE).upsert(
@@ -200,6 +233,11 @@ async function upsertRemoteRecord(entity, record) {
 }
 
 async function deleteRemoteRecord(entity, recordId) {
+  if (cachedStore) {
+    const current = normalizeStore(cachedStore);
+    current[entity] = (current[entity] || []).filter((record) => record.id !== recordId);
+    setCachedStore(current);
+  }
   if (!supabase) return;
   try {
     const { error } = await supabase.from(SUPABASE_TABLE).delete().eq("id", recordKey(entity, recordId));
