@@ -14,6 +14,10 @@ import {
   User,
   Clock,
   Zap,
+  Heart,
+  Shield,
+  Sparkles,
+  Skull,
   X,
   Play,
   Square,
@@ -64,14 +68,22 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
   const [groupModal, setGroupModal] = useState(null);
   const [spellModal, setSpellModal] = useState(false);
   const [setupModal, setSetupModal] = useState(false);
-  const [addForm, setAddForm] = useState({ name: "", roll: "", modifier: "0", isGroup: false, groupSize: 2 });
+  const [characters, setCharacters] = useState([]);
+  const [addForm, setAddForm] = useState({ mode: "manual", characterId: "", name: "", roll: "", modifier: "0", hpCurrent: "", hpMax: "", ac: "", isGroup: false, groupSize: 2 });
   const [spellForm, setSpellForm] = useState({ name: "", casterName: "", duration: 10 });
+  const [effectForm, setEffectForm] = useState({ kind: "damage", sourceId: "", targetId: "", amount: "", damageType: "" });
   const [setupSeconds, setSetupSeconds] = useState(6);
 
   const loadCombat = useCallback(async () => {
     if (!campaignId) return;
-    const list = await appClient.entities.Initiative.filter({ campaign_id: campaignId }, "-updated_date", 1);
-    if (list[0]) setCombat(list[0]);
+    const [active, latest, sheets] = await Promise.all([
+      appClient.entities.Initiative.filter({ campaign_id: campaignId, active: true }, "-updated_date", 1),
+      appClient.entities.Initiative.filter({ campaign_id: campaignId }, "-updated_date", 1),
+      appClient.entities.CharacterSheet.filter({ campaign_id: campaignId }, "name", 300),
+    ]);
+    setCharacters(sheets.filter((sheet) => sheet.visibility !== "archived"));
+    if (active[0]) setCombat(active[0]);
+    else if (latest[0]) setCombat(latest[0]);
     else setCombat(null);
     setLoading(false);
   }, [campaignId]);
@@ -101,18 +113,21 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
 
   const confirmStart = async () => {
     setSetupModal(false);
-    await save({
+    const created = await appClient.entities.Initiative.create({
+      campaign_id: campaignId,
       active: true,
       round: 1,
       current_turn_index: 0,
       turn_seconds: setupSeconds,
       entries: [],
       spells: [],
+      events: [],
     });
+    setCombat(created);
   };
 
   const stopCombat = async () => {
-    await save({ active: false, entries: [], spells: [], round: 1, current_turn_index: 0 });
+    await save({ active: false, current_turn_index: 0 });
   };
 
   const entries = combat?.entries || [];
@@ -120,6 +135,7 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
   const round = combat?.round ?? 1;
   const turnSecs = combat?.turn_seconds ?? 6;
   const spells = combat?.spells || [];
+  const events = combat?.events || [];
 
   const updateEntries = (newEntries) => save({ entries: newEntries });
 
@@ -167,24 +183,73 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
   };
 
   const addEntry = () => {
+    const selected = addForm.mode === "character" ? characters.find((character) => character.id === addForm.characterId) : null;
+    const dexMod = selected ? Math.floor(((selected.dexterity || 10) - 10) / 2) : 0;
+    const initMod = selected ? (selected.initiative !== undefined && selected.initiative !== 0 ? selected.initiative : dexMod) : Number(addForm.modifier) || 0;
     const roll = addForm.roll !== "" ? Number(addForm.roll) : Math.floor(Math.random() * 20) + 1;
-    const mod = Number(addForm.modifier) || 0;
-    const entry = {
-      id: `manual_${Date.now()}`,
-      name: addForm.name || "Unknown",
-      roll,
-      modifier: mod,
-      total: roll + mod,
-      isGroup: addForm.isGroup,
-      groupSize: addForm.isGroup ? Number(addForm.groupSize) : 1,
-      type: "manual",
-      ownerEmail: "",
-      image_url: "",
-    };
+    const entry = selected
+      ? {
+          id: selected.id,
+          characterId: selected.id,
+          name: selected.name || "Unknown",
+          image_url: selected.image_url || "",
+          roll,
+          modifier: initMod,
+          total: roll + initMod,
+          hpCurrent: selected.hp_current ?? selected.hp_max ?? 0,
+          hpMax: selected.hp_max ?? 0,
+          ac: selected.ac ?? 10,
+          isGroup: false,
+          groupSize: 1,
+          ownerEmail: selected.assigned_to_email || "",
+          type: "character",
+        }
+      : {
+          id: `manual_${Date.now()}`,
+          name: addForm.name || "Unknown",
+          roll,
+          modifier: initMod,
+          total: roll + initMod,
+          hpCurrent: addForm.hpCurrent === "" ? null : Number(addForm.hpCurrent),
+          hpMax: addForm.hpMax === "" ? null : Number(addForm.hpMax),
+          ac: addForm.ac === "" ? null : Number(addForm.ac),
+          isGroup: addForm.isGroup,
+          groupSize: addForm.isGroup ? Number(addForm.groupSize) : 1,
+          type: "manual",
+          ownerEmail: "",
+          image_url: "",
+        };
     const arr = [...entries, entry].sort((a, b) => b.total - a.total);
     updateEntries(arr);
     setAddModal(false);
-    setAddForm({ name: "", roll: "", modifier: "0", isGroup: false, groupSize: 2 });
+    setAddForm({ mode: "manual", characterId: "", name: "", roll: "", modifier: "0", hpCurrent: "", hpMax: "", ac: "", isGroup: false, groupSize: 2 });
+  };
+
+  const addEffect = async () => {
+    const amount = Number(effectForm.amount) || 0;
+    const target = entries.find((entry) => entry.id === effectForm.targetId);
+    if (!target || amount <= 0) return;
+    const source = entries.find((entry) => entry.id === effectForm.sourceId);
+    const isDamage = effectForm.kind === "damage";
+    const nextHp = Math.max(0, Math.min(target.hpMax || Number.MAX_SAFE_INTEGER, (Number(target.hpCurrent) || 0) + (isDamage ? -amount : amount)));
+    const nextEntries = entries.map((entry) => (entry.id === target.id ? { ...entry, hpCurrent: nextHp } : entry));
+    const event = {
+      id: `event_${Date.now()}`,
+      type: effectForm.kind,
+      round,
+      sourceId: source?.id || "",
+      sourceName: source?.name || "Unknown",
+      targetId: target.id,
+      targetName: target.name,
+      amount,
+      damageType: isDamage ? effectForm.damageType.trim() : "",
+      createdAt: new Date().toISOString(),
+    };
+    if (target.characterId || target.type === "character") {
+      await appClient.entities.CharacterSheet.update(target.characterId || target.id, { hp_current: nextHp }).catch(() => {});
+    }
+    await save({ entries: nextEntries, events: [...events, event] });
+    setEffectForm((form) => ({ ...form, amount: "", damageType: "" }));
   };
 
   const groupWith = (indexA, indexB) => {
@@ -230,7 +295,15 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
       roundsLeft: Number(spellForm.duration),
       roundsTotal: Number(spellForm.duration),
     };
-    save({ spells: [...spells, newSpell] });
+    const spellEvent = {
+      id: `spell_${Date.now()}`,
+      type: "spell",
+      round,
+      sourceName: spellForm.casterName || "Unknown",
+      spellName: spellForm.name,
+      createdAt: new Date().toISOString(),
+    };
+    save({ spells: [...spells, newSpell], events: [...events, spellEvent] });
     setSpellModal(false);
     setSpellForm({ name: "", casterName: "", duration: 10 });
   };
@@ -333,6 +406,17 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
                         {entry.modifier})
                       </span>
                     </div>
+                    <div className="flex flex-wrap gap-2 mt-1 text-[10px] uppercase tracking-widest">
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <Heart className="w-3 h-3 text-destructive" />
+                        <span className="text-foreground">{entry.hpCurrent ?? "-"}</span>
+                        <span>/ {entry.hpMax ?? "-"}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <Shield className="w-3 h-3 text-accent" />
+                        <span className="text-foreground">{entry.ac ?? "-"}</span>
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
@@ -374,6 +458,41 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
           </div>
 
           <div className="lg:w-64 shrink-0 space-y-3">
+            <div className="text-[10px] uppercase tracking-widest text-accent font-medium">Damage & Healing</div>
+            <div className="border border-border rounded-sm bg-card/60 p-3 space-y-2">
+              <div className="grid grid-cols-2 gap-1">
+                {[
+                  ["damage", Skull, "Damage"],
+                  ["healing", Sparkles, "Healing"],
+                ].map(([kind, Icon, label]) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => setEffectForm((form) => ({ ...form, kind }))}
+                    className={`h-8 rounded-sm border text-xs flex items-center justify-center gap-1.5 transition-colors ${effectForm.kind === kind ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <Icon className="w-3.5 h-3.5" /> {label}
+                  </button>
+                ))}
+              </div>
+              <select value={effectForm.sourceId} onChange={(event) => setEffectForm((form) => ({ ...form, sourceId: event.target.value }))} className="w-full h-9 bg-background border border-border rounded-sm px-2 text-xs">
+                <option value="">Source</option>
+                {entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+              </select>
+              <select value={effectForm.targetId} onChange={(event) => setEffectForm((form) => ({ ...form, targetId: event.target.value }))} className="w-full h-9 bg-background border border-border rounded-sm px-2 text-xs">
+                <option value="">Target</option>
+                {entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.name} ({entry.hpCurrent ?? "-"}/{entry.hpMax ?? "-"})</option>)}
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <Input type="number" min={1} value={effectForm.amount} onChange={(event) => setEffectForm((form) => ({ ...form, amount: event.target.value }))} placeholder="Amount" className="h-9 text-xs" />
+                <Input value={effectForm.damageType} onChange={(event) => setEffectForm((form) => ({ ...form, damageType: event.target.value }))} placeholder="Type" className="h-9 text-xs" disabled={effectForm.kind !== "damage"} />
+              </div>
+              <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs" onClick={addEffect} disabled={!effectForm.targetId || !effectForm.amount}>
+                {effectForm.kind === "damage" ? <Skull className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+                Apply {effectForm.kind === "damage" ? "Damage" : "Healing"}
+              </Button>
+            </div>
+
             <div className="text-[10px] uppercase tracking-widest text-accent font-medium">Spell Durations</div>
             {spells.length === 0 && <p className="text-xs text-muted-foreground">No active spells.</p>}
             {spells.map((sp) => {
@@ -437,10 +556,56 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
 
       <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Combatant">
         <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-1">
+            {[
+              ["character", "Character"],
+              ["manual", "Manual"],
+            ].map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setAddForm((form) => ({ ...form, mode }))}
+                className={`h-9 rounded-sm border text-xs transition-colors ${addForm.mode === mode ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground hover:text-foreground"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {addForm.mode === "character" && (
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-1">Character</label>
+              <select value={addForm.characterId} onChange={(e) => setAddForm((f) => ({ ...f, characterId: e.target.value }))} className="w-full h-10 bg-background border border-border rounded-sm px-3 text-sm">
+                <option value="">Choose a character...</option>
+                {characters.map((character) => (
+                  <option key={character.id} value={character.id}>
+                    {character.name} - HP {character.hp_current ?? character.hp_max ?? "-"}/{character.hp_max ?? "-"} - AC {character.ac ?? "-"}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {addForm.mode === "manual" && (
+            <>
           <div>
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-1">Name</label>
-            <Input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} placeholder="Goblin, Dragon..." />
+            <Input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} placeholder="Enemy, ally, NPC..." />
           </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-1">HP</label>
+              <Input type="number" value={addForm.hpCurrent} onChange={(e) => setAddForm((f) => ({ ...f, hpCurrent: e.target.value, hpMax: f.hpMax || e.target.value }))} placeholder="-" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-1">Max HP</label>
+              <Input type="number" value={addForm.hpMax} onChange={(e) => setAddForm((f) => ({ ...f, hpMax: e.target.value }))} placeholder="-" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-1">AC</label>
+              <Input type="number" value={addForm.ac} onChange={(e) => setAddForm((f) => ({ ...f, ac: e.target.value }))} placeholder="-" />
+            </div>
+          </div>
+            </>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-1">d20 Roll (blank = random)</label>
@@ -451,14 +616,14 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
               <Input type="number" value={addForm.modifier} onChange={(e) => setAddForm((f) => ({ ...f, modifier: e.target.value }))} placeholder="0" />
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          {addForm.mode === "manual" && <div className="flex items-center gap-3">
             <button
               onClick={() => setAddForm((f) => ({ ...f, isGroup: !f.isGroup }))}
               className={`w-4 h-4 rounded border-2 transition-colors ${addForm.isGroup ? "bg-accent border-accent" : "border-border"}`}
             />
             <span className="text-sm">This is a group</span>
-          </div>
-          {addForm.isGroup && (
+          </div>}
+          {addForm.mode === "manual" && addForm.isGroup && (
             <div>
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-1">Group size</label>
               <Input type="number" min={2} value={addForm.groupSize} onChange={(e) => setAddForm((f) => ({ ...f, groupSize: e.target.value }))} />
@@ -468,7 +633,7 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
             <Button variant="ghost" onClick={() => setAddModal(false)}>
               Cancel
             </Button>
-            <Button onClick={addEntry} disabled={!addForm.name.trim()}>
+            <Button onClick={addEntry} disabled={addForm.mode === "character" ? !addForm.characterId : !addForm.name.trim()}>
               <Plus className="w-4 h-4 mr-1" /> Add
             </Button>
           </div>

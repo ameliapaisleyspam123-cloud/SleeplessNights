@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { appClient } from "@/api/appClient";
+import CharacterSheetEditor from "@/components/characters/CharacterSheetEditor";
+import CharacterSheetView from "@/components/characters/CharacterSheetView";
 import DocumentEditor from "@/components/documents/DocumentEditor";
 import LoreDetail from "@/components/lore/LoreDetail";
 import LoreEditor from "@/components/lore/LoreEditor";
 import { Button } from "@/components/ui/button";
-import { Archive, Box, FileText, Lock, Plus, Radio, Swords, Trash2, Users } from "lucide-react";
+import { Archive, Box, FileText, Heart, Lock, Plus, Radio, Shield, Sparkles, Swords, Trash2, Users, Zap } from "lucide-react";
 
 const TABS = [
   { id: "documents", label: "Documents", icon: Lock },
@@ -23,11 +25,35 @@ function shortDate(value) {
   return new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
 }
 
+function combatStats(combat) {
+  const events = combat.events || [];
+  const damage = events.filter((event) => event.type === "damage");
+  const healing = events.filter((event) => event.type === "healing");
+  const spells = events.filter((event) => event.type === "spell");
+  const damageByType = damage.reduce((totals, event) => {
+    const key = event.damageType || "untyped";
+    return { ...totals, [key]: (totals[key] || 0) + (Number(event.amount) || 0) };
+  }, {});
+  const totalsBySource = damage.reduce((totals, event) => {
+    const key = event.sourceName || "Unknown";
+    return { ...totals, [key]: (totals[key] || 0) + (Number(event.amount) || 0) };
+  }, {});
+  const topDamage = Object.entries(totalsBySource).sort((a, b) => b[1] - a[1])[0];
+  return {
+    damageTotal: damage.reduce((sum, event) => sum + (Number(event.amount) || 0), 0),
+    healingTotal: healing.reduce((sum, event) => sum + (Number(event.amount) || 0), 0),
+    spellsCast: spells.length,
+    topDamage,
+    damageByType,
+  };
+}
+
 export default function DmVault() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("documents");
   const [documents, setDocuments] = useState([]);
   const [lore, setLore] = useState([]);
+  const [characters, setCharacters] = useState([]);
   const [broadcasts, setBroadcasts] = useState([]);
   const [combats, setCombats] = useState([]);
   const [players, setPlayers] = useState([]);
@@ -35,12 +61,15 @@ export default function DmVault() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [viewingLore, setViewingLore] = useState(null);
   const [editingLore, setEditingLore] = useState(null);
+  const [viewingCharacter, setViewingCharacter] = useState(null);
+  const [editingCharacter, setEditingCharacter] = useState(null);
 
   const load = async () => {
     const currentUser = await appClient.auth.me();
-    const [docs, loreEntries, overrideEntries, initiativeEntries, userEntries, campaignEntries] = await Promise.all([
+    const [docs, loreEntries, characterEntries, overrideEntries, initiativeEntries, userEntries, campaignEntries] = await Promise.all([
       appClient.entities.Document.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 500),
       appClient.entities.LoreEntry.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 500),
+      appClient.entities.CharacterSheet.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 500),
       appClient.entities.Broadcast.list("-updated_date", 500),
       appClient.entities.Initiative.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 100),
       appClient.entities.User.filter({ campaign_id: currentUser.campaign_id }, "display_name", 200),
@@ -49,6 +78,7 @@ export default function DmVault() {
     setUser(currentUser);
     setDocuments(docs);
     setLore(loreEntries);
+    setCharacters(characterEntries);
     setBroadcasts(overrideEntries.filter((entry) => !entry.campaign_id || entry.campaign_id === currentUser.campaign_id));
     setCombats(initiativeEntries);
     setPlayers(userEntries);
@@ -61,10 +91,12 @@ export default function DmVault() {
 
   const sealedDocs = documents.filter((doc) => doc.visibility === "private");
   const sealedLore = lore.filter((entry) => entry.visibility === "dm_only");
+  const sealedCharacters = characters.filter((entry) => entry.visibility === "dm_only");
+  const archivedLore = lore.filter((entry) => entry.visibility === "archived");
+  const archivedCharacters = characters.filter((entry) => entry.visibility === "archived");
   const archived = useMemo(
     () => [
       ...documents.filter((doc) => doc.visibility === "archived").map((item) => ({ ...item, kind: "document" })),
-      ...lore.filter((entry) => entry.visibility === "archived").map((item) => ({ ...item, kind: "lore" })),
       ...broadcasts.filter((entry) => entry.archived).map((item) => ({ ...item, kind: "override" })),
     ],
     [documents, lore, broadcasts],
@@ -103,6 +135,11 @@ export default function DmVault() {
 
   const restoreLore = async (entry) => {
     await appClient.entities.LoreEntry.update(entry.id, { visibility: "public" });
+    await load();
+  };
+
+  const restoreCharacter = async (entry) => {
+    await appClient.entities.CharacterSheet.update(entry.id, { visibility: "public" });
     await load();
   };
 
@@ -156,7 +193,7 @@ export default function DmVault() {
       </div>
 
       {tab === "documents" && (
-        <VaultPanel empty={sealedDocs.length === 0 && sealedLore.length === 0} emptyTitle="The vault is empty." emptyBody="Upload sealed documents for the DM.">
+        <VaultPanel empty={sealedDocs.length === 0 && sealedLore.length === 0 && sealedCharacters.length === 0} emptyTitle="The vault is empty." emptyBody="Upload sealed documents for the DM.">
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
             {sealedDocs.map((doc) => (
               <div key={doc.id} className="border border-border bg-card/55 rounded-sm p-4 flex flex-col min-h-40">
@@ -179,6 +216,18 @@ export default function DmVault() {
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-4">Lore & Maps - DM Only</div>
               </button>
             ))}
+            {sealedCharacters.map((entry) => (
+              <button key={entry.id} type="button" onClick={() => setViewingCharacter(entry)} className="text-left border border-border bg-card/55 rounded-sm p-4 hover:border-accent/70 transition-colors min-h-40">
+                <Users className="w-5 h-5 text-accent" />
+                <div className="font-display text-xl mt-3">{entry.name}</div>
+                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{[entry.race, entry.class, entry.subclass].filter(Boolean).join(" - ") || "Character sheet"}</p>
+                <div className="flex gap-3 text-xs text-muted-foreground mt-4">
+                  <span className="inline-flex items-center gap-1"><Heart className="w-3 h-3" /> {entry.hp_current ?? entry.hp_max ?? "-"}/{entry.hp_max ?? "-"}</span>
+                  <span className="inline-flex items-center gap-1"><Shield className="w-3 h-3" /> {entry.ac ?? "-"}</span>
+                </div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-4">Characters - DM Only</div>
+              </button>
+            ))}
           </div>
         </VaultPanel>
       )}
@@ -187,12 +236,30 @@ export default function DmVault() {
         <VaultPanel empty={combats.length === 0} emptyTitle="No combat records." emptyBody="Initiative encounters will appear here.">
           <div className="space-y-3">
             {combats.map((combat) => (
-              <div key={combat.id} className="border border-border bg-card/55 rounded-sm p-4 flex items-center justify-between gap-4">
-                <div>
-                  <div className="font-display text-xl">{combat.active ? "Active Encounter" : "Saved Encounter"}</div>
-                  <div className="text-sm text-muted-foreground">{combat.entries?.length || 0} combatants - round {combat.round || 1}</div>
+              <div key={combat.id} className="border border-border bg-card/55 rounded-sm p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="font-display text-xl">{combat.active ? "Active Encounter" : "Saved Encounter"}</div>
+                    <div className="text-sm text-muted-foreground">{combat.entries?.length || 0} combatants - round {combat.round || 1}</div>
+                  </div>
+                  <div className={combat.active ? "text-accent text-sm" : "text-muted-foreground text-sm"}>{combat.active ? "Live" : shortDate(combat.updated_date)}</div>
                 </div>
-                <div className={combat.active ? "text-accent text-sm" : "text-muted-foreground text-sm"}>{combat.active ? "Live" : shortDate(combat.updated_date)}</div>
+                {(() => {
+                  const stats = combatStats(combat);
+                  return (
+                    <div className="mt-4 grid sm:grid-cols-2 xl:grid-cols-4 gap-2">
+                      <StatTile icon={Swords} label="Damage" value={stats.damageTotal} />
+                      <StatTile icon={Sparkles} label="Healing" value={stats.healingTotal} />
+                      <StatTile icon={Zap} label="Spells Cast" value={stats.spellsCast} />
+                      <StatTile icon={Users} label="Top Damage" value={stats.topDamage ? `${stats.topDamage[0]} (${stats.topDamage[1]})` : "-"} />
+                      {Object.keys(stats.damageByType).length > 0 && (
+                        <div className="sm:col-span-2 xl:col-span-4 text-xs text-muted-foreground pt-1">
+                          Damage types: {Object.entries(stats.damageByType).map(([type, total]) => `${type} ${total}`).join(", ")}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>
@@ -228,8 +295,8 @@ export default function DmVault() {
       )}
 
       {tab === "archived" && (
-        <VaultPanel empty={archived.length === 0} emptyTitle="Nothing archived." emptyBody="Archived vault items will rest here.">
-          <div className="space-y-2">
+        <VaultPanel empty={archived.length === 0 && archivedLore.length === 0 && archivedCharacters.length === 0} emptyTitle="Nothing archived." emptyBody="Archived vault items will rest here.">
+          <div className="space-y-6">
             {archived.map((item) => (
               <div key={`${item.kind}-${item.id}`} className="border border-border bg-card/55 rounded-sm p-4 flex items-center justify-between gap-4">
                 <div>
@@ -239,6 +306,8 @@ export default function DmVault() {
                 <Archive className="w-4 h-4 text-muted-foreground" />
               </div>
             ))}
+            <ArchiveSection title="Archived Lore Entries" items={archivedLore} empty="No archived lore entries." onRestore={restoreLore} onOpen={setViewingLore} />
+            <ArchiveSection title="Archived Characters" items={archivedCharacters} empty="No archived characters." onRestore={restoreCharacter} onOpen={setViewingCharacter} nameKey="name" />
           </div>
         </VaultPanel>
       )}
@@ -283,7 +352,63 @@ export default function DmVault() {
         onDelete={() => viewingLore && deleteLore(viewingLore)}
       />
       <LoreEditor open={Boolean(editingLore)} onOpenChange={(open) => !open && setEditingLore(null)} entry={editingLore?.id ? editingLore : null} onSaved={load} />
+      <CharacterSheetView
+        open={Boolean(viewingCharacter)}
+        onOpenChange={(open) => !open && setViewingCharacter(null)}
+        sheet={viewingCharacter}
+        canEdit
+        currentUser={user}
+        isDM
+        onEdit={() => {
+          setEditingCharacter(viewingCharacter);
+          setViewingCharacter(null);
+        }}
+      />
+      <CharacterSheetEditor
+        open={Boolean(editingCharacter)}
+        onOpenChange={(open) => !open && setEditingCharacter(null)}
+        sheet={editingCharacter?.id ? editingCharacter : null}
+        onSaved={load}
+        currentUser={user}
+        isDM
+      />
     </div>
+  );
+}
+
+function StatTile({ icon: Icon, label, value }) {
+  return (
+    <div className="border border-border rounded-sm bg-background/50 px-3 py-2">
+      <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest text-muted-foreground">
+        <Icon className="w-3 h-3 text-accent" /> {label}
+      </div>
+      <div className="text-sm font-medium mt-1 truncate">{value}</div>
+    </div>
+  );
+}
+
+function ArchiveSection({ title, items, empty, onRestore, onOpen, nameKey = "title" }) {
+  return (
+    <section>
+      <div className="text-[10px] uppercase tracking-widest text-accent font-medium mb-3">{title}</div>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{empty}</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div key={item.id} className="border border-border bg-card/55 rounded-sm p-4 flex items-center justify-between gap-4">
+              <button type="button" onClick={() => onOpen(item)} className="text-left min-w-0">
+                <div className="font-medium truncate">{item[nameKey] || "Untitled"}</div>
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">{shortDate(item.updated_date || item.created_date)}</div>
+              </button>
+              <Button size="sm" variant="ghost" onClick={() => onRestore(item)}>
+                Restore
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

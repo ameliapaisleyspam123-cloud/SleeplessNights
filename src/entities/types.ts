@@ -89,6 +89,10 @@ export interface CharacterSheet extends AppRecord {
   spell_save_dc?: number;
   spell_attack_bonus?: number;
   spell_slots?: string;
+  ki_points_current?: number;
+  ki_points_max?: number;
+  sorcery_points_current?: number;
+  sorcery_points_max?: number;
   spells_known?: string;
   attacks?: string;
   notes?: string;
@@ -124,6 +128,7 @@ export interface Initiative extends AppRecord {
   current_turn_index?: number;
   entries?: InitiativeEntry[];
   spells?: ActiveSpellTracker[];
+  events?: Record<string, unknown>[];
   round?: number;
 }
 

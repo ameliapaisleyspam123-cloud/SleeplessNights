@@ -98,6 +98,10 @@ const defaultForm = () => ({
   spell_save_dc: 8,
   spell_attack_bonus: 0,
   spell_slots: "",
+  ki_points_current: 0,
+  ki_points_max: 0,
+  sorcery_points_current: 0,
+  sorcery_points_max: 0,
   spells_known: "",
   notes: "",
   image_url: "",
@@ -413,6 +417,24 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                       <Input type="number" min={0} max={9} className="text-center px-0 h-6 text-xs w-8" placeholder="Used" value={spellSlots[level]?.used ?? ""} onChange={(event) => setSlot(level, "used", event.target.value)} />
                       <span className="text-muted-foreground text-xs">/</span>
                       <Input type="number" min={0} max={9} className="text-center px-0 h-6 text-xs w-8" placeholder="Max" value={spellSlots[level]?.total ?? ""} onChange={(event) => setSlot(level, "total", event.target.value)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Class Resources (current / max)</div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  ["Ki Points", "ki_points_current", "ki_points_max"],
+                  ["Sorcery Points", "sorcery_points_current", "sorcery_points_max"],
+                ].map(([label, currentKey, maxKey]) => (
+                  <div key={label} className="border border-border rounded-sm bg-secondary/40 p-2">
+                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1 text-center">{label}</div>
+                    <div className="flex items-center gap-1 justify-center">
+                      <Input type="number" min={0} className="text-center px-0 h-7 text-xs w-14" placeholder="Current" value={form[currentKey]} onChange={(event) => setNum(currentKey, event.target.value)} />
+                      <span className="text-muted-foreground text-xs">/</span>
+                      <Input type="number" min={0} className="text-center px-0 h-7 text-xs w-14" placeholder="Max" value={form[maxKey]} onChange={(event) => setNum(maxKey, event.target.value)} />
                     </div>
                   </div>
                 ))}
