@@ -3,7 +3,8 @@ import { ChevronDown, ChevronUp, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const emptySpell = () => ({ name: "", castingTime: "", rangeArea: "", components: "", duration: "", description: "" });
+const SPELL_LEVELS = ["Cantrip", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+const emptySpell = () => ({ level: "Cantrip", name: "", castingTime: "", rangeArea: "", components: "", duration: "", description: "" });
 
 function readSpells(value) {
   try {
@@ -11,7 +12,7 @@ function readSpells(value) {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     const legacy = String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    return legacy ? [{ name: legacy, castingTime: "", rangeArea: "", components: "", duration: "", description: "" }] : [];
+    return legacy ? [{ level: "Cantrip", name: legacy, castingTime: "", rangeArea: "", components: "", duration: "", description: "" }] : [];
   }
 }
 
@@ -39,6 +40,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border bg-secondary/40">
+                <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-20">Level</th>
                 <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal">Spell</th>
                 <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-28">Casting</th>
                 <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-28">Range/Area</th>
@@ -50,6 +52,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
               {spells.map((spell, index) => (
                 <React.Fragment key={`${spell.name}-${index}`}>
                   <tr className="border-b border-border/40 last:border-0">
+                    <td className="px-2 py-1.5 text-muted-foreground">{spell.level || "Cantrip"}</td>
                     <td className="px-2 py-1.5 font-medium">{spell.name || "-"}</td>
                     <td className="px-2 py-1.5 text-muted-foreground">{spell.castingTime || "-"}</td>
                     <td className="px-2 py-1.5 text-muted-foreground">{spell.rangeArea || "-"}</td>
@@ -58,7 +61,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
                   </tr>
                   {spell.description && (
                     <tr className="border-b border-border/40 last:border-0 bg-secondary/10">
-                      <td colSpan={5} className="px-2 pb-1.5 text-muted-foreground italic whitespace-pre-wrap">
+                      <td colSpan={6} className="px-2 pb-1.5 text-muted-foreground italic whitespace-pre-wrap">
                         {spell.description}
                       </td>
                     </tr>
@@ -88,8 +91,8 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
         <div className="border border-dashed border-border rounded-sm py-6 text-center text-xs text-muted-foreground">No spells yet.</div>
       ) : (
         <div className="border border-border rounded-sm overflow-hidden divide-y divide-border">
-          <div className="grid grid-cols-[1fr_100px_112px_96px_104px_64px] gap-1 px-2 py-1 bg-secondary/40">
-            {["Spell", "Casting", "Range/Area", "Components", "Duration", ""].map((heading) => (
+          <div className="grid grid-cols-[84px_1fr_100px_112px_96px_104px_64px] gap-1 px-2 py-1 bg-secondary/40">
+            {["Level", "Spell", "Casting", "Range/Area", "Components", "Duration", ""].map((heading) => (
               <div key={heading} className="text-[9px] uppercase tracking-widest text-muted-foreground text-center first:text-left">
                 {heading}
               </div>
@@ -97,7 +100,18 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
           </div>
           {spells.map((spell, index) => (
             <div key={index}>
-              <div className="grid grid-cols-[1fr_100px_112px_96px_104px_64px] gap-1 px-2 py-1.5 items-center">
+              <div className="grid grid-cols-[84px_1fr_100px_112px_96px_104px_64px] gap-1 px-2 py-1.5 items-center">
+                <select
+                  value={spell.level || "Cantrip"}
+                  onChange={(event) => update(index, "level", event.target.value)}
+                  className="h-7 rounded-sm border border-input bg-background px-2 text-xs text-foreground"
+                >
+                  {SPELL_LEVELS.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </select>
                 <Input value={spell.name} onChange={(event) => update(index, "name", event.target.value)} placeholder="Fireball" className="h-7 text-xs px-2" />
                 <Input value={spell.castingTime} onChange={(event) => update(index, "castingTime", event.target.value)} placeholder="1 action" className="h-7 text-xs px-2" />
                 <Input value={spell.rangeArea} onChange={(event) => update(index, "rangeArea", event.target.value)} placeholder="150 ft" className="h-7 text-xs px-2" />

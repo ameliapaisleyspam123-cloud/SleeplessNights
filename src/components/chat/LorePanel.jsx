@@ -72,7 +72,7 @@ function readCharacterSpells(value) {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     const legacy = String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    return legacy ? [{ name: legacy }] : [];
+    return legacy ? [{ level: "Cantrip", name: legacy }] : [];
   }
 }
 
@@ -339,7 +339,9 @@ function CharacterCard({ sheet }) {
                   <div className="space-y-1">
                     {spells.slice(0, 5).map((spell, index) => (
                       <div key={`${spell.name}-${index}`} className="text-[10px] text-foreground/80 leading-relaxed border border-border/60 rounded-sm px-2 py-1">
-                        <div className="font-medium text-foreground">{spell.name || "-"}</div>
+                        <div className="font-medium text-foreground">
+                          <span className="text-muted-foreground">{spell.level || "Cantrip"}</span> - {spell.name || "-"}
+                        </div>
                         {(spell.castingTime || spell.rangeArea || spell.components || spell.duration) && (
                           <div className="text-muted-foreground">
                             {[spell.castingTime, spell.rangeArea, spell.components, spell.duration].filter(Boolean).join(" | ")}
