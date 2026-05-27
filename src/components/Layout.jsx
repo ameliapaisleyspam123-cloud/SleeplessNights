@@ -203,7 +203,7 @@ function LayoutInner() {
         <Outlet />
       </main>
 
-      {splitOpen && campaignId && (
+      {isAdmin && splitOpen && campaignId && (
         <aside className="hidden lg:flex flex-col w-[400px] shrink-0 border-l border-border bg-card/40 backdrop-blur-sm sticky top-0 h-screen overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/60 shrink-0">
             <span className="text-sm font-medium text-accent flex items-center gap-2">
@@ -222,17 +222,19 @@ function LayoutInner() {
       <BroadcastOverlay user={user} />
       {!isAdmin && <CombatTurnIndicator currentUser={user} />}
       <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setSplitOpen((open) => !open)}
-          className={`hidden lg:flex h-11 px-4 rounded-sm border shadow-lg items-center gap-2 text-sm font-medium transition-all ${
-            splitOpen ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card text-foreground hover:border-accent/70 hover:text-accent"
-          }`}
-          title="Toggle initiative tracker"
-        >
-          <Columns className="w-4 h-4" />
-          Initiative
-        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setSplitOpen((open) => !open)}
+            className={`hidden lg:flex h-11 px-4 rounded-sm border shadow-lg items-center gap-2 text-sm font-medium transition-all ${
+              splitOpen ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card text-foreground hover:border-accent/70 hover:text-accent"
+            }`}
+            title="Toggle initiative tracker"
+          >
+            <Columns className="w-4 h-4" />
+            Initiative
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setDiceOpen((open) => !open)}

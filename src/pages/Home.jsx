@@ -4,6 +4,7 @@ import { appClient } from "@/api/appClient";
 import { ScrollText, MessageSquare, Radio, ArrowUpRight, User, Lock, Swords, NotebookPen, Store } from "lucide-react";
 import { useCampaign } from "@/hooks/useCampaign";
 import PageHeader from "@/components/PageHeader";
+import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 
 export default function Home() {
   const [user, setUser] = useState(null);
@@ -24,7 +25,7 @@ export default function Home() {
           appClient.entities.Shop.filter({ campaign_id: cid }, "-created_date", 500),
         ]).then(([lore, docs, messages, characters, shops]) => {
           const read = JSON.parse(localStorage.getItem("chat_read") || "{}");
-          const isDm = currentUser.campaign_role === "dm" || currentUser.role === "admin";
+          const isDm = isDmUser(currentUser) || currentUser.role === "admin";
           const newMessages = messages.filter((message) => {
             if (message.created_by === currentUser.email) return false;
             const visible = isDm || message.channel === "group" || message.channel?.split("|").includes(currentUser.email);
@@ -32,13 +33,19 @@ export default function Home() {
             const lastRead = read[message.channel] || 0;
             return new Date(message.created_date || 0).getTime() > lastRead;
           });
-          setCounts({ lore: lore.filter((entry) => entry.visibility !== "dm_only").length, docs: docs.filter((doc) => doc.visibility === "public").length, messages: newMessages.length, characters: characters.length, shops: shops.length });
+          setCounts({
+            lore: lore.filter((entry) => canViewVisibleItem(entry, currentUser, isDm)).length,
+            docs: docs.filter((doc) => doc.visibility === "public").length,
+            messages: newMessages.length,
+            characters: characters.filter((character) => canViewVisibleItem(character, currentUser, isDm)).length,
+            shops: shops.length,
+          });
         });
       })
       .catch(() => {});
   }, []);
 
-  const isAdmin = user?.campaign_role === "dm" || user?.role === "admin";
+  const isAdmin = isDmUser(user) || user?.role === "admin";
   const role = user?.campaign_role;
 
   const baseTiles = [

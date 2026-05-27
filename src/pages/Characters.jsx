@@ -7,6 +7,7 @@ import MoveFolderDialog from "@/components/lore/MoveFolderDialog";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 import { Copy, Download, Folder, MoveRight, Plus, Trash2 } from "lucide-react";
 
 function cloneSheet(sheet, campaignId, suffix = "Copy") {
@@ -85,10 +86,10 @@ export default function Characters() {
 
   const importableSheets = allSheets.filter((sheet) => sheet.campaign_id && sheet.campaign_id !== user?.campaign_id);
   const campaignName = (campaignId) => campaigns.find((campaign) => campaign.id === campaignId)?.name || "Unknown campaign";
-  const folders = [...new Set([...items.map((item) => item.folder).filter(Boolean), ...emptyFolders])].sort();
-  const filteredItems = items.filter((item) => folder === "all" || item.folder === folder);
-  const isSuperuser = user?.email === "ameliapaisleyspam123@gmail.com";
-  const isAdmin = user?.campaign_role === "dm" || (isSuperuser && localStorage.getItem("dm_override") === "true");
+  const isAdmin = isDmUser(user);
+  const visibleItems = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
+  const folders = [...new Set([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders])].sort();
+  const filteredItems = visibleItems.filter((item) => folder === "all" || item.folder === folder);
 
   const createFolder = () => {
     const name = window.prompt("New character folder name");

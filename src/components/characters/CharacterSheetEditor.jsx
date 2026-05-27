@@ -176,8 +176,13 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
   useEffect(() => {
     if (open) {
       setForm(sheet ? { ...defaultForm(), ...sheet } : defaultForm());
-      appClient.entities.User.list("-created_date", 200)
-        .then((users) => setAllUsers(users.filter((user) => user.role !== "admin")))
+      appClient.auth.me()
+        .then((currentUser) => {
+          if (!currentUser?.campaign_id) return;
+          appClient.entities.User.filter({ campaign_id: currentUser.campaign_id }, "display_name", 200)
+            .then((users) => setAllUsers(users.filter((user) => user.role !== "admin" && user.campaign_role !== "dm")))
+            .catch(() => {});
+        })
         .catch(() => {});
     }
   }, [open, sheet]);

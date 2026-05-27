@@ -54,9 +54,11 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     if (open) {
       setForm(entry || blankEntry);
       setTagInput("");
-      appClient.entities.User.list("-created_date", 200).then((u) => setAllUsers(u.filter((x) => x.role !== "admin"))).catch(() => {});
       appClient.auth.me().then((u) => {
         if (!u?.campaign_id) return;
+        appClient.entities.User.filter({ campaign_id: u.campaign_id }, "display_name", 200)
+          .then((users) => setAllUsers(users.filter((x) => x.role !== "admin" && x.campaign_role !== "dm")))
+          .catch(() => {});
         appClient.entities.LoreEntry.filter({ campaign_id: u.campaign_id }, "-created_date", 200).then((entries) => {
           const tags = [...new Set(entries.flatMap((e) => e.tags || []))].sort();
           setExistingTags(tags);

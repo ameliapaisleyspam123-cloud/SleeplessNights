@@ -7,6 +7,7 @@ import MoveFolderDialog from "@/components/lore/MoveFolderDialog";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 import { Folder, Grid2X2, List, MoveRight, Plus, Search } from "lucide-react";
 
 const CATEGORIES = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
@@ -41,12 +42,13 @@ export default function Lore() {
   const [folder, setFolder] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const load = async () => {
     const user = await appClient.auth.me();
-    const isSuperuser = user?.email === "ameliapaisleyspam123@gmail.com";
-    const dmOverride = localStorage.getItem("dm_override") === "true";
-    setIsAdmin(user?.campaign_role === "dm" || (isSuperuser && dmOverride));
+    const isDm = isDmUser(user);
+    setCurrentUser(user);
+    setIsAdmin(isDm);
     setCampaignId(user.campaign_id);
     setEmptyFolders(readEmptyFolders(user.campaign_id));
     setItems(await appClient.entities.LoreEntry.filter({ campaign_id: user.campaign_id }, "-updated_date", 200));
@@ -58,7 +60,7 @@ export default function Lore() {
 
   const folders = [...new Set([...items.map((item) => item.folder).filter(Boolean), ...emptyFolders])].sort();
   const filtered = items.filter((item) => {
-    if (item.visibility === "dm_only") return false;
+    if (!canViewVisibleItem(item, currentUser, isAdmin)) return false;
     const q = query.trim().toLowerCase();
     const matchesQuery = !q || item.title?.toLowerCase().includes(q) || plainText(item.content).toLowerCase().includes(q) || item.tags?.some((tag) => tag.toLowerCase().includes(q));
     const matchesCategory = category === "all" || item.category === category;

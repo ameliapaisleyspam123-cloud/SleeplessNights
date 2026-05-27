@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useCampaign } from "@/hooks/useCampaign";
 import PlayerNotesPanel from "@/components/chat/PlayerNotesPanel";
+import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 
 const STAT_MOD = (v) => Math.floor((v - 10) / 2);
 const fmtMod = (m) => (m >= 0 ? `+${m}` : `${m}`);
@@ -380,8 +381,10 @@ export default function LorePanel({ onClose }) {
   }, [user?.campaign_id]);
 
   const cats = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
+  const isAdmin = isDmUser(user);
 
   const filtered = entries.filter((e) => {
+    if (!canViewVisibleItem(e, user, isAdmin)) return false;
     const matchCat = cat === "all" || e.category === cat;
     const q = query.toLowerCase();
     const matchQ = !q || e.title?.toLowerCase().includes(q) || previewHtml(e.content).toLowerCase().includes(q) || e.tags?.some((t) => t.toLowerCase().includes(q));
@@ -389,6 +392,7 @@ export default function LorePanel({ onClose }) {
   });
 
   const filteredChars = characters.filter((c) => {
+    if (!canViewVisibleItem(c, user, isAdmin)) return false;
     const q = query.toLowerCase();
     return !q || c.name?.toLowerCase().includes(q) || c.race?.toLowerCase().includes(q) || c.class?.toLowerCase().includes(q);
   });

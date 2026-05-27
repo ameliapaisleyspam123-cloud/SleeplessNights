@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { appClient } from "@/api/appClient";
+import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,9 +106,8 @@ export default function Shop() {
     load().catch(() => {});
   }, []);
 
-  const isSuperuser = user?.email === "ameliapaisleyspam123@gmail.com";
-  const isAdmin = user?.campaign_role === "dm" || (isSuperuser && localStorage.getItem("dm_override") === "true");
-  const availableCharacters = characters.filter((character) => isAdmin || character.assigned_to_email === user?.email);
+  const isAdmin = isDmUser(user);
+  const availableCharacters = characters.filter((character) => canViewVisibleItem(character, user, isAdmin) && (isAdmin || character.assigned_to_email === user?.email));
   const selectedShop = shops.find((shop) => shop.id === selectedShopId);
   const selectedCharacter = availableCharacters.find((character) => character.id === selectedCharacterId);
   const openShops = shops.filter((shop) => shop.status !== "closed");
