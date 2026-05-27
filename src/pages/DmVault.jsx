@@ -182,6 +182,14 @@ export default function DmVault() {
     await load();
   };
 
+  const deleteCombat = async (combat) => {
+    if (!combat?.id) return;
+    const label = combat.active ? "active encounter" : "saved encounter";
+    if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) return;
+    await appClient.entities.Initiative.delete(combat.id);
+    await load();
+  };
+
   const deleteLore = async (entry) => {
     if (!entry?.id) return;
     if (!window.confirm(`Delete "${entry.title}" from the vault?`)) return;
@@ -333,7 +341,12 @@ export default function DmVault() {
                     <div className="font-display text-xl">{combat.active ? "Active Encounter" : "Saved Encounter"}</div>
                     <div className="text-sm text-muted-foreground">{combat.entries?.length || 0} combatants - round {combat.round || 1}</div>
                   </div>
-                  <div className={combat.active ? "text-accent text-sm" : "text-muted-foreground text-sm"}>{combat.active ? "Live" : shortDate(combat.updated_date)}</div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className={combat.active ? "text-accent text-sm" : "text-muted-foreground text-sm"}>{combat.active ? "Live" : shortDate(combat.updated_date)}</div>
+                    <Button size="sm" variant="ghost" onClick={() => deleteCombat(combat)} title="Delete encounter" className="text-muted-foreground hover:text-destructive">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
                 {(() => {
                   const stats = combatStats(combat);
