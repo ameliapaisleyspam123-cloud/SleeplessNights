@@ -43,10 +43,10 @@ export default function ThemeSettingsModal({ open, onOpenChange }) {
       key={preset.id}
       type="button"
       onClick={() => selectPreset(preset)}
-      className={`text-left rounded-sm border p-3 transition-all ${theme.presetId === preset.id ? "border-accent bg-accent/10" : "border-border hover:border-accent/60 bg-card/50"}`}
+      className={`text-left rounded-sm border p-3 min-h-28 h-full transition-all ${theme.presetId === preset.id ? "border-accent bg-accent/10" : "border-border hover:border-accent/60 bg-card/50"}`}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="flex h-full items-center justify-between gap-3">
+        <div className="min-w-0">
           <div className="font-medium">{preset.name}</div>
           <div className="text-xs text-muted-foreground mt-1">{preset.description}</div>
         </div>
