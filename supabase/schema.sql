@@ -12,6 +12,9 @@ create unique index if not exists app_records_entity_record_id_idx on public.app
 
 alter table public.app_records enable row level security;
 
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on table public.app_records to anon, authenticated;
+
 drop policy if exists "App records are readable" on public.app_records;
 create policy "App records are readable"
 on public.app_records for select

@@ -84,6 +84,15 @@ export default function CampaignLobby() {
   };
 
   useEffect(() => {
+    const remembered = appClient.auth.rememberedAccount();
+    if (remembered) {
+      setEmail(remembered.email || "");
+      setPassword(remembered.password || "");
+      setConfirmPassword(remembered.password || "");
+      setDisplayName(remembered.display_name || remembered.email || "Player");
+      setKeepSignedIn(true);
+      setAccountMode("sign-in");
+    }
     load();
   }, []);
 

@@ -2,6 +2,7 @@ import { supabase, supabaseConfigStatus } from "@/supabase";
 
 const STORAGE_KEY = "sleepless_nights_store_v1";
 const SESSION_KEY = "sleepless_nights_user_v1";
+const REMEMBER_KEY = "sleepless_nights_remembered_account_v1";
 const SUPABASE_TABLE = "app_records";
 const SUPABASE_ASSET_BUCKET = "campaign-assets";
 const STORE_CACHE_TTL_MS = 8000;
@@ -448,6 +449,31 @@ function saveUserSession(email, keepSignedIn = true) {
   storage.setItem(SESSION_KEY, email);
 }
 
+function readRememberedAccount() {
+  try {
+    const remembered = JSON.parse(localStorage.getItem(REMEMBER_KEY) || "null");
+    if (remembered && typeof remembered === "object") return remembered;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function saveRememberedAccount(account, keepSignedIn) {
+  if (!keepSignedIn) {
+    localStorage.removeItem(REMEMBER_KEY);
+    return;
+  }
+  localStorage.setItem(
+    REMEMBER_KEY,
+    JSON.stringify({
+      email: normalizeEmail(account.email),
+      password: account.password || "",
+      display_name: account.display_name || account.full_name || "",
+    }),
+  );
+}
+
 function ensurePasswordMatches(user, password) {
   if (!user.password) return true;
   return user.password === password;
@@ -616,6 +642,9 @@ export const appClient = {
     },
   },
   auth: {
+    rememberedAccount() {
+      return readRememberedAccount();
+    },
     async me() {
       const user = await currentSessionAsync();
       if (!user) throw new Error("No local user exists");
@@ -642,6 +671,7 @@ export const appClient = {
       writeStore(store);
       await upsertRemoteRecord("User", user);
       saveUserSession(cleanEmail, keepSignedIn);
+      saveRememberedAccount({ ...user, password }, keepSignedIn);
       notify("User", { type: "create", data: user });
       return user;
     },
@@ -665,6 +695,7 @@ export const appClient = {
       writeStore(store);
       await upsertRemoteRecord("User", user);
       saveUserSession(cleanEmail, keepSignedIn);
+      saveRememberedAccount({ ...user, password: password || user.password }, keepSignedIn);
       notify("User", { type: "update", data: user });
       return user;
     },
