@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { appClient } from "@/api/appClient";
+import { appClient, isGlobalAdminEmail } from "@/api/appClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,10 +86,12 @@ export default function CampaignLobby() {
   }, []);
 
   const activeEmail = user?.email || "";
+  const isGlobalAdmin = isGlobalAdminEmail(activeEmail);
   const yourCampaigns = useMemo(() => {
     if (!activeEmail) return [];
+    if (isGlobalAdmin) return campaigns;
     return campaigns.filter((campaign) => campaign.dm_email === activeEmail || campaign.player_emails?.includes(activeEmail) || campaign.id === user?.campaign_id);
-  }, [activeEmail, campaigns, user]);
+  }, [activeEmail, campaigns, user, isGlobalAdmin]);
 
   const loginDetails = () => ({
     email: user?.email || email.trim().toLowerCase(),
@@ -162,7 +164,7 @@ export default function CampaignLobby() {
   };
 
   const enterKnownCampaign = (campaign) => {
-    const role = campaign.dm_email === activeEmail || user?.campaign_role === "dm" ? "dm" : "player";
+    const role = isGlobalAdmin || campaign.dm_email === activeEmail || user?.campaign_role === "dm" ? "dm" : "player";
     enterCampaign(campaign, role);
   };
 
@@ -291,7 +293,7 @@ export default function CampaignLobby() {
               <div className="border border-border bg-card/70 rounded-sm p-4 text-sm text-muted-foreground">No campaigns yet. Create one or enter a code below.</div>
             )}
             {yourCampaigns.map((campaign) => {
-              const role = campaign.dm_email === activeEmail ? "Dungeon Master" : "Player";
+              const role = isGlobalAdmin ? "Admin" : campaign.dm_email === activeEmail ? "Dungeon Master" : "Player";
               return (
                 <button key={campaign.id} onClick={() => enterKnownCampaign(campaign)} className="w-full border border-border bg-card/70 hover:border-accent/60 hover:bg-secondary/70 rounded-sm p-4 text-left transition-colors flex items-center gap-4">
                   <div className="min-w-0 flex-1">

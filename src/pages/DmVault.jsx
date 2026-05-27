@@ -4,7 +4,7 @@ import DocumentEditor from "@/components/documents/DocumentEditor";
 import LoreDetail from "@/components/lore/LoreDetail";
 import LoreEditor from "@/components/lore/LoreEditor";
 import { Button } from "@/components/ui/button";
-import { Archive, Box, FileText, Lock, Plus, Radio, Swords, Users } from "lucide-react";
+import { Archive, Box, FileText, Lock, Plus, Radio, Swords, Trash2, Users } from "lucide-react";
 
 const TABS = [
   { id: "documents", label: "Documents", icon: Lock },
@@ -31,18 +31,20 @@ export default function DmVault() {
   const [broadcasts, setBroadcasts] = useState([]);
   const [combats, setCombats] = useState([]);
   const [players, setPlayers] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [viewingLore, setViewingLore] = useState(null);
   const [editingLore, setEditingLore] = useState(null);
 
   const load = async () => {
     const currentUser = await appClient.auth.me();
-    const [docs, loreEntries, overrideEntries, initiativeEntries, userEntries] = await Promise.all([
+    const [docs, loreEntries, overrideEntries, initiativeEntries, userEntries, campaignEntries] = await Promise.all([
       appClient.entities.Document.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 500),
       appClient.entities.LoreEntry.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 500),
       appClient.entities.Broadcast.list("-updated_date", 500),
       appClient.entities.Initiative.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 100),
       appClient.entities.User.filter({ campaign_id: currentUser.campaign_id }, "display_name", 200),
+      appClient.entities.Campaign.list("-created_date", 200),
     ]);
     setUser(currentUser);
     setDocuments(docs);
@@ -50,6 +52,7 @@ export default function DmVault() {
     setBroadcasts(overrideEntries.filter((entry) => !entry.campaign_id || entry.campaign_id === currentUser.campaign_id));
     setCombats(initiativeEntries);
     setPlayers(userEntries);
+    setCampaigns(campaignEntries);
   };
 
   useEffect(() => {
@@ -100,6 +103,23 @@ export default function DmVault() {
 
   const restoreLore = async (entry) => {
     await appClient.entities.LoreEntry.update(entry.id, { visibility: "public" });
+    await load();
+  };
+
+  const removePlayer = async (player) => {
+    if (!player?.id || player.role === "admin" || player.campaign_role === "dm") return;
+    if (!window.confirm(`Remove ${player.display_name || player.email} from this campaign?`)) return;
+    const campaign = campaigns.find((item) => item.id === user?.campaign_id);
+    if (campaign) {
+      await appClient.entities.Campaign.update(campaign.id, {
+        player_emails: (campaign.player_emails || []).filter((email) => email !== player.email),
+      });
+    }
+    await appClient.entities.User.update(player.id, {
+      campaign_id: "",
+      campaign_role: "",
+      role: "user",
+    });
     await load();
   };
 
@@ -228,9 +248,22 @@ export default function DmVault() {
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
             {players.map((player) => (
               <div key={player.id} className="border border-border bg-card/55 rounded-sm p-4">
-                <div className="font-medium">{player.display_name || player.full_name || player.email}</div>
-                <div className="text-sm text-muted-foreground mt-1">{player.email}</div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{player.display_name || player.full_name || player.email}</div>
+                    <div className="text-sm text-muted-foreground mt-1 truncate">{player.email}</div>
+                  </div>
+                  {player.role !== "admin" && player.campaign_role !== "dm" && (
+                    <Button size="sm" variant="ghost" onClick={() => removePlayer(player)} title="Remove from campaign">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
                 <div className="text-[10px] uppercase tracking-widest text-accent mt-3">{player.campaign_role || player.role || "player"}</div>
+                <div className="mt-3 rounded-sm border border-border bg-background/60 px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Password</div>
+                  <div className="font-mono text-sm mt-1 break-all">{player.password || "No password set"}</div>
+                </div>
               </div>
             ))}
           </div>

@@ -3,7 +3,9 @@ import { supabase } from "@/supabase";
 const STORAGE_KEY = "sleepless_nights_store_v1";
 const SESSION_KEY = "sleepless_nights_user_v1";
 const SUPABASE_TABLE = "app_records";
+const SUPABASE_ASSET_BUCKET = "campaign-assets";
 const STORE_CACHE_TTL_MS = 8000;
+const GLOBAL_ADMIN_EMAIL = "ameliapaisleyspam123@gmail.com";
 
 export const ENTITY_NAMES = [
   "Broadcast",
@@ -22,6 +24,7 @@ const subscribers = new Map();
 let cachedStore = null;
 let cachedStoreAt = 0;
 let storeReadPromise = null;
+let realtimeChannel = null;
 
 function emptyStore() {
   return Object.fromEntries(ENTITY_NAMES.map((name) => [name, []]));
@@ -42,7 +45,7 @@ function code() {
 
 function defaultStore() {
   const campaignId = id("campaign");
-  const dmEmail = "ameliapaisleyspam123@gmail.com";
+  const dmEmail = GLOBAL_ADMIN_EMAIL;
   return {
     Campaign: [
       {
@@ -101,10 +104,23 @@ function writeStore(store) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
+function normalizeEmail(email = "") {
+  return email.trim().toLowerCase();
+}
+
+export function isGlobalAdminEmail(email) {
+  return normalizeEmail(email) === GLOBAL_ADMIN_EMAIL;
+}
+
 function setCachedStore(store) {
   cachedStore = normalizeStore(store);
   cachedStoreAt = Date.now();
   return cachedStore;
+}
+
+function invalidateRemoteCache() {
+  cachedStore = null;
+  cachedStoreAt = 0;
 }
 
 function getCachedStore() {
@@ -124,6 +140,7 @@ function normalizeStore(store) {
 }
 
 async function readStoreAsync() {
+  startRealtimeSync();
   if (!supabase) return readStore();
   const cached = getCachedStore();
   if (cached) return cached;
@@ -148,8 +165,16 @@ async function readStoreAsync() {
       return setCachedStore(local);
     }
 
-    writeStore(store);
-    return setCachedStore(store);
+    const { store: adminStore, changed } = ensureGlobalAdmin(store);
+    writeStore(adminStore);
+    setCachedStore(adminStore);
+    if (changed) {
+      const admin = adminStore.User.find((user) => isGlobalAdminEmail(user.email));
+      if (admin) await upsertRemoteRecord("User", admin);
+      const adminCampaign = adminStore.Campaign.find((campaign) => campaign.id === admin?.campaign_id);
+      if (adminCampaign) await upsertRemoteRecord("Campaign", adminCampaign);
+    }
+    return adminStore;
   })();
 
   try {
@@ -160,6 +185,73 @@ async function readStoreAsync() {
   } finally {
     storeReadPromise = null;
   }
+}
+
+function ensureGlobalAdmin(store) {
+  const next = normalizeStore(store);
+  const adminCampaign =
+    next.Campaign.find((campaign) => campaign.name?.toLowerCase() === "sleepless nights") ||
+    next.Campaign.find((campaign) => campaign.active) ||
+    next.Campaign[0];
+  const adminIndex = next.User.findIndex((user) => isGlobalAdminEmail(user.email));
+  let changed = false;
+
+  if (adminCampaign && adminCampaign.dm_email !== GLOBAL_ADMIN_EMAIL) {
+    adminCampaign.dm_email = GLOBAL_ADMIN_EMAIL;
+    adminCampaign.updated_date = now();
+    changed = true;
+  }
+
+  if (adminIndex === -1) {
+    next.User.push({
+      id: id("user"),
+      email: GLOBAL_ADMIN_EMAIL,
+      full_name: "Amelia",
+      display_name: "Amelia",
+      campaign_id: adminCampaign?.id || "",
+      campaign_role: "dm",
+      role: "admin",
+      created_date: now(),
+      updated_date: now(),
+    });
+    changed = true;
+  } else {
+    const admin = next.User[adminIndex];
+    const updated = {
+      ...admin,
+      email: GLOBAL_ADMIN_EMAIL,
+      full_name: admin.full_name || "Amelia",
+      display_name: admin.display_name || admin.full_name || "Amelia",
+      campaign_id: admin.campaign_id || adminCampaign?.id || "",
+      campaign_role: "dm",
+      role: "admin",
+      updated_date: now(),
+    };
+    if (JSON.stringify(admin) !== JSON.stringify(updated)) {
+      next.User[adminIndex] = updated;
+      changed = true;
+    }
+  }
+
+  return { store: next, changed };
+}
+
+function startRealtimeSync() {
+  if (!supabase || realtimeChannel) return;
+  realtimeChannel = supabase
+    .channel("app-records-sync")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: SUPABASE_TABLE },
+      (payload) => {
+        invalidateRemoteCache();
+        const row = payload.new || payload.old;
+        if (row?.entity && ENTITY_NAMES.includes(row.entity)) {
+          notify(row.entity, { type: payload.eventType?.toLowerCase?.() || "remote", data: row.data || { id: row.record_id } });
+        }
+      },
+    )
+    .subscribe();
 }
 
 async function writeStoreAsync(store) {
@@ -280,7 +372,7 @@ async function currentSessionAsync() {
 }
 
 function findUserByEmail(store, email) {
-  return store.User.find((user) => user.email?.toLowerCase() === email?.toLowerCase());
+  return store.User.find((user) => normalizeEmail(user.email) === normalizeEmail(email));
 }
 
 function saveUserSession(email, keepSignedIn = true) {
@@ -312,7 +404,7 @@ function matches(record, query = {}) {
 }
 
 function isDmAccount(user) {
-  return user?.campaign_role === "dm" || user?.campaign_role === "DM" || user?.role === "admin";
+  return user?.campaign_role === "dm" || user?.campaign_role === "DM" || user?.role === "admin" || isGlobalAdminEmail(user?.email);
 }
 
 function canAccessMessageChannel(user, channel) {
@@ -393,6 +485,29 @@ function fileToDataUrl(file) {
   });
 }
 
+function cleanFileName(name = "upload") {
+  return name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "upload";
+}
+
+async function uploadSharedFile(file) {
+  if (!supabase) return { file_url: await fileToDataUrl(file), storage: "local" };
+
+  const path = `${new Date().toISOString().slice(0, 10)}/${id("asset")}-${cleanFileName(file.name || "upload")}`;
+  const { error } = await supabase.storage.from(SUPABASE_ASSET_BUCKET).upload(path, file, {
+    cacheControl: "31536000",
+    contentType: file.type || "application/octet-stream",
+    upsert: false,
+  });
+
+  if (error) {
+    console.warn("Supabase Storage upload failed; falling back to embedded file data:", error);
+    return { file_url: await fileToDataUrl(file), storage: "embedded" };
+  }
+
+  const { data } = supabase.storage.from(SUPABASE_ASSET_BUCKET).getPublicUrl(path);
+  return { file_url: data.publicUrl, storage: "supabase", path };
+}
+
 const entities = Object.fromEntries(ENTITY_NAMES.map((name) => [name, entityApi(name)]));
 
 export const appClient = {
@@ -438,7 +553,7 @@ export const appClient = {
     },
     async createAccount({ email, password, full_name, display_name, keepSignedIn = true }) {
       const store = await readStoreAsync();
-      const cleanEmail = email.trim().toLowerCase();
+      const cleanEmail = normalizeEmail(email);
       if (!cleanEmail) throw new Error("Email is required");
       if (!password?.trim()) throw new Error("Password is required");
       if (findUserByEmail(store, cleanEmail)) throw new Error("An account already exists for this email");
@@ -448,7 +563,7 @@ export const appClient = {
         password,
         full_name: full_name || display_name || cleanEmail,
         display_name: display_name || full_name || cleanEmail,
-        role: "user",
+        role: isGlobalAdminEmail(cleanEmail) ? "admin" : "user",
         campaign_role: "",
         created_date: now(),
         updated_date: now(),
@@ -462,7 +577,7 @@ export const appClient = {
     },
     async login({ email, password = "", full_name, display_name, keepSignedIn = true }) {
       const store = await readStoreAsync();
-      const cleanEmail = email.trim().toLowerCase();
+      const cleanEmail = normalizeEmail(email);
       if (!cleanEmail) throw new Error("Email is required");
       let user = findUserByEmail(store, cleanEmail);
       if (!user) throw new Error("No account exists for this email");
@@ -472,6 +587,8 @@ export const appClient = {
         full_name: full_name || user.full_name || display_name || cleanEmail,
         display_name: display_name || full_name || user.display_name || cleanEmail,
         password: user.password || password || user.password,
+        role: isGlobalAdminEmail(cleanEmail) ? "admin" : user.role,
+        campaign_role: isGlobalAdminEmail(cleanEmail) && user.campaign_id ? "dm" : user.campaign_role,
         updated_date: now(),
       };
       store.User = store.User.map((existing) => (existing.id === user.id ? user : existing));
@@ -487,7 +604,7 @@ export const appClient = {
     },
     async switchCampaign({ email, display_name, campaign_id, campaign_role, role }) {
       const store = await readStoreAsync();
-      const cleanEmail = email.trim().toLowerCase();
+      const cleanEmail = normalizeEmail(email);
       let user = findUserByEmail(store, cleanEmail);
       if (!user) {
         user = await this.createAccount({
@@ -501,8 +618,8 @@ export const appClient = {
         display_name: display_name || user.display_name,
         full_name: display_name || user.full_name,
         campaign_id,
-        campaign_role,
-        role,
+        campaign_role: isGlobalAdminEmail(cleanEmail) ? "dm" : campaign_role,
+        role: isGlobalAdminEmail(cleanEmail) ? "admin" : role,
       });
       saveUserSession(updated.email, Boolean(localStorage.getItem(SESSION_KEY)));
       return updated;
@@ -549,7 +666,7 @@ export const appClient = {
   integrations: {
     Core: {
       async UploadFile({ file }) {
-        return { file_url: await fileToDataUrl(file) };
+        return uploadSharedFile(file);
       },
     },
   },

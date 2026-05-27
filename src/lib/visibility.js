@@ -1,8 +1,7 @@
 const SUPERUSER_EMAIL = "ameliapaisleyspam123@gmail.com";
 
 export function isDmUser(user) {
-  const dmOverride = localStorage.getItem("dm_override") === "true";
-  return user?.campaign_role === "dm" || (user?.email === SUPERUSER_EMAIL && dmOverride);
+  return user?.campaign_role === "dm" || user?.role === "admin" || user?.email === SUPERUSER_EMAIL;
 }
 
 export function canViewVisibleItem(item, user, isDm = isDmUser(user)) {

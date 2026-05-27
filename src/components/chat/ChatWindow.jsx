@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { appClient } from "@/api/appClient";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Users, User, Paperclip } from "lucide-react";
+import { Send, Users, User, Paperclip, Trash2 } from "lucide-react";
 
 function channelKey(activeChannel, me) {
   if (activeChannel.type === "group") return "group";
@@ -127,6 +127,13 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
     load();
   };
 
+  const deleteMessage = async (message) => {
+    if (!isAdmin || !message?.id) return;
+    if (!window.confirm("Delete this message from the chat?")) return;
+    await appClient.entities.Message.delete(message.id);
+    await load();
+  };
+
   const header =
     activeChannel.type === "group"
       ? { icon: Users, title: "The Hall", subtitle: "All members can read" }
@@ -170,8 +177,20 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
               <div className="max-w-[75%] flex flex-col">
                 {!mine && <div className="text-xs mb-1">{name}</div>}
 
-                <div className={`px-4 py-2 rounded ${mine ? "bg-primary text-white" : "bg-card border"}`}>
-                  {m.content}
+                <div className={`group/message relative px-4 py-2 rounded ${mine ? "bg-primary text-white" : "bg-card border"}`}>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => deleteMessage(m)}
+                      className={`absolute top-1 right-1 opacity-0 group-hover/message:opacity-100 transition-opacity rounded-sm p-1 ${
+                        mine ? "bg-primary-foreground/15 hover:bg-primary-foreground/25" : "bg-background/90 hover:text-destructive"
+                      }`}
+                      title="Delete message"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <div className={isAdmin ? "pr-7" : ""}>{m.content}</div>
 
                   {m.file_url && m.file_type === "image" && (
                     <img src={m.file_url} alt={m.content || "Chat attachment"} className="mt-2 max-w-xs rounded" />

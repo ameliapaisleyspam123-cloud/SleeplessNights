@@ -119,7 +119,7 @@ function LayoutInner() {
     localStorage.setItem("dm_override", String(next));
   };
 
-  const isAdmin = user?.campaign_role === "dm" || (isSuperuser && dmOverride);
+  const isAdmin = user?.campaign_role === "dm" || user?.role === "admin" || isSuperuser;
   const NAV = isAdmin ? GM_NAV : PLAYER_NAV;
 
   if (!userLoaded) {
