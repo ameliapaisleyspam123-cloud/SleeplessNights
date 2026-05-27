@@ -106,6 +106,7 @@ export type DocumentVisibility = "public" | "private" | "archived";
 
 export interface Document extends AppRecord {
   campaign_id?: string;
+  folder?: string;
   title: string;
   description?: string;
   file_url: string;

@@ -58,6 +58,7 @@ export const characterSheetDefaults: Partial<CharacterSheet> = {
 };
 
 export const documentDefaults: Partial<Document> = {
+  folder: "",
   visibility: "public",
   allowed_emails: [],
 };
