@@ -16,7 +16,7 @@ export default function CharacterClaimButton({
   userCharacterCounts = {},
 }) {
   const [claiming, setClaiming] = useState(false);
-  const { canClaimCharacter, claimCharacter } = useCharacterAssignment();
+  const { canClaimCharacter, claimCharacter, unclaimCharacter } = useCharacterAssignment();
 
   const isAssignedToMe = sheet.assigned_to_email === currentUserEmail;
   const isUnassigned = !sheet.assigned_to_email;
@@ -30,6 +30,15 @@ export default function CharacterClaimButton({
   const handleClaim = async () => {
     setClaiming(true);
     const result = await claimCharacter(sheet.id, currentUserEmail, campaign);
+    if (result.success) {
+      onClaimChange?.();
+    }
+    setClaiming(false);
+  };
+
+  const handleUnclaim = async () => {
+    setClaiming(true);
+    const result = await unclaimCharacter(sheet.id, currentUserEmail);
     if (result.success) {
       onClaimChange?.();
     }
@@ -66,11 +75,16 @@ export default function CharacterClaimButton({
       <Button
         size="sm"
         variant="default"
-        disabled
+        onClick={handleUnclaim}
+        disabled={claiming}
         className="gap-1.5 bg-accent text-accent-foreground"
       >
-        <Users className="w-3.5 h-3.5" />
-        Your Character
+        {claiming ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : (
+          <Users className="w-3.5 h-3.5" />
+        )}
+        {claiming ? "Unclaiming..." : "Your Character"}
       </Button>
     );
   }
