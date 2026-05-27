@@ -85,16 +85,19 @@ function defaultStore() {
   };
 }
 
-function readStore() {
+function readStoredStore() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (parsed && typeof parsed === "object") {
-      for (const name of ENTITY_NAMES) parsed[name] ||= [];
-      return parsed;
-    }
+    if (parsed && typeof parsed === "object") return normalizeStore(parsed);
   } catch {
-    // Fall through and recreate.
+    return null;
   }
+  return null;
+}
+
+function readStore() {
+  const stored = readStoredStore();
+  if (stored) return stored;
   const fresh = defaultStore();
   writeStore(fresh);
   return fresh;
@@ -139,6 +142,35 @@ function normalizeStore(store) {
   return normalized;
 }
 
+function newerRecord(first, second) {
+  const firstTime = Date.parse(first?.updated_date || first?.created_date || "") || 0;
+  const secondTime = Date.parse(second?.updated_date || second?.created_date || "") || 0;
+  return secondTime > firstTime ? second : first;
+}
+
+function mergeStores(remoteStore, localStore) {
+  const merged = normalizeStore(remoteStore);
+  let changed = false;
+  if (!localStore) return { store: merged, changed };
+
+  const local = normalizeStore(localStore);
+  for (const entity of ENTITY_NAMES) {
+    const byId = new Map((merged[entity] || []).map((record) => [record.id, record]));
+    for (const localRecord of local[entity] || []) {
+      if (!localRecord?.id) continue;
+      const remoteRecord = byId.get(localRecord.id);
+      const nextRecord = remoteRecord ? newerRecord(remoteRecord, localRecord) : localRecord;
+      if (!remoteRecord || nextRecord !== remoteRecord) {
+        byId.set(localRecord.id, nextRecord);
+        changed = true;
+      }
+    }
+    merged[entity] = [...byId.values()];
+  }
+
+  return { store: merged, changed };
+}
+
 async function readStoreAsync() {
   startRealtimeSync();
   if (!supabase) return readStore();
@@ -158,21 +190,15 @@ async function readStoreAsync() {
       if (ENTITY_NAMES.includes(row.entity) && row.data) store[row.entity].push(row.data);
     }
 
+    const localStore = readStoredStore();
     const hasRemoteData = Object.values(store).some((records) => records.length > 0);
-    if (!hasRemoteData) {
-      const local = readStore();
-      await writeStoreAsync(local);
-      return setCachedStore(local);
-    }
-
-    const { store: adminStore, changed } = ensureGlobalAdmin(store);
+    const baseStore = hasRemoteData ? store : localStore || defaultStore();
+    const { store: mergedStore, changed: mergedChanged } = mergeStores(baseStore, localStore);
+    const { store: adminStore, changed: adminChanged } = ensureGlobalAdmin(mergedStore);
     writeStore(adminStore);
     setCachedStore(adminStore);
-    if (changed) {
-      const admin = adminStore.User.find((user) => isGlobalAdminEmail(user.email));
-      if (admin) await upsertRemoteRecord("User", admin);
-      const adminCampaign = adminStore.Campaign.find((campaign) => campaign.id === admin?.campaign_id);
-      if (adminCampaign) await upsertRemoteRecord("Campaign", adminCampaign);
+    if (mergedChanged || adminChanged || !hasRemoteData) {
+      await writeStoreAsync(adminStore);
     }
     return adminStore;
   })();
