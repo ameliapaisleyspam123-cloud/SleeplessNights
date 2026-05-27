@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_THEME, THEME_COLOR_FIELDS, THEME_PRESETS, getStoredTheme, saveTheme } from "@/lib/theme";
 
+const PRESET_GROUPS = [
+  ["light", "Light"],
+  ["dark", "Dark"],
+];
+
 function storedToState() {
   const stored = getStoredTheme();
   if (stored?.presetId === "custom") return { presetId: "custom", colors: { ...DEFAULT_THEME.colors, ...stored.colors } };
@@ -33,6 +38,27 @@ export default function ThemeSettingsModal({ open, onOpenChange }) {
     onOpenChange(false);
   };
 
+  const renderPreset = (preset) => (
+    <button
+      key={preset.id}
+      type="button"
+      onClick={() => selectPreset(preset)}
+      className={`text-left rounded-sm border p-3 transition-all ${theme.presetId === preset.id ? "border-accent bg-accent/10" : "border-border hover:border-accent/60 bg-card/50"}`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="font-medium">{preset.name}</div>
+          <div className="text-xs text-muted-foreground mt-1">{preset.description}</div>
+        </div>
+        <div className="flex gap-1 shrink-0">
+          {["background", "card", "primary", "accent"].map((key) => (
+            <span key={key} className="w-5 h-5 rounded-sm border border-border" style={{ background: preset.colors[key] }} />
+          ))}
+        </div>
+      </div>
+    </button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto thin-scroll">
@@ -43,26 +69,14 @@ export default function ThemeSettingsModal({ open, onOpenChange }) {
         <div className="space-y-5">
           <section>
             <div className="text-[10px] uppercase tracking-widest text-accent font-medium mb-3">Presets</div>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {THEME_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => selectPreset(preset)}
-                  className={`text-left rounded-sm border p-3 transition-all ${theme.presetId === preset.id ? "border-accent bg-accent/10" : "border-border hover:border-accent/60 bg-card/50"}`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-medium">{preset.name}</div>
-                      <div className="text-xs text-muted-foreground mt-1">{preset.description}</div>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      {["background", "card", "primary", "accent"].map((key) => (
-                        <span key={key} className="w-5 h-5 rounded-sm border border-border" style={{ background: preset.colors[key] }} />
-                      ))}
-                    </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              {PRESET_GROUPS.map(([mode, label]) => (
+                <div key={mode} className="space-y-2">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+                  <div className="space-y-2">
+                    {THEME_PRESETS.filter((preset) => preset.mode === mode).map(renderPreset)}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </section>
