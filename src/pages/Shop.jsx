@@ -99,7 +99,10 @@ export default function Shop() {
     setUser(currentUser);
     setShops(campaignShops);
     setCharacters(campaignCharacters);
-    setSelectedShopId((current) => current || campaignShops.find((shop) => shop.status !== "closed")?.id || campaignShops[0]?.id || "");
+    setSelectedShopId((current) => {
+      if (current && campaignShops.some((shop) => shop.id === current)) return current;
+      return campaignShops.find((shop) => shop.status !== "closed")?.id || campaignShops[0]?.id || "";
+    });
   };
 
   useEffect(() => {
@@ -172,6 +175,16 @@ export default function Shop() {
     }
     setEditing(null);
     setSaving(false);
+    await load();
+  };
+
+  const deleteShop = async (shop) => {
+    if (!shop?.id) return;
+    const confirmed = window.confirm(`Delete "${shop.name}"? This will remove the store and its purchase log.`);
+    if (!confirmed) return;
+    await appClient.entities.Shop.delete(shop.id);
+    setEditing(null);
+    setSelectedShopId("");
     await load();
   };
 
@@ -281,9 +294,14 @@ export default function Shop() {
                 {selectedCharacter && <div className="text-[10px] text-muted-foreground mt-1">{formatWallet(selectedCharacter)}</div>}
               </div>
               {isAdmin && selectedShop && (
-                <Button variant="outline" onClick={() => editShop(selectedShop)} className="shrink-0">
-                  <Save className="w-4 h-4" /> Edit Store
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button variant="outline" onClick={() => editShop(selectedShop)}>
+                    <Save className="w-4 h-4" /> Edit Store
+                  </Button>
+                  <Button variant="destructive" onClick={() => deleteShop(selectedShop)}>
+                    <Trash2 className="w-4 h-4" /> Delete Store
+                  </Button>
+                </div>
               )}
             </div>
 
