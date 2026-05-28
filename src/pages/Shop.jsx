@@ -64,7 +64,7 @@ function readInventory(value) {
 }
 
 function addInventoryItem(inventory, item, quantity) {
-  const index = inventory.findIndex((entry) => entry.name?.toLowerCase() === item.name?.toLowerCase());
+  const index = inventory.findIndex((entry) => entry.type !== "container" && entry.name?.toLowerCase() === item.name?.toLowerCase());
   if (index >= 0) {
     return inventory.map((entry, idx) => (idx === index ? { ...entry, qty: (Number(entry.qty) || 0) + quantity } : entry));
   }
