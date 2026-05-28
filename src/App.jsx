@@ -11,12 +11,14 @@ import Broadcast from "@/pages/Broadcast";
 import DmVault from "@/pages/DmVault";
 import Documents from "@/pages/Documents";
 import Shop from "@/pages/Shop";
+import InitiativePopout from "@/pages/InitiativePopout";
 import PageNotFound from "@/lib/PageNotFound";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/campaign" element={<CampaignLobby />} />
+      <Route path="/initiative-popout" element={<InitiativePopout />} />
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="characters" element={<Characters />} />

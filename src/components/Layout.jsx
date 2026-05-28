@@ -23,6 +23,7 @@ import {
   Dices,
   Store,
   Palette,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BroadcastOverlay from "./broadcast/BroadcastOverlay";
@@ -113,6 +114,14 @@ function LayoutInner() {
   const isSuperuser = user?.email === SUPERUSER_EMAIL;
   const isAdmin = user?.campaign_role === "dm" || user?.role === "admin" || isSuperuser;
   const NAV = isAdmin ? GM_NAV : PLAYER_NAV;
+  const openInitiativePopout = () => {
+    if (!campaignId) return;
+    window.open(
+      `/initiative-popout?campaign=${encodeURIComponent(campaignId)}`,
+      "sleepless-initiative",
+      "popup=yes,width=520,height=860,resizable=yes,scrollbars=yes",
+    );
+  };
 
   if (!userLoaded) {
     return (
@@ -198,9 +207,14 @@ function LayoutInner() {
             <span className="text-sm font-medium text-accent flex items-center gap-2">
               <Swords className="w-4 h-4" /> Initiative Tracker
             </span>
-            <button onClick={() => setSplitOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={openInitiativePopout} className="text-muted-foreground hover:text-accent transition-colors" title="Pop out initiative tracker">
+                <ExternalLink className="w-4 h-4" />
+              </button>
+              <button onClick={() => setSplitOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors" title="Close initiative tracker">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto thin-scroll p-4">
             <InitiativeTracker campaignId={campaignId} />
@@ -222,6 +236,16 @@ function LayoutInner() {
           >
             <Columns className="w-4 h-4" />
             Initiative
+          </button>
+        )}
+        {isAdmin && campaignId && (
+          <button
+            type="button"
+            onClick={openInitiativePopout}
+            className="hidden lg:flex h-11 w-11 rounded-sm border border-border bg-card text-foreground hover:border-accent/70 hover:text-accent shadow-lg items-center justify-center transition-all"
+            title="Pop out initiative tracker"
+          >
+            <ExternalLink className="w-4 h-4" />
           </button>
         )}
         <button
