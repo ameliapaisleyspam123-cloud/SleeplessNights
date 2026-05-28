@@ -111,14 +111,6 @@ function LayoutInner() {
 
   const SUPERUSER_EMAIL = "ameliapaisleyspam123@gmail.com";
   const isSuperuser = user?.email === SUPERUSER_EMAIL;
-  const [dmOverride, setDmOverride] = useState(() => localStorage.getItem("dm_override") === "true");
-
-  const toggleDmOverride = () => {
-    const next = !dmOverride;
-    setDmOverride(next);
-    localStorage.setItem("dm_override", String(next));
-  };
-
   const isAdmin = user?.campaign_role === "dm" || user?.role === "admin" || isSuperuser;
   const NAV = isAdmin ? GM_NAV : PLAYER_NAV;
 
@@ -148,9 +140,6 @@ function LayoutInner() {
     onEditName: () => setNameModalOpen(true),
     onCampaignSettings: () => setCampaignModalOpen(true),
     onThemeSettings: () => setThemeModalOpen(true),
-    isSuperuser,
-    dmOverride,
-    onToggleDmOverride: toggleDmOverride,
   };
 
   return (
@@ -269,9 +258,6 @@ function SidebarContent({
   onEditName,
   onCampaignSettings,
   onThemeSettings,
-  isSuperuser,
-  dmOverride,
-  onToggleDmOverride,
 }) {
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -363,12 +349,6 @@ function SidebarContent({
           <Swords className="w-3.5 h-3.5 shrink-0" />
           {!collapsed && <span>Switch Campaign</span>}
         </Link>
-        {isSuperuser && (
-          <button onClick={onToggleDmOverride} className={`flex items-center gap-2 text-xs transition-colors mb-1 px-1 w-full ${collapsed ? "justify-center" : ""} ${dmOverride ? "text-accent" : "text-muted-foreground hover:text-accent"}`}>
-            <Shield className="w-3.5 h-3.5 shrink-0" />
-            {!collapsed && <span>{dmOverride ? "DM View: On" : "DM View: Off"}</span>}
-          </button>
-        )}
         <Button variant="ghost" size={collapsed ? "icon" : "sm"} className={`text-muted-foreground ${collapsed ? "" : "w-full justify-start"}`} onClick={() => appClient.auth.logout()} title="Depart">
           <LogOut className="w-4 h-4" />
           {!collapsed && <span className="ml-2">Depart</span>}
