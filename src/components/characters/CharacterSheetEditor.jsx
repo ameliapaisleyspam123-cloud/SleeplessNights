@@ -408,7 +408,7 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
               <Field label="Attack Bonus"><Input type="number" value={form.spell_attack_bonus} onChange={(event) => setNum("spell_attack_bonus", event.target.value)} /></Field>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Spell Slots (used / total)</div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Spell Slots (current / max)</div>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 {SPELL_LEVELS.map((level) => (
                   <div key={level} className="border border-border rounded-sm bg-secondary/40 p-2 text-center">
