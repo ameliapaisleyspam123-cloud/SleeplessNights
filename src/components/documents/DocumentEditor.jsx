@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload, Loader2, FileText } from "lucide-react";
 
-export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVisibility = "public" }) {
-  const [form, setForm] = useState({ title: "", description: "", file_url: "", visibility: "public", allowed_emails: [] });
+export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVisibility = "public", defaultFolder = "" }) {
+  const [form, setForm] = useState({ title: "", description: "", file_url: "", folder: "", visibility: "public", allowed_emails: [] });
   const [users, setUsers] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -17,11 +17,11 @@ export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVis
 
   useEffect(() => {
     if (open) {
-      setForm({ title: "", description: "", file_url: "", visibility: defaultVisibility, allowed_emails: [] });
+      setForm({ title: "", description: "", file_url: "", folder: defaultFolder, visibility: defaultVisibility, allowed_emails: [] });
       setFileName("");
       appClient.entities.User.list("-created_date", 200).then(setUsers).catch(() => {});
     }
-  }, [open, defaultVisibility]);
+  }, [open, defaultVisibility, defaultFolder]);
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -93,6 +93,11 @@ export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVis
           <div>
             <Label>Description</Label>
             <Textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </div>
+
+          <div>
+            <Label>Folder</Label>
+            <Input value={form.folder || ""} onChange={(e) => setForm({ ...form, folder: e.target.value })} placeholder="Handouts/Session 1" />
           </div>
 
           <div>

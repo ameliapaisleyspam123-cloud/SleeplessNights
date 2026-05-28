@@ -15,6 +15,10 @@
     "file_url": {
       "type": "string"
     },
+    "folder": {
+      "type": "string",
+      "description": "Optional folder name to group documents. Use / for nesting."
+    },
     "visibility": {
       "type": "string",
       "enum": [

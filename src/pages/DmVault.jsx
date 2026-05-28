@@ -5,8 +5,9 @@ import CharacterSheetView from "@/components/characters/CharacterSheetView";
 import DocumentEditor from "@/components/documents/DocumentEditor";
 import LoreDetail from "@/components/lore/LoreDetail";
 import LoreEditor from "@/components/lore/LoreEditor";
+import MoveFolderDialog from "@/components/lore/MoveFolderDialog";
 import { Button } from "@/components/ui/button";
-import { Archive, Box, FileText, Heart, Lock, Plus, Radio, Shield, Sparkles, Swords, Trash2, Users, Zap } from "lucide-react";
+import { Archive, Box, FileText, Folder, Lock, MoveRight, Plus, Radio, Sparkles, Swords, Trash2, Users, Zap } from "lucide-react";
 
 const TABS = [
   { id: "documents", label: "Documents", icon: Lock },
@@ -24,6 +25,19 @@ function shortDate(value) {
   if (!value) return "";
   return new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
 }
+
+const emptyFolderKey = (campaignId) => `sleepless_empty_vault_document_folders_${campaignId || "default"}`;
+const readEmptyFolders = (campaignId) => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(emptyFolderKey(campaignId)) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+const writeEmptyFolders = (campaignId, folders) => {
+  localStorage.setItem(emptyFolderKey(campaignId), JSON.stringify([...new Set(folders.filter(Boolean))].sort()));
+};
 
 function combatStats(combat) {
   const events = combat.events || [];
@@ -54,6 +68,9 @@ export default function DmVault() {
   const [documents, setDocuments] = useState([]);
   const [lore, setLore] = useState([]);
   const [characters, setCharacters] = useState([]);
+  const [emptyDocumentFolders, setEmptyDocumentFolders] = useState([]);
+  const [documentFolder, setDocumentFolder] = useState("all");
+  const [movingDocument, setMovingDocument] = useState(null);
   const [broadcasts, setBroadcasts] = useState([]);
   const [combats, setCombats] = useState([]);
   const [players, setPlayers] = useState([]);
@@ -79,6 +96,7 @@ export default function DmVault() {
     setDocuments(docs);
     setLore(loreEntries);
     setCharacters(characterEntries);
+    setEmptyDocumentFolders(readEmptyFolders(currentUser.campaign_id));
     setBroadcasts(overrideEntries.filter((entry) => !entry.campaign_id || entry.campaign_id === currentUser.campaign_id));
     setCombats(initiativeEntries);
     setPlayers(userEntries);
@@ -90,8 +108,6 @@ export default function DmVault() {
   }, []);
 
   const sealedDocs = documents.filter((doc) => doc.visibility === "private");
-  const sealedLore = lore.filter((entry) => entry.visibility === "dm_only");
-  const sealedCharacters = characters.filter((entry) => entry.visibility === "dm_only");
   const archivedLore = lore.filter((entry) => entry.visibility === "archived");
   const archivedCharacters = characters.filter((entry) => entry.visibility === "archived");
   const archived = useMemo(
@@ -102,6 +118,48 @@ export default function DmVault() {
     [documents, lore, broadcasts],
   );
   const reusableOverrides = broadcasts.filter((entry) => !entry.archived);
+  const documentFolders = [...new Set([...sealedDocs.map((doc) => doc.folder).filter(Boolean), ...emptyDocumentFolders])].sort();
+  const filteredSealedDocs = sealedDocs.filter((doc) => documentFolder === "all" || doc.folder === documentFolder);
+  const uploadFolder = documentFolder === "all" ? "" : documentFolder;
+
+  const createDocumentFolder = () => {
+    const name = window.prompt("New document folder name");
+    const folderName = name?.trim();
+    if (!folderName || !user?.campaign_id) return;
+    const next = [...new Set([...emptyDocumentFolders, folderName])].sort();
+    setEmptyDocumentFolders(next);
+    writeEmptyFolders(user.campaign_id, next);
+    setDocumentFolder(folderName);
+  };
+
+  const moveDocument = async (targetFolder) => {
+    if (!movingDocument?.id) return;
+    await appClient.entities.Document.update(movingDocument.id, { folder: targetFolder || "" });
+    if (targetFolder && user?.campaign_id) {
+      const next = [...new Set([...emptyDocumentFolders, targetFolder])].sort();
+      setEmptyDocumentFolders(next);
+      writeEmptyFolders(user.campaign_id, next);
+    }
+    setMovingDocument(null);
+    await load();
+  };
+
+  const deleteDocumentFolder = async (folderName) => {
+    if (!folderName || !user?.campaign_id) return;
+    const count = sealedDocs.filter((doc) => doc.folder === folderName).length;
+    const confirmed = window.confirm(
+      count > 0
+        ? `Delete the "${folderName}" folder and move ${count} document${count === 1 ? "" : "s"} back to All Documents?`
+        : `Delete the "${folderName}" folder?`,
+    );
+    if (!confirmed) return;
+    await Promise.all(sealedDocs.filter((doc) => doc.folder === folderName).map((doc) => appClient.entities.Document.update(doc.id, { folder: "" })));
+    const next = emptyDocumentFolders.filter((name) => name !== folderName);
+    setEmptyDocumentFolders(next);
+    writeEmptyFolders(user.campaign_id, next);
+    if (documentFolder === folderName) setDocumentFolder("all");
+    await load();
+  };
 
   const activateOverride = async (override) => {
     await Promise.all(broadcasts.filter((entry) => entry.active && entry.id !== override.id).map((entry) => appClient.entities.Broadcast.update(entry.id, { active: false })));
@@ -121,6 +179,14 @@ export default function DmVault() {
 
   const archiveDocument = async (doc) => {
     await appClient.entities.Document.update(doc.id, { visibility: "archived" });
+    await load();
+  };
+
+  const deleteCombat = async (combat) => {
+    if (!combat?.id) return;
+    const label = combat.active ? "active encounter" : "saved encounter";
+    if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) return;
+    await appClient.entities.Initiative.delete(combat.id);
     await load();
   };
 
@@ -193,41 +259,74 @@ export default function DmVault() {
       </div>
 
       {tab === "documents" && (
-        <VaultPanel empty={sealedDocs.length === 0 && sealedLore.length === 0 && sealedCharacters.length === 0} emptyTitle="The vault is empty." emptyBody="Upload sealed documents for the DM.">
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {sealedDocs.map((doc) => (
-              <div key={doc.id} className="border border-border bg-card/55 rounded-sm p-4 flex flex-col min-h-40">
-                <FileText className="w-5 h-5 text-accent" />
-                <div className="font-display text-xl mt-3">{doc.title}</div>
-                {doc.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{doc.description}</p>}
-                <div className="mt-auto pt-4 flex gap-2">
-                  <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-sm px-3 py-2 rounded-sm border border-border hover:border-accent hover:text-accent transition-colors">
-                    Open
-                  </a>
-                  <Button size="sm" variant="ghost" onClick={() => archiveDocument(doc)}>Archive</Button>
-                </div>
-              </div>
-            ))}
-            {sealedLore.map((entry) => (
-              <button key={entry.id} type="button" onClick={() => setViewingLore(entry)} className="text-left border border-border bg-card/55 rounded-sm p-4 hover:border-accent/70 transition-colors min-h-40">
-                <Lock className="w-5 h-5 text-accent" />
-                <div className="font-display text-xl mt-3">{entry.title}</div>
-                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{plainText(entry.content) || entry.category}</p>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-4">Lore & Maps - DM Only</div>
+        <VaultPanel empty={sealedDocs.length === 0 && documentFolders.length === 0} emptyTitle="The vault is empty." emptyBody="Upload sealed documents for the DM.">
+          <div className="border border-border bg-card/50 rounded-sm overflow-hidden">
+            <div className="flex flex-wrap gap-2 border-b border-border p-3">
+              <button
+                type="button"
+                onClick={() => setDocumentFolder("all")}
+                className={`flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${documentFolder === "all" ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
+              >
+                <Folder className="w-7 h-7" strokeWidth={1.7} />
+                <span className="text-[10px] leading-tight text-center">All Documents</span>
               </button>
-            ))}
-            {sealedCharacters.map((entry) => (
-              <button key={entry.id} type="button" onClick={() => setViewingCharacter(entry)} className="text-left border border-border bg-card/55 rounded-sm p-4 hover:border-accent/70 transition-colors min-h-40">
-                <Users className="w-5 h-5 text-accent" />
-                <div className="font-display text-xl mt-3">{entry.name}</div>
-                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{[entry.race, entry.class, entry.subclass].filter(Boolean).join(" - ") || "Character sheet"}</p>
-                <div className="flex gap-3 text-xs text-muted-foreground mt-4">
-                  <span className="inline-flex items-center gap-1"><Heart className="w-3 h-3" /> {entry.hp_current ?? entry.hp_max ?? "-"}/{entry.hp_max ?? "-"}</span>
-                  <span className="inline-flex items-center gap-1"><Shield className="w-3 h-3" /> {entry.ac ?? "-"}</span>
+              {documentFolders.map((name) => (
+                <div
+                  key={name}
+                  className={`relative flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${documentFolder === name ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
+                  title={name}
+                >
+                  <button type="button" onClick={() => setDocumentFolder(name)} className="absolute inset-0" aria-label={`Open ${name}`} />
+                  <Folder className="w-7 h-7" strokeWidth={1.7} />
+                  <span className="text-[10px] leading-tight text-center max-w-20 break-words">{name.split("/").pop()}</span>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      deleteDocumentFolder(name);
+                    }}
+                    className="absolute top-1 right-1 z-10 p-1 rounded-sm text-muted-foreground hover:text-destructive hover:bg-background/80"
+                    title="Delete folder"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 </div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-4">Characters - DM Only</div>
+              ))}
+              <button
+                type="button"
+                onClick={createDocumentFolder}
+                className="flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border border-dashed border-border text-muted-foreground hover:text-accent hover:border-accent/60 hover:bg-accent/5 transition-all"
+              >
+                <Plus className="w-7 h-7" strokeWidth={1.7} />
+                <span className="text-[10px] leading-tight text-center">New Folder</span>
               </button>
-            ))}
+            </div>
+
+            <div className="p-4">
+              {filteredSealedDocs.length === 0 ? (
+                <div className="border border-dashed border-border rounded-sm p-10 text-center text-muted-foreground">No documents in this folder.</div>
+              ) : (
+                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredSealedDocs.map((doc) => (
+                    <div key={doc.id} className="border border-border bg-card/55 rounded-sm p-4 flex flex-col min-h-40">
+                      <FileText className="w-5 h-5 text-accent" />
+                      <div className="font-display text-xl mt-3">{doc.title}</div>
+                      {doc.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{doc.description}</p>}
+                      {doc.folder && <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-3">{doc.folder}</div>}
+                      <div className="mt-auto pt-4 flex gap-2 flex-wrap">
+                        <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-sm px-3 py-2 rounded-sm border border-border hover:border-accent hover:text-accent transition-colors">
+                          Open
+                        </a>
+                        <Button size="sm" variant="ghost" onClick={() => setMovingDocument(doc)}>
+                          <MoveRight className="w-4 h-4" /> Move
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => archiveDocument(doc)}>Archive</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </VaultPanel>
       )}
@@ -242,7 +341,12 @@ export default function DmVault() {
                     <div className="font-display text-xl">{combat.active ? "Active Encounter" : "Saved Encounter"}</div>
                     <div className="text-sm text-muted-foreground">{combat.entries?.length || 0} combatants - round {combat.round || 1}</div>
                   </div>
-                  <div className={combat.active ? "text-accent text-sm" : "text-muted-foreground text-sm"}>{combat.active ? "Live" : shortDate(combat.updated_date)}</div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className={combat.active ? "text-accent text-sm" : "text-muted-foreground text-sm"}>{combat.active ? "Live" : shortDate(combat.updated_date)}</div>
+                    <Button size="sm" variant="ghost" onClick={() => deleteCombat(combat)} title="Delete encounter" className="text-muted-foreground hover:text-destructive">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
                 {(() => {
                   const stats = combatStats(combat);
@@ -339,7 +443,17 @@ export default function DmVault() {
         </VaultPanel>
       )}
 
-      <DocumentEditor open={uploadOpen} onOpenChange={setUploadOpen} onSaved={load} defaultVisibility="private" />
+      <DocumentEditor open={uploadOpen} onOpenChange={setUploadOpen} onSaved={load} defaultVisibility="private" defaultFolder={uploadFolder} />
+      <MoveFolderDialog
+        open={Boolean(movingDocument)}
+        onOpenChange={(isOpen) => !isOpen && setMovingDocument(null)}
+        entry={movingDocument}
+        allFolderPaths={documentFolders}
+        onMove={moveDocument}
+        title="Move Document"
+        itemLabel="Moving"
+        rootLabel="All Documents (root)"
+      />
       <LoreDetail
         open={Boolean(viewingLore)}
         onOpenChange={(open) => !open && setViewingLore(null)}

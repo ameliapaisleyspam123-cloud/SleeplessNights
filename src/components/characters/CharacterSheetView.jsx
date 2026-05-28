@@ -277,7 +277,7 @@ function DeathSaveBlock({ successes, failures, onSave }) {
   );
 }
 
-function SpellSlotsBlock({ slotsJson, onSave }) {
+function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
   const parse = (json) => {
     try {
       return JSON.parse(json || "{}");
@@ -286,11 +286,26 @@ function SpellSlotsBlock({ slotsJson, onSave }) {
     }
   };
   const [slots, setSlots] = useState(parse(slotsJson));
+  const [resources, setResources] = useState({
+    ki_points_current: sheet.ki_points_current || 0,
+    ki_points_max: sheet.ki_points_max || 0,
+    sorcery_points_current: sheet.sorcery_points_current || 0,
+    sorcery_points_max: sheet.sorcery_points_max || 0,
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setSlots(parse(slotsJson));
   }, [slotsJson]);
+
+  useEffect(() => {
+    setResources({
+      ki_points_current: sheet.ki_points_current || 0,
+      ki_points_max: sheet.ki_points_max || 0,
+      sorcery_points_current: sheet.sorcery_points_current || 0,
+      sorcery_points_max: sheet.sorcery_points_max || 0,
+    });
+  }, [sheet.ki_points_current, sheet.ki_points_max, sheet.sorcery_points_current, sheet.sorcery_points_max]);
 
   const toggleSlot = (level, index) => {
     const slot = slots[level] || { total: 0, used: 0 };
@@ -302,11 +317,32 @@ function SpellSlotsBlock({ slotsJson, onSave }) {
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave({ spell_slots: JSON.stringify(slots) });
+    await onSave({ spell_slots: JSON.stringify(slots), ...resources });
     setSaving(false);
   };
 
-  if (!Object.keys(slots).some((level) => slots[level]?.total > 0)) {
+  const classResources = [
+    ["Ki Points", "ki_points_current", "ki_points_max"],
+    ["Sorcery Points", "sorcery_points_current", "sorcery_points_max"],
+  ]
+    .map(([label, currentKey, maxKey]) => {
+      const max = Math.max(0, Number(resources[maxKey]) || 0);
+      const current = Math.min(Math.max(0, Number(resources[currentKey]) || 0), max);
+      return { label, currentKey, maxKey, current, max };
+    })
+    .filter((resource) => resource.max > 0);
+
+  const hasSpellSlots = Object.keys(slots).some((level) => slots[level]?.total > 0);
+  const hasResources = classResources.length > 0;
+
+  const setResourceCurrent = (resource, nextValue) => {
+    setResources((current) => ({
+      ...current,
+      [resource.currentKey]: Math.min(Math.max(0, nextValue), resource.max),
+    }));
+  };
+
+  if (!hasSpellSlots && !hasResources) {
     return (
       <div>
         <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Spell Slots</div>
@@ -324,7 +360,7 @@ function SpellSlotsBlock({ slotsJson, onSave }) {
         </button>
       </div>
       <div className="flex flex-wrap gap-2">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => {
+        {hasSpellSlots && [1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => {
           const slot = slots[level];
           if (!slot?.total) return null;
           const used = slot.used || 0;
@@ -343,61 +379,20 @@ function SpellSlotsBlock({ slotsJson, onSave }) {
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function ClassResourcesBlock({ sheet, onSave }) {
-  const [values, setValues] = useState({
-    ki_points_current: sheet.ki_points_current || 0,
-    ki_points_max: sheet.ki_points_max || 0,
-    sorcery_points_current: sheet.sorcery_points_current || 0,
-    sorcery_points_max: sheet.sorcery_points_max || 0,
-  });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setValues({
-      ki_points_current: sheet.ki_points_current || 0,
-      ki_points_max: sheet.ki_points_max || 0,
-      sorcery_points_current: sheet.sorcery_points_current || 0,
-      sorcery_points_max: sheet.sorcery_points_max || 0,
-    });
-  }, [sheet.ki_points_current, sheet.ki_points_max, sheet.sorcery_points_current, sheet.sorcery_points_max]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    await onSave(values);
-    setSaving(false);
-  };
-
-  return (
-    <div className="mt-3">
-      <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center justify-between">
-        <span>Class Resources</span>
-        <button onClick={handleSave} disabled={saving} className="text-[10px] px-2 py-0.5 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50">
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
-        </button>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {[
-          ["Ki Points", "ki_points_current", "ki_points_max"],
-          ["Sorcery Points", "sorcery_points_current", "sorcery_points_max"],
-        ].map(([label, currentKey, maxKey]) => (
-          <div key={label} className="border border-border rounded-sm bg-secondary/40 px-3 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-muted-foreground">{label}</span>
-              <span className="text-sm font-medium">{values[currentKey] || 0}/{values[maxKey] || 0}</span>
+        {classResources.map((resource) => (
+          <div key={resource.label} className="border border-border rounded-sm bg-secondary/40 px-3 py-2 text-center min-w-[96px]">
+            <div className="text-[8px] uppercase text-muted-foreground mb-1">{resource.label}</div>
+            <div className="flex gap-1.5 justify-center flex-wrap">
+              {Array.from({ length: resource.max }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setResourceCurrent(resource, index < resource.current ? index : index + 1)}
+                  className={`w-5 h-5 rounded-full border-2 transition-colors ${index < resource.current ? "bg-accent border-accent hover:bg-accent/60" : "border-border hover:border-accent/50"}`}
+                />
+              ))}
             </div>
-            <div className="flex items-center gap-2 mt-2">
-              <button onClick={() => setValues((current) => ({ ...current, [currentKey]: Math.max(0, (current[currentKey] || 0) - 1) }))} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
-                <Minus className="w-3 h-3" />
-              </button>
-              <button onClick={() => setValues((current) => ({ ...current, [currentKey]: Math.min(current[maxKey] || (current[currentKey] || 0) + 1, (current[currentKey] || 0) + 1) }))} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
-                <Plus className="w-3 h-3" />
-              </button>
-              <span className="text-[10px] text-muted-foreground ml-auto">Max {values[maxKey] || 0}</span>
+            <div className="text-[9px] text-muted-foreground mt-1">
+              {resource.current}/{resource.max}
             </div>
           </div>
         ))}
@@ -547,8 +542,7 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
                 <span className="text-muted-foreground">Save DC: <b className="text-foreground">{sheet.spell_save_dc ?? 8}</b></span>
                 <span className="text-muted-foreground">Attack: <b className="text-foreground">{fmt(sheet.spell_attack_bonus || 0)}</b></span>
               </div>
-              <SpellSlotsBlock slotsJson={sheet.spell_slots} onSave={saveField} />
-              <ClassResourcesBlock sheet={sheet} onSave={saveField} />
+              <SpellSlotsBlock slotsJson={sheet.spell_slots} sheet={sheet} onSave={saveField} />
               <div className="mt-3">
                 {hasListData(sheet.spells_known) ? <SpellManager value={sheet.spells_known} readOnly /> : <EmptyBlock label="No spells recorded." />}
               </div>

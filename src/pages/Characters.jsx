@@ -89,7 +89,7 @@ export default function Characters() {
   const campaignName = (campaignId) => campaigns.find((campaign) => campaign.id === campaignId)?.name || "Unknown campaign";
   const isAdmin = isDmUser(user);
   const currentCampaign = campaigns.find((campaign) => campaign.id === user?.campaign_id) || null;
-  const visibleItems = items.filter((item) => item.visibility !== "dm_only" && canViewVisibleItem(item, user, isAdmin));
+  const visibleItems = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
   const folders = [...new Set([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders])].sort();
   const filteredItems = visibleItems.filter((item) => folder === "all" || item.folder === folder);
   const userCharacterCounts = items.reduce((counts, sheet) => {
