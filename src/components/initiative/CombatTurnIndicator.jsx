@@ -4,19 +4,28 @@ import { Swords } from "lucide-react";
 
 export default function CombatTurnIndicator({ currentUser }) {
   const [combat, setCombat] = useState(null);
+  const [characters, setCharacters] = useState([]);
 
   useEffect(() => {
     if (!currentUser?.campaign_id) return;
 
     const load = async () => {
-      const list = await appClient.entities.Initiative.filter({ campaign_id: currentUser.campaign_id, active: true }, "-updated_date", 1);
+      const [list, sheets] = await Promise.all([
+        appClient.entities.Initiative.filter({ campaign_id: currentUser.campaign_id, active: true }, "-updated_date", 1),
+        appClient.entities.CharacterSheet.filter({ campaign_id: currentUser.campaign_id }, "name", 300),
+      ]);
       setCombat(list[0] || null);
+      setCharacters(sheets);
     };
 
     load();
 
-    const unsub = appClient.entities.Initiative.subscribe(() => load());
-    return () => unsub();
+    const unsubInitiative = appClient.entities.Initiative.subscribe(() => load());
+    const unsubCharacters = appClient.entities.CharacterSheet.subscribe(() => load());
+    return () => {
+      unsubInitiative();
+      unsubCharacters();
+    };
   }, [currentUser?.campaign_id]);
 
   if (!combat?.active) return null;
@@ -25,7 +34,11 @@ export default function CombatTurnIndicator({ currentUser }) {
   const currentEntry = entries[combat.current_turn_index ?? 0];
   if (!currentEntry) return null;
 
-  const isMyTurn = currentEntry.ownerEmail && currentEntry.ownerEmail === currentUser?.email;
+  const currentSheet = characters.find((sheet) => sheet.id === (currentEntry.characterId || currentEntry.id));
+  const ownerEmail = currentSheet?.assigned_to_email || currentEntry.ownerEmail || "";
+  const isDM = currentUser?.campaign_role === "dm" || currentUser?.campaign_role === "DM" || currentUser?.role === "admin";
+  const isMyTurn = ownerEmail ? ownerEmail === currentUser?.email : isDM;
+  const turnLabel = ownerEmail ? `${currentEntry.name}'s turn` : "DM's turn";
 
   return (
     <div
@@ -37,7 +50,7 @@ export default function CombatTurnIndicator({ currentUser }) {
       <Swords className={`w-4 h-4 shrink-0 ${isMyTurn ? "animate-pulse" : ""}`} />
       <div className="min-w-0">
         <div className="text-[9px] uppercase tracking-widest opacity-70">{isMyTurn ? "Your Turn!" : "In Combat"}</div>
-        <div className="text-xs font-medium truncate">{isMyTurn ? "Take your action" : `${currentEntry.name}'s turn`}</div>
+        <div className="text-xs font-medium truncate">{turnLabel}</div>
       </div>
     </div>
   );
