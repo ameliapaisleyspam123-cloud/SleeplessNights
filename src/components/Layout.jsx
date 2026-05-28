@@ -238,16 +238,6 @@ function LayoutInner() {
             Initiative
           </button>
         )}
-        {isAdmin && campaignId && (
-          <button
-            type="button"
-            onClick={openInitiativePopout}
-            className="hidden lg:flex h-11 w-11 rounded-sm border border-border bg-card text-foreground hover:border-accent/70 hover:text-accent shadow-lg items-center justify-center transition-all"
-            title="Pop out initiative tracker"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </button>
-        )}
         <button
           type="button"
           onClick={() => setDiceOpen((open) => !open)}
