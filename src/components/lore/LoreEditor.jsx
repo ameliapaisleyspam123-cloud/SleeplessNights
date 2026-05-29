@@ -479,6 +479,14 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
                       >
                         <RotateCw className="w-3.5 h-3.5" />
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm((current) => ({ ...current, pdf_rotation: ((Number(current.pdf_rotation) || 0) + 180) % 360 }))}
+                        title="Flip PDF"
+                        className="h-8 px-2 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
+                      >
+                        Flip
+                      </button>
                     </>
                   )}
                   <button type="button" onClick={() => setMapZoom((value) => Math.max(0.5, value - 0.25))} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">-</button>

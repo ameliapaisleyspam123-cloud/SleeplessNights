@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, MapPin, X } from "lucide-react";
+import { FileText, MapPin, RotateCw, X } from "lucide-react";
 import PdfMapCanvas from "@/components/lore/PdfMapCanvas";
 
 const unlinkedValue = "__unlinked__";
@@ -32,6 +32,8 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   const [mapZoom, setMapZoom] = useState(1);
   const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState(null);
+  const [pdfRotation, setPdfRotation] = useState(entry?.pdf_rotation || 0);
+  const [overlayEntry, setOverlayEntry] = useState(null);
   const mapSurfaceRef = useRef(null);
   const hasPdf = Boolean(entry?.pdf_url);
   const hasImage = Boolean(entry?.image_url);
@@ -75,6 +77,11 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   }, [entry?.pdf_url]);
 
   useEffect(() => {
+    setPdfRotation(entry?.pdf_rotation || 0);
+    setOverlayEntry(null);
+  }, [entry?.id, entry?.pdf_rotation]);
+
+  useEffect(() => {
     const surface = mapSurfaceRef.current;
     if (!surface) return undefined;
     const handleWheel = (event) => {
@@ -89,6 +96,14 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   const updatePins = async (nextPins) => {
     if (!entry?.id) return;
     const updated = await appClient.entities.LoreEntry.update(entry.id, { map_pins: nextPins });
+    onEntryUpdated?.(updated);
+  };
+
+  const flipPdf = async () => {
+    if (!entry?.id) return;
+    const nextRotation = ((Number(pdfRotation) || 0) + 180) % 360;
+    setPdfRotation(nextRotation);
+    const updated = await appClient.entities.LoreEntry.update(entry.id, { pdf_rotation: nextRotation });
     onEntryUpdated?.(updated);
   };
 
@@ -145,8 +160,7 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
     }
     const linked = loreById.get(pin.lore_entry_id);
     if (!linked) return;
-    onClose?.();
-    onOpenEntry?.(linked);
+    setOverlayEntry(linked);
   };
 
   const startPan = (event) => setDragStart({ x: event.clientX, y: event.clientY, pan: mapPan, moved: false });
@@ -170,6 +184,11 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
           <Button variant="outline" size="sm" onClick={() => setMapZoom((value) => Math.max(0.5, value - 0.25))}>-</Button>
           <Button variant="outline" size="sm" onClick={() => setMapZoom((value) => Math.min(4, value + 0.25))}>+</Button>
           <Button variant="outline" size="sm" onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }}>Reset</Button>
+          {isAdmin && pdfSrc && (
+            <Button variant="outline" size="sm" onClick={flipPdf} title="Flip PDF">
+              <RotateCw className="w-4 h-4" /> Flip
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="w-4 h-4" /> Close
           </Button>
@@ -192,7 +211,7 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
             {hasImage ? (
               <img src={entry.image_url} alt="" className="absolute inset-0 w-full h-full object-contain bg-background" draggable={false} />
             ) : pdfSrc ? (
-              <PdfMapCanvas url={pdfSrc} rotation={entry.pdf_rotation || 0} />
+              <PdfMapCanvas url={pdfSrc} rotation={pdfRotation} />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{hasPdf ? "Loading PDF..." : "No map file attached."}</div>
             )}
@@ -246,6 +265,47 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
         </div>
 
       </div>
+      {overlayEntry && (
+        <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center p-4 md:p-8">
+          <div className="pointer-events-auto w-full max-w-2xl max-h-[82vh] overflow-y-auto thin-scroll rounded-sm border border-border bg-background/95 shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-background/95 px-4 py-3">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.24em] text-accent">{overlayEntry.category || "lore"}</div>
+                <div className="font-display text-2xl leading-tight truncate">{overlayEntry.title || "Untitled"}</div>
+              </div>
+              <button type="button" onClick={() => setOverlayEntry(null)} className="text-muted-foreground hover:text-foreground" title="Close lore overlay">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {overlayEntry.image_url && (
+              <img src={overlayEntry.image_url} alt={overlayEntry.title || "Lore"} className="w-full max-h-64 object-cover border-b border-border" />
+            )}
+            <div className="p-4 md:p-5">
+              {overlayEntry.content ? (
+                <div className="rich-content text-sm leading-relaxed text-foreground/90" dangerouslySetInnerHTML={{ __html: overlayEntry.content }} />
+              ) : (
+                <div className="rounded-sm border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">No details recorded.</div>
+              )}
+              {onOpenEntry && (
+                <div className="mt-5 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setOverlayEntry(null);
+                      onClose?.();
+                      onOpenEntry(overlayEntry);
+                    }}
+                  >
+                    Open Full Entry
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

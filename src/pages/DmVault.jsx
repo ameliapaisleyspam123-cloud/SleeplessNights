@@ -39,6 +39,31 @@ const writeEmptyFolders = (campaignId, folders) => {
   localStorage.setItem(emptyFolderKey(campaignId), JSON.stringify([...new Set(folders.filter(Boolean))].sort()));
 };
 
+const expandFolderPaths = (paths) => {
+  const expanded = new Set();
+  paths.filter(Boolean).forEach((path) => {
+    path.split("/").reduce((prefix, part) => {
+      const next = prefix ? `${prefix}/${part}` : part;
+      expanded.add(next);
+      return next;
+    }, "");
+  });
+  return [...expanded].sort();
+};
+
+const normalizeFolderPath = (path) =>
+  String(path || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("/");
+
+const createChildFolderPath = (currentFolder, name) => {
+  const folderName = normalizeFolderPath(name);
+  if (!folderName) return "";
+  return currentFolder && currentFolder !== "all" ? normalizeFolderPath(`${currentFolder}/${folderName}`) : folderName;
+};
+
 function combatStats(combat) {
   const events = combat.events || [];
   const damage = events.filter((event) => event.type === "damage");
@@ -118,13 +143,13 @@ export default function DmVault() {
     [documents, lore, broadcasts],
   );
   const reusableOverrides = broadcasts.filter((entry) => !entry.archived);
-  const documentFolders = [...new Set([...sealedDocs.map((doc) => doc.folder).filter(Boolean), ...emptyDocumentFolders])].sort();
-  const filteredSealedDocs = sealedDocs.filter((doc) => documentFolder === "all" || doc.folder === documentFolder);
+  const documentFolders = expandFolderPaths([...sealedDocs.map((doc) => doc.folder).filter(Boolean), ...emptyDocumentFolders]);
+  const filteredSealedDocs = sealedDocs.filter((doc) => documentFolder === "all" || doc.folder === documentFolder || doc.folder?.startsWith(`${documentFolder}/`));
   const uploadFolder = documentFolder === "all" ? "" : documentFolder;
 
   const createDocumentFolder = () => {
-    const name = window.prompt("New document folder name");
-    const folderName = name?.trim();
+    const name = window.prompt(documentFolder === "all" ? "New document folder name" : `New subfolder inside "${documentFolder}"`);
+    const folderName = createChildFolderPath(documentFolder, name);
     if (!folderName || !user?.campaign_id) return;
     const next = [...new Set([...emptyDocumentFolders, folderName])].sort();
     setEmptyDocumentFolders(next);
@@ -275,6 +300,11 @@ export default function DmVault() {
         <VaultPanel empty={sealedDocs.length === 0 && documentFolders.length === 0} emptyTitle="The vault is empty." emptyBody="Upload sealed documents for the DM.">
           <div className="border border-border bg-card/50 rounded-sm overflow-hidden">
             <div className="flex flex-wrap gap-2 border-b border-border p-3">
+              {documentFolder !== "all" && (
+                <div className="w-full text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Current folder: <span className="font-mono normal-case tracking-normal text-foreground">{documentFolder}</span>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setDocumentFolder("all")}

@@ -26,7 +26,7 @@ export default function PdfMapCanvas({ url, rotation = 0, className = "" }) {
         const baseViewport = page.getViewport({ scale: 1 });
         const scale = Math.min(container.width / baseViewport.width, container.height / baseViewport.height) || 1;
         const normalizedRotation = ((Number(rotation) || 0) % 360 + 360) % 360;
-        const viewport = page.getViewport({ scale, rotation: ((page.rotate || 0) + normalizedRotation) % 360 });
+        const viewport = page.getViewport({ scale, rotation: normalizedRotation });
         const canvas = canvasRef.current;
         const context = canvas.getContext("2d");
         const ratio = window.devicePixelRatio || 1;

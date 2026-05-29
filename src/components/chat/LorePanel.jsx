@@ -238,43 +238,35 @@ function ClassResourcesEditor({ sheet, onSheetUpdated }) {
   const rows = [
     ["Ki Points", "ki_points_current", "ki_points_max"],
     ["Sorcery Points", "sorcery_points_current", "sorcery_points_max"],
-  ].filter(([, currentField, maxField]) => (resources[currentField] || resources[maxField]));
+  ]
+    .map(([label, currentField, maxField]) => {
+      const max = Math.max(0, Number(resources[maxField]) || 0);
+      const current = Math.min(Math.max(0, Number(resources[currentField]) || 0), max);
+      return { label, currentField, maxField, current, max };
+    })
+    .filter((resource) => resource.max > 0);
 
   if (rows.length === 0) return null;
 
   return (
-    <div className="space-y-1">
-      {rows.map(([label, currentField, maxField]) => (
-        <div key={currentField} className="flex items-center justify-between gap-2 text-[10px]">
-          <span className="text-muted-foreground">{label}:</span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => adjustCurrent(currentField, maxField, -1)}
-              className="w-4 h-4 rounded border border-border bg-secondary/60 hover:bg-destructive/20 hover:border-destructive/50 text-muted-foreground hover:text-destructive transition-colors leading-none flex items-center justify-center"
-            >
-              <Minus className="w-2.5 h-2.5" />
-            </button>
-            <Input
-              type="number"
-              min={0}
-              value={resources[currentField]}
-              onChange={(event) => updateResource(currentField, event.target.value)}
-              className={`h-6 w-10 px-1 text-center text-[10px] ${savingField === currentField ? "text-muted-foreground" : ""}`}
-            />
-            <span className="text-muted-foreground">/</span>
-            <Input
-              type="number"
-              min={0}
-              value={resources[maxField]}
-              onChange={(event) => updateResource(maxField, event.target.value)}
-              className={`h-6 w-10 px-1 text-center text-[10px] ${savingField === maxField ? "text-muted-foreground" : ""}`}
-            />
-            <button
-              onClick={() => adjustCurrent(currentField, maxField, 1)}
-              className="w-4 h-4 rounded border border-border bg-secondary/60 hover:bg-accent/20 hover:border-accent/50 text-muted-foreground hover:text-accent transition-colors leading-none flex items-center justify-center"
-            >
-              <Plus className="w-2.5 h-2.5" />
-            </button>
+    <div className="flex flex-wrap gap-2">
+      {rows.map((resource) => (
+        <div key={resource.currentField} className="border border-border rounded-sm bg-secondary/40 px-2 py-1.5 text-center min-w-[84px]">
+          <div className="text-[8px] uppercase text-muted-foreground mb-1">{resource.label}</div>
+          <div className="flex gap-1 justify-center flex-wrap">
+            {Array.from({ length: resource.max }).map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => updateResource(resource.currentField, index < resource.current ? index : index + 1)}
+                className={`w-4 h-4 rounded-full border-2 transition-colors ${
+                  index < resource.current ? "bg-accent border-accent hover:bg-accent/60" : "border-border hover:border-accent/50"
+                }`}
+              />
+            ))}
+          </div>
+          <div className={`text-[9px] text-muted-foreground mt-1 ${savingField === resource.currentField ? "opacity-60" : ""}`}>
+            {resource.current}/{resource.max}
           </div>
         </div>
       ))}
@@ -443,16 +435,13 @@ function CharacterCard({ sheet, onSheetUpdated }) {
                   </div>
                 </div>
               )}
-              {sheet.spell_slots && (
+              {(sheet.spell_slots || hasClassResources) && (
                 <div>
                   <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Spell Slots</div>
-                  <SpellSlotsEditor sheet={sheet} onSheetUpdated={onSheetUpdated} />
-                </div>
-              )}
-              {hasClassResources && (
-                <div>
-                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Class Resources</div>
-                  <ClassResourcesEditor sheet={sheet} onSheetUpdated={onSheetUpdated} />
+                  <div className="space-y-2">
+                    {sheet.spell_slots && <SpellSlotsEditor sheet={sheet} onSheetUpdated={onSheetUpdated} />}
+                    {hasClassResources && <ClassResourcesEditor sheet={sheet} onSheetUpdated={onSheetUpdated} />}
+                  </div>
                 </div>
               )}
             </div>
