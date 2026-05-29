@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Loader2, FileText, Eye, EyeOff, Lock, Users, MapPin, Tag, Trash2, Link2, X, Undo2, Redo2 } from "lucide-react";
+import { Upload, Loader2, FileText, Eye, EyeOff, Lock, Users, MapPin, Tag, Trash2, Link2, X, Undo2, Redo2, RotateCcw, RotateCw } from "lucide-react";
 import PdfMapCanvas from "@/components/lore/PdfMapCanvas";
 
 const VISIBILITY_OPTIONS = [
@@ -28,18 +28,19 @@ const CATEGORIES = [
 
 const unlinkedValue = "__unlinked__";
 
-const blankEntry = {
+const createBlankEntry = () => ({
   title: "",
   category: "other",
   folder: "",
   content: "",
   image_url: "",
   pdf_url: "",
+  pdf_rotation: 0,
   map_pins: [],
   tags: [],
   visibility: "public",
   allowed_emails: [],
-};
+});
 
 function newMapMark(kind, x = 50, y = 50) {
   return {
@@ -59,7 +60,7 @@ const quillModules = { toolbar: [["bold", "italic"], [{ list: "bullet" }, { list
 const quillClass = "[&_.ql-container]:text-sm [&_.ql-editor]:bg-card [&_.ql-editor]:text-foreground [&_.ql-editor]:min-h-[150px] [&_.ql-toolbar]:border-border [&_.ql-container]:border-border [&_.ql-toolbar]:bg-card/60 [&_.ql-stroke]:stroke-muted-foreground [&_.ql-fill]:fill-muted-foreground [&_.ql-picker]:text-muted-foreground";
 
 export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
-  const [form, setForm] = useState(() => entry || blankEntry);
+  const [form, setForm] = useState(() => entry || createBlankEntry());
   const [tagInput, setTagInput] = useState("");
   const [existingTags, setExistingTags] = useState([]);
   const [existingFolders, setExistingFolders] = useState([]);
@@ -84,7 +85,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
 
   useEffect(() => {
     if (open) {
-      setForm(entry || blankEntry);
+      setForm(entry ? { ...createBlankEntry(), ...entry, map_pins: Array.isArray(entry.map_pins) ? entry.map_pins : [] } : createBlankEntry());
       setTagInput("");
       setEditingMarkId("");
       setShowPdfHint(true);
@@ -126,11 +127,26 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    const user = await appClient.auth.me().catch(() => null);
     const { file_url } = await appClient.integrations.Core.UploadFile({ file });
     if (file.type === "application/pdf") {
-      setForm((f) => ({ ...f, pdf_url: file_url, image_url: "", category: f.category === "other" ? "map" : f.category }));
+      setForm((f) => ({
+        ...f,
+        campaign_id: f.campaign_id || user?.campaign_id || "",
+        pdf_url: file_url,
+        image_url: "",
+        category: f.category === "other" ? "map" : f.category,
+        pdf_rotation: 0,
+      }));
     } else {
-      setForm((f) => ({ ...f, image_url: file_url, pdf_url: "", map_pins: [] }));
+      setForm((f) => ({
+        ...f,
+        campaign_id: f.campaign_id || user?.campaign_id || "",
+        image_url: file_url,
+        pdf_url: "",
+        pdf_rotation: 0,
+        map_pins: [],
+      }));
     }
     setUploading(false);
   };
@@ -306,11 +322,12 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
   const save = async () => {
     if (!form.title?.trim()) return;
     setSaving(true);
+    const u = await appClient.auth.me().catch(() => null);
+    const payload = { ...form, campaign_id: form.campaign_id || u?.campaign_id || "" };
     if (entry?.id) {
-      await appClient.entities.LoreEntry.update(entry.id, form);
+      await appClient.entities.LoreEntry.update(entry.id, payload);
     } else {
-      const u = await appClient.auth.me().catch(() => null);
-      await appClient.entities.LoreEntry.create({ ...form, campaign_id: u?.campaign_id });
+      await appClient.entities.LoreEntry.create(payload);
     }
     setSaving(false);
     onSaved?.();
@@ -444,6 +461,26 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
                   >
                     <Redo2 className="w-3.5 h-3.5" />
                   </button>
+                  {form.pdf_url && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setForm((current) => ({ ...current, pdf_rotation: (((Number(current.pdf_rotation) || 0) - 90) % 360 + 360) % 360 }))}
+                        title="Rotate PDF left"
+                        className="h-8 w-8 rounded-sm border border-border text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm((current) => ({ ...current, pdf_rotation: ((Number(current.pdf_rotation) || 0) + 90) % 360 }))}
+                        title="Rotate PDF right"
+                        className="h-8 w-8 rounded-sm border border-border text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
+                      >
+                        <RotateCw className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                   <button type="button" onClick={() => setMapZoom((value) => Math.max(0.5, value - 0.25))} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">-</button>
                   <button type="button" onClick={() => setMapZoom((value) => Math.min(4, value + 0.25))} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">+</button>
                   <button type="button" onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }} className="h-8 px-2 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">Reset</button>
@@ -478,7 +515,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
                       <img src={form.image_url} alt="" className="absolute inset-0 w-full h-full object-contain" draggable={false} />
                     ) : (
                       <div className="absolute inset-0">
-                        <PdfMapCanvas url={form.pdf_url} />
+                        <PdfMapCanvas url={form.pdf_url} rotation={form.pdf_rotation || 0} />
                       </div>
                     )}
                     {mapMarks.map((mark) => (

@@ -39,6 +39,24 @@ const writeEmptyFolders = (campaignId, folders) => {
   localStorage.setItem(emptyFolderKey(campaignId), JSON.stringify([...new Set(folders.filter(Boolean))].sort()));
 };
 
+const expandFolderPaths = (paths) => {
+  const expanded = new Set();
+  paths.filter(Boolean).forEach((path) => {
+    path.split("/").reduce((prefix, part) => {
+      const next = prefix ? `${prefix}/${part}` : part;
+      expanded.add(next);
+      return next;
+    }, "");
+  });
+  return [...expanded].sort();
+};
+
+const canEditSheet = (sheet, user, isAdmin) => {
+  if (!sheet) return false;
+  if (isAdmin) return true;
+  return sheet.created_by === user?.email || sheet.assigned_to_email === user?.email;
+};
+
 export default function Characters() {
   const [items, setItems] = useState([]);
   const [user, setUser] = useState(null);
@@ -90,8 +108,8 @@ export default function Characters() {
   const isAdmin = isDmUser(user);
   const currentCampaign = campaigns.find((campaign) => campaign.id === user?.campaign_id) || null;
   const visibleItems = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
-  const folders = [...new Set([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders])].sort();
-  const filteredItems = visibleItems.filter((item) => folder === "all" || item.folder === folder);
+  const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
+  const filteredItems = visibleItems.filter((item) => folder === "all" || item.folder === folder || item.folder?.startsWith(`${folder}/`));
   const userCharacterCounts = items.reduce((counts, sheet) => {
     if (!sheet.assigned_to_email) return counts;
     return { ...counts, [sheet.assigned_to_email]: (counts[sheet.assigned_to_email] || 0) + 1 };
@@ -273,10 +291,11 @@ export default function Characters() {
         open={Boolean(viewing)}
         onOpenChange={(open) => !open && setViewing(null)}
         sheet={viewing}
-        canEdit
+        canEdit={canEditSheet(viewing, user, isAdmin)}
         currentUser={user}
         isDM={isAdmin}
         onEdit={() => {
+          if (!canEditSheet(viewing, user, isAdmin)) return;
           setEditing(viewing);
           setViewing(null);
         }}

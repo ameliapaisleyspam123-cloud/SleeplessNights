@@ -430,10 +430,11 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
   const pb = sheet.proficiency_bonus || 2;
   const passivePerc = 10 + mod(sheet.wisdom || 10) + (expertSkills.includes("Perception") ? pb * 2 : profSkills.includes("Perception") ? pb : 0);
   const saveField = async (data) => {
-    if (sheet?.id) await appClient.entities.CharacterSheet.update(sheet.id, data);
+    if (sheet?.id && canEdit) await appClient.entities.CharacterSheet.update(sheet.id, data);
   };
 
   const toggleInspiration = async () => {
+    if (!canEdit) return;
     const next = !inspired;
     setInspired(next);
     setSavingInspiration(true);
@@ -525,6 +526,18 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
               </div>
               <div className="mt-2">
                 <DeathSaveBlock successes={sheet.death_save_successes} failures={sheet.death_save_failures} onSave={saveField} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                {[
+                  ["Resistances", sheet.damage_resistances],
+                  ["Immunities", sheet.damage_immunities],
+                  ["Vulnerabilities", sheet.damage_vulnerabilities],
+                ].map(([label, value]) => (
+                  <div key={label} className="border border-border rounded-sm bg-card p-3 min-h-[64px]">
+                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1">{label}</div>
+                    <div className="text-sm text-foreground">{value || "-"}</div>
+                  </div>
+                ))}
               </div>
             </div>
 

@@ -38,6 +38,11 @@
       "type": "string",
       "description": "Optional PDF attachment URL"
     },
+    "pdf_rotation": {
+      "type": "number",
+      "default": 0,
+      "description": "Clockwise rotation for rendering map PDFs"
+    },
     "map_pins": {
       "type": "array",
       "description": "Pins placed on an attached map PDF, stored as percentage coordinates",
@@ -50,10 +55,20 @@
           "label": {
             "type": "string"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "pin",
+              "label"
+            ]
+          },
           "x": {
             "type": "number"
           },
           "y": {
+            "type": "number"
+          },
+          "size": {
             "type": "number"
           },
           "lore_entry_id": {

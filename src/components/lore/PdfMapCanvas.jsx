@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-export default function PdfMapCanvas({ url, className = "" }) {
+export default function PdfMapCanvas({ url, rotation = 0, className = "" }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const [status, setStatus] = useState("loading");
@@ -25,7 +25,8 @@ export default function PdfMapCanvas({ url, className = "" }) {
         const container = wrapRef.current.getBoundingClientRect();
         const baseViewport = page.getViewport({ scale: 1 });
         const scale = Math.min(container.width / baseViewport.width, container.height / baseViewport.height) || 1;
-        const viewport = page.getViewport({ scale });
+        const normalizedRotation = ((Number(rotation) || 0) % 360 + 360) % 360;
+        const viewport = page.getViewport({ scale, rotation: ((page.rotate || 0) + normalizedRotation) % 360 });
         const canvas = canvasRef.current;
         const context = canvas.getContext("2d");
         const ratio = window.devicePixelRatio || 1;
@@ -57,7 +58,7 @@ export default function PdfMapCanvas({ url, className = "" }) {
       observer.disconnect();
       renderTask?.cancel?.();
     };
-  }, [url]);
+  }, [url, rotation]);
 
   return (
     <div ref={wrapRef} className={`absolute inset-0 flex items-center justify-center bg-background ${className}`}>

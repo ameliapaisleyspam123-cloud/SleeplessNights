@@ -5,7 +5,8 @@ const SESSION_KEY = "sleepless_nights_user_v1";
 const REMEMBER_KEY = "sleepless_nights_remembered_account_v1";
 const SUPABASE_TABLE = "app_records";
 const SUPABASE_ASSET_BUCKET = "campaign-assets";
-const STORE_CACHE_TTL_MS = 1000;
+const STORE_CACHE_TTL_MS = 30000;
+const ENTITY_QUERY_CACHE_TTL_MS = 15000;
 const GLOBAL_ADMIN_EMAIL = "ameliapaisleyspam123@gmail.com";
 
 export const ENTITY_NAMES = [
@@ -27,6 +28,7 @@ let cachedStore = null;
 let cachedStoreAt = 0;
 let storeReadPromise = null;
 let realtimeChannel = null;
+const entityQueryCache = new Map();
 let syncStatus = {
   configured: supabaseConfigStatus.configured,
   connected: false,
@@ -132,6 +134,7 @@ function setCachedStore(store) {
 function invalidateRemoteCache() {
   cachedStore = null;
   cachedStoreAt = 0;
+  entityQueryCache.clear();
 }
 
 function getCachedStore() {
@@ -212,10 +215,12 @@ async function readStoreAsync() {
       if (ENTITY_NAMES.includes(row.entity) && row.data) store[row.entity].push(row.data);
     }
 
-    const localStore = readStoredStore();
     const hasRemoteData = Object.values(store).some((records) => records.length > 0);
+    const localStore = hasRemoteData ? null : readStoredStore();
     const baseStore = hasRemoteData ? store : localStore || defaultStore();
-    const { store: mergedStore, changed: mergedChanged } = mergeStores(baseStore, localStore);
+    const { store: mergedStore, changed: mergedChanged } = hasRemoteData
+      ? { store: baseStore, changed: false }
+      : mergeStores(baseStore, localStore);
     const { store: adminStore, changed: adminChanged } = ensureGlobalAdmin(mergedStore);
     writeStore(adminStore);
     setCachedStore(adminStore);
@@ -364,6 +369,7 @@ async function clearRemoteStore() {
 }
 
 async function upsertRemoteRecord(entity, record) {
+  entityQueryCache.clear();
   if (cachedStore) {
     const current = normalizeStore(cachedStore);
     const records = current[entity] || [];
@@ -393,6 +399,7 @@ async function upsertRemoteRecord(entity, record) {
 }
 
 async function deleteRemoteRecord(entity, recordId) {
+  entityQueryCache.clear();
   if (cachedStore) {
     const current = normalizeStore(cachedStore);
     current[entity] = (current[entity] || []).filter((record) => record.id !== recordId);
@@ -430,9 +437,11 @@ function currentSession() {
 }
 
 async function currentSessionAsync() {
-  const store = await readStoreAsync();
   const savedEmail = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
   if (savedEmail) {
+    const [remoteUser] = (await readRemoteEntity("User", { email: savedEmail }, "-updated_date", 1)) || [];
+    if (remoteUser) return remoteUser;
+    const store = await readStoreAsync();
     const found = store.User.find((u) => u.email === savedEmail);
     if (found) return found;
   }
@@ -496,6 +505,37 @@ function matches(record, query = {}) {
   return Object.entries(query).every(([key, value]) => record[key] === value);
 }
 
+function entityCacheKey(entity, query, sort, limit) {
+  return JSON.stringify([entity, query || {}, sort || "", limit || 0]);
+}
+
+async function readRemoteEntity(entity, query = {}, sort = "-created_date", limit = 1000) {
+  if (!supabase) return null;
+  const cacheKey = entityCacheKey(entity, query, sort, limit);
+  const cached = entityQueryCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < ENTITY_QUERY_CACHE_TTL_MS) return cached.records;
+
+  try {
+    let request = supabase.from(SUPABASE_TABLE).select("data").eq("entity", entity);
+    Object.entries(query || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) request = request.eq(`data->>${key}`, String(value));
+    });
+    const { data, error } = await request.limit(Math.max(limit * 3, limit, 100));
+    if (error) throw error;
+    const records = sortRecords((data || []).map((row) => row.data).filter(Boolean).filter((record) => matches(record, query)), sort).slice(0, limit);
+    entityQueryCache.set(cacheKey, { at: Date.now(), records });
+    syncStatus = {
+      configured: true,
+      connected: true,
+      message: "Shared storage connected.",
+    };
+    return records;
+  } catch (err) {
+    console.warn("Supabase entity read failed; falling back to full store:", entity, err);
+    return null;
+  }
+}
+
 function isDmAccount(user) {
   return user?.campaign_role === "dm" || user?.campaign_role === "DM" || user?.role === "admin" || isGlobalAdminEmail(user?.email);
 }
@@ -514,18 +554,43 @@ function notify(entity, event) {
 function entityApi(entity) {
   return {
     async list(sort = "-created_date", limit = 1000) {
+      const remoteRecords = await readRemoteEntity(entity, {}, sort, limit);
+      if (remoteRecords) return remoteRecords;
       const store = await readStoreAsync();
       return sortRecords(store[entity] || [], sort).slice(0, limit);
     },
     async filter(query = {}, sort = "-created_date", limit = 1000) {
+      const remoteRecords = await readRemoteEntity(entity, query, sort, limit);
+      if (remoteRecords) return remoteRecords;
       const store = await readStoreAsync();
       return sortRecords((store[entity] || []).filter((record) => matches(record, query)), sort).slice(0, limit);
     },
     async get(recordId) {
+      const [remoteRecord] = (await readRemoteEntity(entity, { id: recordId }, "-updated_date", 1)) || [];
+      if (remoteRecord) return remoteRecord;
       const store = await readStoreAsync();
       return (store[entity] || []).find((record) => record.id === recordId) || null;
     },
     async create(data) {
+      if (supabase) {
+        const user = await currentSessionAsync();
+        const record = {
+          ...data,
+          id: data.id || id(entity.toLowerCase()),
+          created_by: data.created_by || user?.email,
+          created_date: data.created_date || now(),
+          updated_date: now(),
+        };
+        await upsertRemoteRecord(entity, record);
+        const localStore = readStoredStore();
+        if (localStore) {
+          const next = normalizeStore(localStore);
+          next[entity] = [...(next[entity] || []).filter((item) => item.id !== record.id), record];
+          writeStore(next);
+        }
+        notify(entity, { type: "create", data: record });
+        return record;
+      }
       const store = await readStoreAsync();
       const user = await currentSessionAsync();
       const record = {
@@ -542,6 +607,21 @@ function entityApi(entity) {
       return record;
     },
     async update(recordId, patch) {
+      if (supabase) {
+        const [existing] = (await readRemoteEntity(entity, { id: recordId }, "-updated_date", 1)) || [];
+        if (!existing) throw new Error(`${entity} record not found`);
+        const record = { ...existing, ...patch, updated_date: now() };
+        await upsertRemoteRecord(entity, record);
+        const localStore = readStoredStore();
+        if (localStore) {
+          const next = normalizeStore(localStore);
+          next[entity] = (next[entity] || []).map((item) => (item.id === recordId ? record : item));
+          if (!next[entity].some((item) => item.id === recordId)) next[entity].push(record);
+          writeStore(next);
+        }
+        notify(entity, { type: "update", data: record });
+        return record;
+      }
       const store = await readStoreAsync();
       const index = store[entity].findIndex((record) => record.id === recordId);
       if (index === -1) throw new Error(`${entity} record not found`);
@@ -553,6 +633,17 @@ function entityApi(entity) {
       return record;
     },
     async delete(recordId) {
+      if (supabase) {
+        await deleteRemoteRecord(entity, recordId);
+        const localStore = readStoredStore();
+        if (localStore) {
+          const next = normalizeStore(localStore);
+          next[entity] = (next[entity] || []).filter((record) => record.id !== recordId);
+          writeStore(next);
+        }
+        notify(entity, { type: "delete", data: { id: recordId } });
+        return true;
+      }
       const store = await readStoreAsync();
       store[entity] = store[entity].filter((record) => record.id !== recordId);
       writeStore(store);
@@ -582,10 +673,11 @@ function cleanFileName(name = "upload") {
   return name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "upload";
 }
 
-async function uploadSharedFile(file) {
+async function uploadSharedFile(file, options = {}) {
   if (!supabase) return { file_url: await fileToDataUrl(file), storage: "local" };
 
-  const path = `${new Date().toISOString().slice(0, 10)}/${id("asset")}-${cleanFileName(file.name || "upload")}`;
+  const campaignSegment = cleanFileName(options.campaign_id || "shared");
+  const path = `${campaignSegment}/${new Date().toISOString().slice(0, 10)}/${id("asset")}-${cleanFileName(file.name || "upload")}`;
   const { error } = await supabase.storage.from(SUPABASE_ASSET_BUCKET).upload(path, file, {
     cacheControl: "31536000",
     contentType: file.type || "application/octet-stream",
@@ -769,7 +861,8 @@ export const appClient = {
   integrations: {
     Core: {
       async UploadFile({ file }) {
-        return uploadSharedFile(file);
+        const user = await appClient.auth.me().catch(() => null);
+        return uploadSharedFile(file, { campaign_id: user?.campaign_id });
       },
     },
   },
