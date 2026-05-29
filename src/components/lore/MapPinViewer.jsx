@@ -32,7 +32,6 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   const [mapZoom, setMapZoom] = useState(1);
   const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState(null);
-  const [pdfRotation, setPdfRotation] = useState(entry?.pdf_rotation || 0);
   const [overlayEntry, setOverlayEntry] = useState(null);
   const mapSurfaceRef = useRef(null);
   const hasPdf = Boolean(entry?.pdf_url);
@@ -77,9 +76,8 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   }, [entry?.pdf_url]);
 
   useEffect(() => {
-    setPdfRotation(entry?.pdf_rotation || 0);
     setOverlayEntry(null);
-  }, [entry?.id, entry?.pdf_rotation]);
+  }, [entry?.id]);
 
   useEffect(() => {
     const surface = mapSurfaceRef.current;
@@ -198,7 +196,7 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
             {hasImage ? (
               <img src={entry.image_url} alt="" className="absolute inset-0 w-full h-full object-contain bg-background" draggable={false} />
             ) : pdfSrc ? (
-              <PdfMapCanvas url={pdfSrc} rotation={pdfRotation} />
+              <PdfMapCanvas url={pdfSrc} />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{hasPdf ? "Loading PDF..." : "No map file attached."}</div>
             )}

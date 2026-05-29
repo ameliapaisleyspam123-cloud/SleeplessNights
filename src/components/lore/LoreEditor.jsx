@@ -495,7 +495,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
                       <img src={form.image_url} alt="" className="absolute inset-0 w-full h-full object-contain" draggable={false} />
                     ) : (
                       <div className="absolute inset-0">
-                        <PdfMapCanvas url={form.pdf_url} rotation={form.pdf_rotation || 0} />
+                        <PdfMapCanvas url={form.pdf_url} />
                       </div>
                     )}
                     {mapMarks.map((mark) => (
