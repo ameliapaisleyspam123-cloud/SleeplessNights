@@ -338,10 +338,14 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                 </div>
               </div>
             </div>
+          </section>
+
+          <section className="space-y-2">
+            <div className="text-[10px] uppercase tracking-widest text-accent font-medium">Damage Defenses</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <Field label="Damage Resistances"><Input value={form.damage_resistances || ""} onChange={(event) => set("damage_resistances", event.target.value)} placeholder="Fire, cold..." /></Field>
-              <Field label="Damage Immunities"><Input value={form.damage_immunities || ""} onChange={(event) => set("damage_immunities", event.target.value)} placeholder="Poison..." /></Field>
-              <Field label="Damage Vulnerabilities"><Input value={form.damage_vulnerabilities || ""} onChange={(event) => set("damage_vulnerabilities", event.target.value)} placeholder="Radiant..." /></Field>
+              <Field label="Resistances"><Input value={form.damage_resistances || ""} onChange={(event) => set("damage_resistances", event.target.value)} placeholder="Fire, cold..." /></Field>
+              <Field label="Immunities"><Input value={form.damage_immunities || ""} onChange={(event) => set("damage_immunities", event.target.value)} placeholder="Poison..." /></Field>
+              <Field label="Vulnerabilities"><Input value={form.damage_vulnerabilities || ""} onChange={(event) => set("damage_vulnerabilities", event.target.value)} placeholder="Radiant..." /></Field>
             </div>
           </section>
 

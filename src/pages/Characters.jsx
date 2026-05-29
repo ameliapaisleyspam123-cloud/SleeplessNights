@@ -115,6 +115,14 @@ export default function Characters() {
     return { ...counts, [sheet.assigned_to_email]: (counts[sheet.assigned_to_email] || 0) + 1 };
   }, {});
 
+  const syncUpdatedSheet = (updated) => {
+    if (!updated?.id) return;
+    setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setAllSheets((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setViewing((current) => (current?.id === updated.id ? updated : current));
+    setEditing((current) => (current?.id === updated.id ? updated : current));
+  };
+
   const createFolder = () => {
     const name = window.prompt("New character folder name");
     const folderName = name?.trim();
@@ -294,6 +302,7 @@ export default function Characters() {
         canEdit={canEditSheet(viewing, user, isAdmin)}
         currentUser={user}
         isDM={isAdmin}
+        onSheetUpdated={syncUpdatedSheet}
         onEdit={() => {
           if (!canEditSheet(viewing, user, isAdmin)) return;
           setEditing(viewing);

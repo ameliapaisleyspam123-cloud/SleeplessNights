@@ -210,6 +210,13 @@ export default function DmVault() {
     setViewingLore((current) => (current?.id === updated.id ? updated : current));
   };
 
+  const syncUpdatedCharacter = (updated) => {
+    if (!updated?.id) return;
+    setCharacters((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setViewingCharacter((current) => (current?.id === updated.id ? updated : current));
+    setEditingCharacter((current) => (current?.id === updated.id ? updated : current));
+  };
+
   const restoreCharacter = async (entry) => {
     await appClient.entities.CharacterSheet.update(entry.id, { visibility: "public" });
     await load();
@@ -482,6 +489,7 @@ export default function DmVault() {
         canEdit
         currentUser={user}
         isDM
+        onSheetUpdated={syncUpdatedCharacter}
         onEdit={() => {
           setEditingCharacter(viewingCharacter);
           setViewingCharacter(null);

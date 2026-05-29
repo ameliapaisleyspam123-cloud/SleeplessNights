@@ -414,9 +414,14 @@ function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
   );
 }
 
-export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit, onEdit, currentUser, isDM = false }) {
-  const [inspired, setInspired] = useState(Boolean(sheet?.inspiration));
+export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenChange, canEdit, onEdit, currentUser, isDM = false, onSheetUpdated }) {
+  const [sheet, setSheet] = useState(incomingSheet);
+  const [inspired, setInspired] = useState(Boolean(incomingSheet?.inspiration));
   const [savingInspiration, setSavingInspiration] = useState(false);
+
+  useEffect(() => {
+    setSheet(incomingSheet);
+  }, [incomingSheet]);
 
   useEffect(() => {
     setInspired(Boolean(sheet?.inspiration));
@@ -430,7 +435,11 @@ export default function CharacterSheetView({ sheet, open, onOpenChange, canEdit,
   const pb = sheet.proficiency_bonus || 2;
   const passivePerc = 10 + mod(sheet.wisdom || 10) + (expertSkills.includes("Perception") ? pb * 2 : profSkills.includes("Perception") ? pb : 0);
   const saveField = async (data) => {
-    if (sheet?.id && canEdit) await appClient.entities.CharacterSheet.update(sheet.id, data);
+    if (!sheet?.id || !canEdit) return null;
+    const updated = await appClient.entities.CharacterSheet.update(sheet.id, data);
+    setSheet(updated);
+    onSheetUpdated?.(updated);
+    return updated;
   };
 
   const toggleInspiration = async () => {
