@@ -25,6 +25,16 @@ export interface Campaign extends AppRecord {
   dm_email?: string;
   player_emails?: string[];
   active?: boolean;
+  calendar_system?: CalendarSystem;
+}
+
+export interface CalendarSystem {
+  days_per_month: number;
+  months_per_year: number;
+  custom_names?: boolean;
+  era_label?: string;
+  month_names?: string[];
+  day_names?: string[];
 }
 
 export type CharacterAlignment =
@@ -170,6 +180,21 @@ export interface PlayerNote extends AppRecord {
   content?: string;
 }
 
+export type TimelineEventType = "event" | "character" | "lore" | "omen" | "session";
+
+export interface TimelineEvent extends AppRecord {
+  campaign_id?: string;
+  title: string;
+  description?: string;
+  event_type?: TimelineEventType;
+  year: number;
+  month: number;
+  day: number;
+  character_ids?: string[];
+  lore_entry_ids?: string[];
+  calendar_snapshot?: CalendarSystem;
+}
+
 export interface ShopItem {
   id?: string;
   name: string;
@@ -214,4 +239,5 @@ export type EntityName =
   | "LoreEntry"
   | "Message"
   | "PlayerNote"
-  | "Shop";
+  | "Shop"
+  | "TimelineEvent";

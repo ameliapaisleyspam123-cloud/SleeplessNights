@@ -8,6 +8,7 @@ import type {
   Message,
   PlayerNote,
   Shop,
+  TimelineEvent,
 } from "./types";
 
 export const broadcastDefaults: Partial<Broadcast> = {
@@ -90,4 +91,13 @@ export const shopDefaults: Partial<Shop> = {
   status: "open",
   items: [],
   purchase_log: [],
+};
+
+export const timelineEventDefaults: Partial<TimelineEvent> = {
+  event_type: "event",
+  year: 1,
+  month: 1,
+  day: 1,
+  character_ids: [],
+  lore_entry_ids: [],
 };

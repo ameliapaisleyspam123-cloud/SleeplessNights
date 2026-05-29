@@ -5,7 +5,7 @@ const SESSION_KEY = "sleepless_nights_user_v1";
 const REMEMBER_KEY = "sleepless_nights_remembered_account_v1";
 const SUPABASE_TABLE = "app_records";
 const SUPABASE_ASSET_BUCKET = "campaign-assets";
-const STORE_CACHE_TTL_MS = 8000;
+const STORE_CACHE_TTL_MS = 1000;
 const GLOBAL_ADMIN_EMAIL = "ameliapaisleyspam123@gmail.com";
 
 export const ENTITY_NAMES = [
@@ -18,6 +18,7 @@ export const ENTITY_NAMES = [
   "Message",
   "PlayerNote",
   "Shop",
+  "TimelineEvent",
   "User",
 ];
 
@@ -88,6 +89,7 @@ function defaultStore() {
     Message: [],
     PlayerNote: [],
     Shop: [],
+    TimelineEvent: [],
   };
 }
 

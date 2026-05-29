@@ -23,6 +23,8 @@ import {
   Dices,
   Store,
   Palette,
+  ExternalLink,
+  GitBranch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BroadcastOverlay from "./broadcast/BroadcastOverlay";
@@ -49,6 +51,7 @@ const GM_NAV = [
   { to: "/characters", label: "Characters", icon: User },
   { to: "/chat", label: "Correspondence", icon: MessageSquare },
   { to: "/lore", label: "Lore & Maps", icon: ScrollText },
+  { to: "/timeline", label: "Timeline", icon: GitBranch },
   { to: "/notes", label: "Grimoire", icon: NotebookPen },
   { to: "/shop", label: "Shop", icon: Store },
   { to: "/vault", label: "DM Vault", icon: Lock, gmOnly: true },
@@ -113,6 +116,14 @@ function LayoutInner() {
   const isSuperuser = user?.email === SUPERUSER_EMAIL;
   const isAdmin = user?.campaign_role === "dm" || user?.role === "admin" || isSuperuser;
   const NAV = isAdmin ? GM_NAV : PLAYER_NAV;
+  const openInitiativePopout = () => {
+    if (!campaignId) return;
+    window.open(
+      `/initiative-popout?campaign=${encodeURIComponent(campaignId)}`,
+      "sleepless-initiative",
+      "popup=yes,width=520,height=860,resizable=yes,scrollbars=yes",
+    );
+  };
 
   if (!userLoaded) {
     return (
@@ -198,9 +209,14 @@ function LayoutInner() {
             <span className="text-sm font-medium text-accent flex items-center gap-2">
               <Swords className="w-4 h-4" /> Initiative Tracker
             </span>
-            <button onClick={() => setSplitOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={openInitiativePopout} className="text-muted-foreground hover:text-accent transition-colors" title="Pop out initiative tracker">
+                <ExternalLink className="w-4 h-4" />
+              </button>
+              <button onClick={() => setSplitOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors" title="Close initiative tracker">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto thin-scroll p-4">
             <InitiativeTracker campaignId={campaignId} />
@@ -209,7 +225,7 @@ function LayoutInner() {
       )}
 
       <BroadcastOverlay user={user} />
-      {!isAdmin && <CombatTurnIndicator currentUser={user} />}
+      <CombatTurnIndicator currentUser={user} sidebarCollapsed={collapsed} />
       <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
         {isAdmin && (
           <button

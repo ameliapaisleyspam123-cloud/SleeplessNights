@@ -140,7 +140,20 @@ function AddToInitiativeButton({ sheet, ownerEmail }) {
 
     const existing = (combat.entries || []).find((entry) => entry.id === sheet.id);
     const entries = existing
-      ? (combat.entries || []).map((entry) => (entry.id === sheet.id ? { ...entry, roll, total, modifier: initMod, hpCurrent: sheet.hp_current ?? sheet.hp_max ?? 0, hpMax: sheet.hp_max ?? 0, ac: sheet.ac ?? 10 } : entry))
+      ? (combat.entries || []).map((entry) =>
+          entry.id === sheet.id
+            ? {
+                ...entry,
+                roll,
+                total,
+                modifier: initMod,
+                hpCurrent: sheet.hp_current ?? sheet.hp_max ?? 0,
+                hpMax: sheet.hp_max ?? 0,
+                ac: sheet.ac ?? 10,
+                ownerEmail,
+              }
+            : entry,
+        )
       : [
           ...(combat.entries || []),
           {
