@@ -10,6 +10,7 @@ import Notes from "@/pages/Notes";
 import Broadcast from "@/pages/Broadcast";
 import DmVault from "@/pages/DmVault";
 import Documents from "@/pages/Documents";
+import Timeline from "@/pages/Timeline";
 import Shop from "@/pages/Shop";
 import InitiativePopout from "@/pages/InitiativePopout";
 import PageNotFound from "@/lib/PageNotFound";
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="chat" element={<Chat />} />
         <Route path="lore" element={<Lore />} />
         <Route path="notes" element={<Notes />} />
+        <Route path="timeline" element={<Timeline />} />
         <Route path="shop" element={<Shop />} />
         <Route path="broadcast" element={<Broadcast />} />
         <Route path="vault" element={<DmVault />} />

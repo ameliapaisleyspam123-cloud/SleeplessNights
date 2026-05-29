@@ -24,6 +24,7 @@ import {
   Store,
   Palette,
   ExternalLink,
+  GitBranch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BroadcastOverlay from "./broadcast/BroadcastOverlay";
@@ -50,6 +51,7 @@ const GM_NAV = [
   { to: "/characters", label: "Characters", icon: User },
   { to: "/chat", label: "Correspondence", icon: MessageSquare },
   { to: "/lore", label: "Lore & Maps", icon: ScrollText },
+  { to: "/timeline", label: "Timeline", icon: GitBranch },
   { to: "/notes", label: "Grimoire", icon: NotebookPen },
   { to: "/shop", label: "Shop", icon: Store },
   { to: "/vault", label: "DM Vault", icon: Lock, gmOnly: true },
