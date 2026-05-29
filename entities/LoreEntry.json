@@ -38,6 +38,31 @@
       "type": "string",
       "description": "Optional PDF attachment URL"
     },
+    "map_pins": {
+      "type": "array",
+      "description": "Pins placed on an attached map PDF, stored as percentage coordinates",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "lore_entry_id": {
+            "type": "string",
+            "description": "Optional linked LoreEntry id"
+          }
+        }
+      }
+    },
     "tags": {
       "type": "array",
       "items": {

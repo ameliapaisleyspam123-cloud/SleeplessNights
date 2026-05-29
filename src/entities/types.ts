@@ -160,9 +160,18 @@ export interface LoreEntry extends AppRecord {
   content?: string;
   image_url?: string;
   pdf_url?: string;
+  map_pins?: MapPin[];
   tags?: string[];
   visibility?: SharedVisibility;
   allowed_emails?: string[];
+}
+
+export interface MapPin {
+  id: string;
+  label?: string;
+  x: number;
+  y: number;
+  lore_entry_id?: string;
 }
 
 export interface Message extends AppRecord {
