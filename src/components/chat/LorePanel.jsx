@@ -201,6 +201,87 @@ function SpellSlotsEditor({ sheet, onSheetUpdated }) {
   );
 }
 
+function ClassResourcesEditor({ sheet, onSheetUpdated }) {
+  const [resources, setResources] = useState({
+    ki_points_current: sheet.ki_points_current ?? 0,
+    ki_points_max: sheet.ki_points_max ?? 0,
+    sorcery_points_current: sheet.sorcery_points_current ?? 0,
+    sorcery_points_max: sheet.sorcery_points_max ?? 0,
+  });
+  const [savingField, setSavingField] = useState("");
+
+  useEffect(() => {
+    setResources({
+      ki_points_current: sheet.ki_points_current ?? 0,
+      ki_points_max: sheet.ki_points_max ?? 0,
+      sorcery_points_current: sheet.sorcery_points_current ?? 0,
+      sorcery_points_max: sheet.sorcery_points_max ?? 0,
+    });
+  }, [sheet.ki_points_current, sheet.ki_points_max, sheet.sorcery_points_current, sheet.sorcery_points_max]);
+
+  const updateResource = async (field, value) => {
+    const nextValue = Math.max(0, Number(value) || 0);
+    const nextResources = { ...resources, [field]: nextValue };
+    setResources(nextResources);
+    setSavingField(field);
+    const updated = await appClient.entities.CharacterSheet.update(sheet.id, { [field]: nextValue });
+    onSheetUpdated?.(updated);
+    setSavingField("");
+  };
+
+  const adjustCurrent = (currentField, maxField, delta) => {
+    const max = resources[maxField] || 0;
+    const current = resources[currentField] || 0;
+    updateResource(currentField, Math.max(0, Math.min(max || 99, current + delta)));
+  };
+
+  const rows = [
+    ["Ki Points", "ki_points_current", "ki_points_max"],
+    ["Sorcery Points", "sorcery_points_current", "sorcery_points_max"],
+  ].filter(([, currentField, maxField]) => (resources[currentField] || resources[maxField]));
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="space-y-1">
+      {rows.map(([label, currentField, maxField]) => (
+        <div key={currentField} className="flex items-center justify-between gap-2 text-[10px]">
+          <span className="text-muted-foreground">{label}:</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => adjustCurrent(currentField, maxField, -1)}
+              className="w-4 h-4 rounded border border-border bg-secondary/60 hover:bg-destructive/20 hover:border-destructive/50 text-muted-foreground hover:text-destructive transition-colors leading-none flex items-center justify-center"
+            >
+              <Minus className="w-2.5 h-2.5" />
+            </button>
+            <Input
+              type="number"
+              min={0}
+              value={resources[currentField]}
+              onChange={(event) => updateResource(currentField, event.target.value)}
+              className={`h-6 w-10 px-1 text-center text-[10px] ${savingField === currentField ? "text-muted-foreground" : ""}`}
+            />
+            <span className="text-muted-foreground">/</span>
+            <Input
+              type="number"
+              min={0}
+              value={resources[maxField]}
+              onChange={(event) => updateResource(maxField, event.target.value)}
+              className={`h-6 w-10 px-1 text-center text-[10px] ${savingField === maxField ? "text-muted-foreground" : ""}`}
+            />
+            <button
+              onClick={() => adjustCurrent(currentField, maxField, 1)}
+              className="w-4 h-4 rounded border border-border bg-secondary/60 hover:bg-accent/20 hover:border-accent/50 text-muted-foreground hover:text-accent transition-colors leading-none flex items-center justify-center"
+            >
+              <Plus className="w-2.5 h-2.5" />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CharacterCard({ sheet, onSheetUpdated }) {
   const [expanded, setExpanded] = useState(true);
   const [hp, setHp] = useState(sheet.hp_current ?? sheet.hp_max ?? 0);
@@ -211,6 +292,12 @@ function CharacterCard({ sheet, onSheetUpdated }) {
   });
   const stats = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
   const spells = readCharacterSpells(sheet.spells_known);
+  const hasClassResources = Boolean(
+    sheet.ki_points_current ||
+      sheet.ki_points_max ||
+      sheet.sorcery_points_current ||
+      sheet.sorcery_points_max
+  );
 
   useEffect(() => {
     setHp(sheet.hp_current ?? sheet.hp_max ?? 0);
@@ -334,7 +421,7 @@ function CharacterCard({ sheet, onSheetUpdated }) {
               </div>
             </div>
           )}
-          {(sheet.spells_known || sheet.spell_slots) && (
+          {(sheet.spells_known || sheet.spell_slots || hasClassResources) && (
             <div className="border-t border-border pt-2 space-y-2">
               {spells.length > 0 && (
                 <div>
@@ -360,6 +447,12 @@ function CharacterCard({ sheet, onSheetUpdated }) {
                 <div>
                   <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Spell Slots</div>
                   <SpellSlotsEditor sheet={sheet} onSheetUpdated={onSheetUpdated} />
+                </div>
+              )}
+              {hasClassResources && (
+                <div>
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Class Resources</div>
+                  <ClassResourcesEditor sheet={sheet} onSheetUpdated={onSheetUpdated} />
                 </div>
               )}
             </div>
