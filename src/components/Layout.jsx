@@ -152,6 +152,8 @@ function LayoutInner() {
     onCampaignSettings: () => setCampaignModalOpen(true),
     onThemeSettings: () => setThemeModalOpen(true),
   };
+  const floatingControlsPosition = location.pathname === "/chat" ? "bottom-4 left-4" : "bottom-4 right-4";
+  const dicePanelPosition = location.pathname === "/chat" ? "bottom-20 left-4" : "bottom-20 right-4";
 
   return (
     <div className="h-screen overflow-hidden parchment flex">
@@ -226,7 +228,7 @@ function LayoutInner() {
 
       <BroadcastOverlay user={user} />
       <CombatTurnIndicator currentUser={user} sidebarCollapsed={collapsed} />
-      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
+      <div className={`fixed ${floatingControlsPosition} z-50 flex items-center gap-2`}>
         {isAdmin && (
           <button
             type="button"
@@ -253,7 +255,7 @@ function LayoutInner() {
         </button>
       </div>
       {diceOpen && (
-        <div className="fixed bottom-20 right-4 z-50 w-[min(22rem,calc(100vw-2rem))] h-[min(38rem,calc(100vh-6rem))] overflow-hidden rounded-sm border border-border bg-card shadow-2xl sculk-glow">
+        <div className={`fixed ${dicePanelPosition} z-50 w-[min(22rem,calc(100vw-2rem))] h-[min(38rem,calc(100vh-6rem))] overflow-hidden rounded-sm border border-border bg-card shadow-2xl sculk-glow`}>
           <DiceRoller onClose={() => setDiceOpen(false)} />
         </div>
       )}

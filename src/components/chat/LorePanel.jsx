@@ -134,7 +134,7 @@ function EntryCard({ entry }) {
   );
 }
 
-function SpellSlotsEditor({ sheet }) {
+function SpellSlotsEditor({ sheet, onSheetUpdated }) {
   const [slots, setSlots] = useState(() => {
     try {
       return sheet.spell_slots ? JSON.parse(sheet.spell_slots) : {};
@@ -159,7 +159,8 @@ function SpellSlotsEditor({ sheet }) {
     };
     setSlots(newSlots);
     setSaving(true);
-    await appClient.entities.CharacterSheet.update(sheet.id, { spell_slots: JSON.stringify(newSlots) });
+    const updated = await appClient.entities.CharacterSheet.update(sheet.id, { spell_slots: JSON.stringify(newSlots) });
+    onSheetUpdated?.(updated);
     setSaving(false);
   };
 
@@ -200,7 +201,7 @@ function SpellSlotsEditor({ sheet }) {
   );
 }
 
-function CharacterCard({ sheet }) {
+function CharacterCard({ sheet, onSheetUpdated }) {
   const [expanded, setExpanded] = useState(true);
   const [hp, setHp] = useState(sheet.hp_current ?? sheet.hp_max ?? 0);
   const [savingDeathSaves, setSavingDeathSaves] = useState(false);
@@ -224,7 +225,8 @@ function CharacterCard({ sheet }) {
     const next = Math.max(0, Math.min(max, hp + delta));
     if (next === hp) return;
     setHp(next);
-    await appClient.entities.CharacterSheet.update(sheet.id, { hp_current: next });
+    const updated = await appClient.entities.CharacterSheet.update(sheet.id, { hp_current: next });
+    onSheetUpdated?.(updated);
   };
 
   const updateDeathSave = async (type, delta) => {
@@ -236,7 +238,8 @@ function CharacterCard({ sheet }) {
     const newSaves = { ...deathSaves, [key]: next };
     setDeathSaves(newSaves);
     setSavingDeathSaves(true);
-    await appClient.entities.CharacterSheet.update(sheet.id, { [field]: next });
+    const updated = await appClient.entities.CharacterSheet.update(sheet.id, { [field]: next });
+    onSheetUpdated?.(updated);
     setSavingDeathSaves(false);
   };
 
@@ -356,7 +359,7 @@ function CharacterCard({ sheet }) {
               {sheet.spell_slots && (
                 <div>
                   <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Spell Slots</div>
-                  <SpellSlotsEditor sheet={sheet} />
+                  <SpellSlotsEditor sheet={sheet} onSheetUpdated={onSheetUpdated} />
                 </div>
               )}
             </div>
@@ -398,6 +401,10 @@ export default function LorePanel({ onClose }) {
     const q = query.toLowerCase();
     return !q || c.name?.toLowerCase().includes(q) || c.race?.toLowerCase().includes(q) || c.class?.toLowerCase().includes(q);
   });
+  const syncUpdatedCharacter = (updated) => {
+    if (!updated?.id) return;
+    setCharacters((current) => current.map((character) => (character.id === updated.id ? updated : character)));
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -448,7 +455,7 @@ export default function LorePanel({ onClose }) {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto thin-scroll p-3 space-y-2">
+          <div className="flex-1 overflow-y-auto thin-scroll p-3 pb-28 space-y-2">
             {mainTab === "lore" && (
               <>
                 {filtered.length === 0 && (
@@ -468,7 +475,7 @@ export default function LorePanel({ onClose }) {
                     No characters found.
                   </div>
                 )}
-                {filteredChars.map((c) => <CharacterCard key={c.id} sheet={c} />)}
+                {filteredChars.map((c) => <CharacterCard key={c.id} sheet={c} onSheetUpdated={syncUpdatedCharacter} />)}
               </>
             )}
           </div>
