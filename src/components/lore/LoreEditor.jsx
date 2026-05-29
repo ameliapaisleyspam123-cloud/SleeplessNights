@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Loader2, FileText, Eye, EyeOff, Lock, Users, MapPin, Tag, Trash2, Link2, X, Undo2, Redo2, RotateCw } from "lucide-react";
+import { Upload, Loader2, FileText, Eye, EyeOff, Lock, Users, MapPin, Tag, Trash2, Link2, X, Undo2, Redo2 } from "lucide-react";
 import PdfMapCanvas from "@/components/lore/PdfMapCanvas";
 
 const VISIBILITY_OPTIONS = [
@@ -461,16 +461,6 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
                   >
                     <Redo2 className="w-3.5 h-3.5" />
                   </button>
-                  {form.pdf_url && (
-                    <button
-                      type="button"
-                      onClick={() => setForm((current) => ({ ...current, pdf_rotation: ((Number(current.pdf_rotation) || 0) + 90) % 360 }))}
-                      title="Rotate PDF 90 degrees clockwise"
-                      className="h-8 px-2 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
-                    >
-                      <RotateCw className="w-3.5 h-3.5" /> Rotate
-                    </button>
-                  )}
                   <button type="button" onClick={() => setMapZoom((value) => Math.max(0.5, value - 0.25))} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">-</button>
                   <button type="button" onClick={() => setMapZoom((value) => Math.min(4, value + 0.25))} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">+</button>
                   <button type="button" onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }} className="h-8 px-2 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">Reset</button>

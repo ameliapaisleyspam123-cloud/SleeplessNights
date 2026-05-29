@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, MapPin, RotateCw, X } from "lucide-react";
+import { FileText, MapPin, X } from "lucide-react";
 import PdfMapCanvas from "@/components/lore/PdfMapCanvas";
 
 const unlinkedValue = "__unlinked__";
@@ -99,14 +99,6 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
     onEntryUpdated?.(updated);
   };
 
-  const rotatePdfClockwise = async () => {
-    if (!entry?.id) return;
-    const nextRotation = ((Number(pdfRotation) || 0) + 90) % 360;
-    setPdfRotation(nextRotation);
-    const updated = await appClient.entities.LoreEntry.update(entry.id, { pdf_rotation: nextRotation });
-    onEntryUpdated?.(updated);
-  };
-
   const startEdit = (pin) => {
     setEditingPin(pin);
     setDraft({ ...pin });
@@ -184,11 +176,6 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
           <Button variant="outline" size="sm" onClick={() => setMapZoom((value) => Math.max(0.5, value - 0.25))}>-</Button>
           <Button variant="outline" size="sm" onClick={() => setMapZoom((value) => Math.min(4, value + 0.25))}>+</Button>
           <Button variant="outline" size="sm" onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }}>Reset</Button>
-          {isAdmin && pdfSrc && (
-            <Button variant="outline" size="sm" onClick={rotatePdfClockwise} title="Rotate PDF 90 degrees clockwise">
-              <RotateCw className="w-4 h-4" /> Rotate
-            </Button>
-          )}
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="w-4 h-4" /> Close
           </Button>
