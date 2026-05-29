@@ -342,9 +342,9 @@ function CharacterCard({ sheet }) {
                         <div className="font-medium text-foreground">
                           <span className="text-muted-foreground">{spell.level || "Cantrip"}</span> - {spell.name || "-"}
                         </div>
-                        {(spell.castingTime || spell.rangeArea || spell.components || spell.duration) && (
+                        {(spell.castingTime || spell.rangeArea || spell.hit || spell.damage || spell.components || spell.duration) && (
                           <div className="text-muted-foreground">
-                            {[spell.castingTime, spell.rangeArea, spell.components, spell.duration].filter(Boolean).join(" | ")}
+                            {[spell.castingTime, spell.rangeArea, spell.hit && `Hit ${spell.hit}`, spell.damage && `Damage ${spell.damage}`, spell.components, spell.duration].filter(Boolean).join(" | ")}
                           </div>
                         )}
                       </div>

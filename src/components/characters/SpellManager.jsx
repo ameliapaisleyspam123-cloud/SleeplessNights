@@ -3,8 +3,8 @@ import { ChevronDown, ChevronUp, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const SPELL_LEVELS = ["Cantrip", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-const emptySpell = () => ({ level: "Cantrip", name: "", castingTime: "", rangeArea: "", components: "", duration: "", description: "" });
+const SPELL_LEVELS = ["Cantrip", "1", "2", "3", "4", "5", "6", "7", "8", "9", "Sorcery Points"];
+const emptySpell = () => ({ level: "Cantrip", name: "", castingTime: "", rangeArea: "", hit: "", damage: "", components: "", duration: "", description: "" });
 
 function readSpells(value) {
   try {
@@ -12,7 +12,7 @@ function readSpells(value) {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     const legacy = String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    return legacy ? [{ level: "Cantrip", name: legacy, castingTime: "", rangeArea: "", components: "", duration: "", description: "" }] : [];
+    return legacy ? [{ level: "Cantrip", name: legacy, castingTime: "", rangeArea: "", hit: "", damage: "", components: "", duration: "", description: "" }] : [];
   }
 }
 
@@ -36,14 +36,16 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
           <Sparkles className="w-3.5 h-3.5 text-accent" />
           <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Spells</div>
         </div>
-        <div className="border border-border rounded-sm overflow-hidden">
-          <table className="w-full text-xs">
+        <div className="border border-border rounded-sm overflow-x-auto">
+          <table className="w-full min-w-[760px] text-xs">
             <thead>
               <tr className="border-b border-border bg-secondary/40">
                 <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-20">Level</th>
                 <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal">Spell</th>
                 <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-28">Casting</th>
                 <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-28">Range/Area</th>
+                <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-20">Hit</th>
+                <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-24">Damage</th>
                 <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-24">Components</th>
                 <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-28">Duration</th>
               </tr>
@@ -56,12 +58,14 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
                     <td className="px-2 py-1.5 font-medium">{spell.name || "-"}</td>
                     <td className="px-2 py-1.5 text-muted-foreground">{spell.castingTime || "-"}</td>
                     <td className="px-2 py-1.5 text-muted-foreground">{spell.rangeArea || "-"}</td>
+                    <td className="px-2 py-1.5 text-muted-foreground">{spell.hit || "-"}</td>
+                    <td className="px-2 py-1.5 text-muted-foreground">{spell.damage || "-"}</td>
                     <td className="px-2 py-1.5 text-muted-foreground">{spell.components || "-"}</td>
                     <td className="px-2 py-1.5 text-muted-foreground">{spell.duration || "-"}</td>
                   </tr>
                   {spell.description && (
                     <tr className="border-b border-border/40 last:border-0 bg-secondary/10">
-                      <td colSpan={6} className="px-2 pb-1.5 text-muted-foreground italic whitespace-pre-wrap">
+                      <td colSpan={8} className="px-2 pb-1.5 text-muted-foreground italic whitespace-pre-wrap">
                         {spell.description}
                       </td>
                     </tr>
@@ -90,9 +94,9 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
       {spells.length === 0 ? (
         <div className="border border-dashed border-border rounded-sm py-6 text-center text-xs text-muted-foreground">No spells yet.</div>
       ) : (
-        <div className="border border-border rounded-sm overflow-hidden divide-y divide-border">
-          <div className="grid grid-cols-[84px_1fr_100px_112px_96px_104px_64px] gap-1 px-2 py-1 bg-secondary/40">
-            {["Level", "Spell", "Casting", "Range/Area", "Components", "Duration", ""].map((heading) => (
+        <div className="border border-border rounded-sm overflow-x-auto divide-y divide-border">
+          <div className="grid min-w-[880px] grid-cols-[112px_1fr_92px_104px_72px_92px_86px_96px_64px] gap-1 px-2 py-1 bg-secondary/40">
+            {["Level", "Spell", "Casting", "Range/Area", "Hit", "Damage", "Components", "Duration", ""].map((heading) => (
               <div key={heading} className="text-[9px] uppercase tracking-widest text-muted-foreground text-center first:text-left">
                 {heading}
               </div>
@@ -100,7 +104,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
           </div>
           {spells.map((spell, index) => (
             <div key={index}>
-              <div className="grid grid-cols-[84px_1fr_100px_112px_96px_104px_64px] gap-1 px-2 py-1.5 items-center">
+              <div className="grid min-w-[880px] grid-cols-[112px_1fr_92px_104px_72px_92px_86px_96px_64px] gap-1 px-2 py-1.5 items-center">
                 <select
                   value={spell.level || "Cantrip"}
                   onChange={(event) => update(index, "level", event.target.value)}
@@ -115,6 +119,8 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
                 <Input value={spell.name} onChange={(event) => update(index, "name", event.target.value)} placeholder="Fireball" className="h-7 text-xs px-2" />
                 <Input value={spell.castingTime} onChange={(event) => update(index, "castingTime", event.target.value)} placeholder="1 action" className="h-7 text-xs px-2" />
                 <Input value={spell.rangeArea} onChange={(event) => update(index, "rangeArea", event.target.value)} placeholder="150 ft" className="h-7 text-xs px-2" />
+                <Input value={spell.hit || ""} onChange={(event) => update(index, "hit", event.target.value)} placeholder="+7" className="h-7 text-xs px-2" />
+                <Input value={spell.damage || ""} onChange={(event) => update(index, "damage", event.target.value)} placeholder="2d8" className="h-7 text-xs px-2" />
                 <Input value={spell.components} onChange={(event) => update(index, "components", event.target.value)} placeholder="V,S,M" className="h-7 text-xs px-2" />
                 <Input value={spell.duration} onChange={(event) => update(index, "duration", event.target.value)} placeholder="Instant" className="h-7 text-xs px-2" />
                 <div className="flex gap-0.5 justify-end">
