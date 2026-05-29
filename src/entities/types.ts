@@ -75,6 +75,9 @@ export interface CharacterSheet extends AppRecord {
   ac?: number;
   initiative?: number;
   speed?: number;
+  damage_resistances?: string;
+  damage_immunities?: string;
+  damage_vulnerabilities?: string;
   proficiency_bonus?: number;
   hit_dice?: string;
   death_save_successes?: number;
@@ -160,6 +163,7 @@ export interface LoreEntry extends AppRecord {
   content?: string;
   image_url?: string;
   pdf_url?: string;
+  pdf_rotation?: number;
   map_pins?: MapPin[];
   tags?: string[];
   visibility?: SharedVisibility;

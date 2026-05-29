@@ -74,6 +74,9 @@ const defaultForm = () => ({
   ac: 10,
   initiative: 0,
   speed: 30,
+  damage_resistances: "",
+  damage_immunities: "",
+  damage_vulnerabilities: "",
   proficiency_bonus: 2,
   death_save_successes: 0,
   death_save_failures: 0,
@@ -198,6 +201,7 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
   const profSkills = csv(form.skills);
   const expertSkills = csv(form.skill_expertises);
   const profSaves = csv(form.saving_throws);
+  const canSaveSheet = !sheet?.id || isDM || sheet.created_by === currentUser?.email || sheet.assigned_to_email === currentUser?.email;
 
   const calcPassivePerc = () => {
     const pb = form.proficiency_bonus || 2;
@@ -227,7 +231,7 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
   };
 
   const save = async () => {
-    if (!form.name?.trim()) return;
+    if (!form.name?.trim() || !canSaveSheet) return;
     setSaving(true);
     const dataToSave = { ...form, passive_perception: calcPassivePerc() };
     if (sheet?.id) {
@@ -334,6 +338,11 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                 </div>
               </div>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <Field label="Damage Resistances"><Input value={form.damage_resistances || ""} onChange={(event) => set("damage_resistances", event.target.value)} placeholder="Fire, cold..." /></Field>
+              <Field label="Damage Immunities"><Input value={form.damage_immunities || ""} onChange={(event) => set("damage_immunities", event.target.value)} placeholder="Poison..." /></Field>
+              <Field label="Damage Vulnerabilities"><Input value={form.damage_vulnerabilities || ""} onChange={(event) => set("damage_vulnerabilities", event.target.value)} placeholder="Radiant..." /></Field>
+            </div>
           </section>
 
           <section className="space-y-2">
@@ -427,7 +436,6 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
               <div className="grid grid-cols-2 gap-2">
                 {[
                   ["Ki Points", "ki_points_current", "ki_points_max"],
-                  ["Sorcery Points", "sorcery_points_current", "sorcery_points_max"],
                 ].map(([label, currentKey, maxKey]) => (
                   <div key={label} className="border border-border rounded-sm bg-secondary/40 p-2">
                     <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1 text-center">{label}</div>
@@ -438,6 +446,14 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                     </div>
                   </div>
                 ))}
+                <div className="border border-border rounded-sm bg-secondary/40 p-2 text-center">
+                  <div className="text-[8px] uppercase text-muted-foreground mb-1">Sorcery</div>
+                  <div className="flex items-center gap-1 justify-center">
+                    <Input type="number" min={0} className="text-center px-0 h-6 text-xs w-8" placeholder="Current" value={form.sorcery_points_current} onChange={(event) => setNum("sorcery_points_current", event.target.value)} />
+                    <span className="text-muted-foreground text-xs">/</span>
+                    <Input type="number" min={0} className="text-center px-0 h-6 text-xs w-8" placeholder="Max" value={form.sorcery_points_max} onChange={(event) => setNum("sorcery_points_max", event.target.value)} />
+                  </div>
+                </div>
               </div>
             </div>
             <SpellManager value={form.spells_known} onChange={(value) => set("spells_known", value)} />
@@ -505,7 +521,7 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={save} disabled={saving || !form.name?.trim()}>
+            <Button onClick={save} disabled={saving || !form.name?.trim() || !canSaveSheet}>
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Save Character
             </Button>
           </div>

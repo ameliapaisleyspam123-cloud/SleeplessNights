@@ -103,6 +103,15 @@
       "type": "number",
       "default": 30
     },
+    "damage_resistances": {
+      "type": "string"
+    },
+    "damage_immunities": {
+      "type": "string"
+    },
+    "damage_vulnerabilities": {
+      "type": "string"
+    },
     "proficiency_bonus": {
       "type": "number",
       "default": 2

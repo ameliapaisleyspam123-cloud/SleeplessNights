@@ -5,7 +5,7 @@ const SESSION_KEY = "sleepless_nights_user_v1";
 const REMEMBER_KEY = "sleepless_nights_remembered_account_v1";
 const SUPABASE_TABLE = "app_records";
 const SUPABASE_ASSET_BUCKET = "campaign-assets";
-const STORE_CACHE_TTL_MS = 1000;
+const STORE_CACHE_TTL_MS = 30000;
 const GLOBAL_ADMIN_EMAIL = "ameliapaisleyspam123@gmail.com";
 
 export const ENTITY_NAMES = [
@@ -212,10 +212,12 @@ async function readStoreAsync() {
       if (ENTITY_NAMES.includes(row.entity) && row.data) store[row.entity].push(row.data);
     }
 
-    const localStore = readStoredStore();
     const hasRemoteData = Object.values(store).some((records) => records.length > 0);
+    const localStore = hasRemoteData ? null : readStoredStore();
     const baseStore = hasRemoteData ? store : localStore || defaultStore();
-    const { store: mergedStore, changed: mergedChanged } = mergeStores(baseStore, localStore);
+    const { store: mergedStore, changed: mergedChanged } = hasRemoteData
+      ? { store: baseStore, changed: false }
+      : mergeStores(baseStore, localStore);
     const { store: adminStore, changed: adminChanged } = ensureGlobalAdmin(mergedStore);
     writeStore(adminStore);
     setCachedStore(adminStore);

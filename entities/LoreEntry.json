@@ -38,6 +38,11 @@
       "type": "string",
       "description": "Optional PDF attachment URL"
     },
+    "pdf_rotation": {
+      "type": "number",
+      "default": 0,
+      "description": "Clockwise rotation for rendering map PDFs"
+    },
     "map_pins": {
       "type": "array",
       "description": "Pins placed on an attached map PDF, stored as percentage coordinates",

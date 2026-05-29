@@ -29,6 +29,18 @@ const writeEmptyFolders = (campaignId, folders) => {
   localStorage.setItem(emptyFolderKey(campaignId), JSON.stringify([...new Set(folders.filter(Boolean))].sort()));
 };
 
+const expandFolderPaths = (paths) => {
+  const expanded = new Set();
+  paths.filter(Boolean).forEach((path) => {
+    path.split("/").reduce((prefix, part) => {
+      const next = prefix ? `${prefix}/${part}` : part;
+      expanded.add(next);
+      return next;
+    }, "");
+  });
+  return [...expanded].sort();
+};
+
 export default function Lore() {
   const [items, setItems] = useState([]);
   const [campaignId, setCampaignId] = useState("");
@@ -58,13 +70,13 @@ export default function Lore() {
     load();
   }, []);
 
-  const folders = [...new Set([...items.map((item) => item.folder).filter(Boolean), ...emptyFolders])].sort();
+  const folders = expandFolderPaths([...items.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
   const visibleItems = items.filter((item) => canViewVisibleItem(item, currentUser, isAdmin));
   const filtered = visibleItems.filter((item) => {
     const q = query.trim().toLowerCase();
     const matchesQuery = !q || item.title?.toLowerCase().includes(q) || plainText(item.content).toLowerCase().includes(q) || item.tags?.some((tag) => tag.toLowerCase().includes(q));
     const matchesCategory = category === "all" || item.category === category;
-    const matchesFolder = folder === "all" || item.folder === folder;
+    const matchesFolder = folder === "all" || item.folder === folder || item.folder?.startsWith(`${folder}/`);
     return matchesQuery && matchesCategory && matchesFolder;
   });
 
