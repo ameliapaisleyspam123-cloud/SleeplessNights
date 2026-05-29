@@ -582,10 +582,11 @@ function cleanFileName(name = "upload") {
   return name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "upload";
 }
 
-async function uploadSharedFile(file) {
+async function uploadSharedFile(file, options = {}) {
   if (!supabase) return { file_url: await fileToDataUrl(file), storage: "local" };
 
-  const path = `${new Date().toISOString().slice(0, 10)}/${id("asset")}-${cleanFileName(file.name || "upload")}`;
+  const campaignSegment = cleanFileName(options.campaign_id || "shared");
+  const path = `${campaignSegment}/${new Date().toISOString().slice(0, 10)}/${id("asset")}-${cleanFileName(file.name || "upload")}`;
   const { error } = await supabase.storage.from(SUPABASE_ASSET_BUCKET).upload(path, file, {
     cacheControl: "31536000",
     contentType: file.type || "application/octet-stream",
@@ -769,7 +770,8 @@ export const appClient = {
   integrations: {
     Core: {
       async UploadFile({ file }) {
-        return uploadSharedFile(file);
+        const user = await appClient.auth.me().catch(() => null);
+        return uploadSharedFile(file, { campaign_id: user?.campaign_id });
       },
     },
   },

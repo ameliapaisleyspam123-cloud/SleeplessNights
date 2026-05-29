@@ -126,11 +126,24 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    const user = await appClient.auth.me().catch(() => null);
     const { file_url } = await appClient.integrations.Core.UploadFile({ file });
     if (file.type === "application/pdf") {
-      setForm((f) => ({ ...f, pdf_url: file_url, image_url: "", category: f.category === "other" ? "map" : f.category }));
+      setForm((f) => ({
+        ...f,
+        campaign_id: f.campaign_id || user?.campaign_id || "",
+        pdf_url: file_url,
+        image_url: "",
+        category: f.category === "other" ? "map" : f.category,
+      }));
     } else {
-      setForm((f) => ({ ...f, image_url: file_url, pdf_url: "", map_pins: [] }));
+      setForm((f) => ({
+        ...f,
+        campaign_id: f.campaign_id || user?.campaign_id || "",
+        image_url: file_url,
+        pdf_url: "",
+        map_pins: [],
+      }));
     }
     setUploading(false);
   };
@@ -306,11 +319,12 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
   const save = async () => {
     if (!form.title?.trim()) return;
     setSaving(true);
+    const u = await appClient.auth.me().catch(() => null);
+    const payload = { ...form, campaign_id: form.campaign_id || u?.campaign_id || "" };
     if (entry?.id) {
-      await appClient.entities.LoreEntry.update(entry.id, form);
+      await appClient.entities.LoreEntry.update(entry.id, payload);
     } else {
-      const u = await appClient.auth.me().catch(() => null);
-      await appClient.entities.LoreEntry.create({ ...form, campaign_id: u?.campaign_id });
+      await appClient.entities.LoreEntry.create(payload);
     }
     setSaving(false);
     onSaved?.();

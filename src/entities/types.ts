@@ -168,9 +168,11 @@ export interface LoreEntry extends AppRecord {
 
 export interface MapPin {
   id: string;
+  kind?: "pin" | "label";
   label?: string;
   x: number;
   y: number;
+  size?: number;
   lore_entry_id?: string;
 }
 
