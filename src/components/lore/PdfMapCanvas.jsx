@@ -22,10 +22,10 @@ export default function PdfMapCanvas({ url, rotation = 0, className = "" }) {
         const page = await pdf.getPage(1);
         if (cancelled) return;
 
-        const container = wrapRef.current.getBoundingClientRect();
-        const baseViewport = page.getViewport({ scale: 1 });
-        const scale = Math.min(container.width / baseViewport.width, container.height / baseViewport.height) || 1;
         const normalizedRotation = ((Number(rotation) || 0) % 360 + 360) % 360;
+        const container = wrapRef.current.getBoundingClientRect();
+        const baseViewport = page.getViewport({ scale: 1, rotation: normalizedRotation });
+        const scale = Math.min(container.width / baseViewport.width, container.height / baseViewport.height) || 1;
         const viewport = page.getViewport({ scale, rotation: normalizedRotation });
         const canvas = canvasRef.current;
         const context = canvas.getContext("2d");

@@ -99,9 +99,9 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
     onEntryUpdated?.(updated);
   };
 
-  const flipPdf = async () => {
+  const rotatePdfClockwise = async () => {
     if (!entry?.id) return;
-    const nextRotation = ((Number(pdfRotation) || 0) + 180) % 360;
+    const nextRotation = ((Number(pdfRotation) || 0) + 90) % 360;
     setPdfRotation(nextRotation);
     const updated = await appClient.entities.LoreEntry.update(entry.id, { pdf_rotation: nextRotation });
     onEntryUpdated?.(updated);
@@ -185,8 +185,8 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
           <Button variant="outline" size="sm" onClick={() => setMapZoom((value) => Math.min(4, value + 0.25))}>+</Button>
           <Button variant="outline" size="sm" onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }}>Reset</Button>
           {isAdmin && pdfSrc && (
-            <Button variant="outline" size="sm" onClick={flipPdf} title="Flip PDF">
-              <RotateCw className="w-4 h-4" /> Flip
+            <Button variant="outline" size="sm" onClick={rotatePdfClockwise} title="Rotate PDF 90 degrees clockwise">
+              <RotateCw className="w-4 h-4" /> Rotate
             </Button>
           )}
           <Button variant="ghost" size="sm" onClick={onClose}>
