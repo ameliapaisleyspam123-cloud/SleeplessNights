@@ -1,12 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Radio, FileText, Eye, X, Trash2 } from "lucide-react";
+import { Pencil, Radio, FileText, Trash2 } from "lucide-react";
 import { appClient } from "@/api/appClient";
+import MapPinViewer from "@/components/lore/MapPinViewer";
 
-export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete, isAdmin }) {
-  const [pdfOpen, setPdfOpen] = useState(false);
+export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete, isAdmin, entries = [], onEntryUpdated, onOpenEntry }) {
+  const [mapOpen, setMapOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setMapOpen(false);
+      return;
+    }
+    if (entry?.pdf_url && entry?.category === "map") {
+      setMapOpen(true);
+    }
+  }, [open, entry?.id, entry?.pdf_url, entry?.category]);
+
   if (!entry) return null;
 
   const broadcast = async () => {
@@ -30,9 +42,9 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto thin-scroll p-0">
         {entry.image_url && (
-          <div className="aspect-[16/9] overflow-hidden bg-muted">
+          <button type="button" onClick={() => setMapOpen(true)} className="block w-full aspect-[16/9] overflow-hidden bg-muted text-left">
             <img src={entry.image_url} alt={entry.title} className="w-full h-full object-cover" />
-          </div>
+          </button>
         )}
         <div className="p-6 md:p-8">
           <div className="flex items-start justify-between gap-4">
@@ -66,10 +78,10 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
           {entry.pdf_url && (
             <div className="mt-4 p-3 border border-border rounded-sm bg-secondary/30 flex items-center gap-3">
               <FileText className="w-4 h-4 text-accent" />
-              <span className="text-sm flex-1">PDF attached</span>
-              <Button size="sm" variant="outline" onClick={() => setPdfOpen(true)}>
-                <Eye className="w-3.5 h-3.5 mr-1.5" /> View PDF
-              </Button>
+              <span className="text-sm flex-1">PDF map attached</span>
+              <button type="button" onClick={() => setMapOpen(true)} className="text-xs text-muted-foreground hover:text-accent transition-colors">
+                Open map
+              </button>
             </div>
           )}
 
@@ -82,16 +94,15 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
           </div>
         </div>
 
-        {pdfOpen && entry.pdf_url && createPortal(
-          <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "hsl(var(--background))", display: "flex", flexDirection: "column" }}>
-            <div className="flex items-center justify-between px-6 py-3 border-b border-border shrink-0">
-              <span className="font-display text-lg">{entry.title} - PDF</span>
-              <Button variant="ghost" size="sm" onClick={() => setPdfOpen(false)}>
-                <X className="w-4 h-4 mr-1.5" /> Close
-              </Button>
-            </div>
-            <iframe src={entry.pdf_url} style={{ flex: 1, width: "100%", border: "none" }} title="PDF Viewer" />
-          </div>,
+        {mapOpen && (entry.pdf_url || entry.image_url) && createPortal(
+          <MapPinViewer
+            entry={entry}
+            entries={entries}
+            isAdmin={isAdmin}
+            onEntryUpdated={onEntryUpdated}
+            onOpenEntry={onOpenEntry}
+            onClose={() => setMapOpen(false)}
+          />,
           document.body,
         )}
       </DialogContent>

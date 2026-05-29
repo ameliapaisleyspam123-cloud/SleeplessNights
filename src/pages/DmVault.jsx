@@ -204,6 +204,12 @@ export default function DmVault() {
     await load();
   };
 
+  const syncUpdatedLore = (updated) => {
+    if (!updated?.id) return;
+    setLore((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setViewingLore((current) => (current?.id === updated.id ? updated : current));
+  };
+
   const restoreCharacter = async (entry) => {
     await appClient.entities.CharacterSheet.update(entry.id, { visibility: "public" });
     await load();
@@ -458,6 +464,9 @@ export default function DmVault() {
         open={Boolean(viewingLore)}
         onOpenChange={(open) => !open && setViewingLore(null)}
         entry={viewingLore}
+        entries={lore}
+        onEntryUpdated={syncUpdatedLore}
+        onOpenEntry={setViewingLore}
         isAdmin
         onEdit={() => {
           setEditingLore(viewingLore);

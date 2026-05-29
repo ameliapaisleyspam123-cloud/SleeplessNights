@@ -59,8 +59,8 @@ export default function Lore() {
   }, []);
 
   const folders = [...new Set([...items.map((item) => item.folder).filter(Boolean), ...emptyFolders])].sort();
-  const filtered = items.filter((item) => {
-    if (!canViewVisibleItem(item, currentUser, isAdmin)) return false;
+  const visibleItems = items.filter((item) => canViewVisibleItem(item, currentUser, isAdmin));
+  const filtered = visibleItems.filter((item) => {
     const q = query.trim().toLowerCase();
     const matchesQuery = !q || item.title?.toLowerCase().includes(q) || plainText(item.content).toLowerCase().includes(q) || item.tags?.some((tag) => tag.toLowerCase().includes(q));
     const matchesCategory = category === "all" || item.category === category;
@@ -98,6 +98,12 @@ export default function Lore() {
     setMoving(null);
     setContextMenu(null);
     await load();
+  };
+
+  const syncUpdatedEntry = (updated) => {
+    if (!updated?.id) return;
+    setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setViewing((current) => (current?.id === updated.id ? updated : current));
   };
 
   const openContextMenu = (event, entry) => {
@@ -226,6 +232,9 @@ export default function Lore() {
         open={Boolean(viewing)}
         onOpenChange={(open) => !open && setViewing(null)}
         entry={viewing}
+        entries={visibleItems}
+        onEntryUpdated={syncUpdatedEntry}
+        onOpenEntry={setViewing}
         onEdit={() => {
           if (!isAdmin) return;
           setEditing(viewing);
