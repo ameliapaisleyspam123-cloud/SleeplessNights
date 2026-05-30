@@ -1,13 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-const PDF_DISPLAY_ROTATION = 0;
-
-export default function PdfMapCanvas({ url, className = "" }) {
+export default function PdfMapCanvas({ url, rotation = 0, className = "" }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const [status, setStatus] = useState("loading");
   const [renderSize, setRenderSize] = useState({ canvasWidth: 0, canvasHeight: 0, frameWidth: 0, frameHeight: 0 });
+  const normalizedRotation = ((Number(rotation) || 0) % 360 + 360) % 360;
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +24,6 @@ export default function PdfMapCanvas({ url, className = "" }) {
         const page = await pdf.getPage(1);
         if (cancelled) return;
 
-        const normalizedRotation = PDF_DISPLAY_ROTATION;
         const turnsSideways = normalizedRotation === 90 || normalizedRotation === 270;
         const container = wrapRef.current.getBoundingClientRect();
         const baseViewport = page.getViewport({ scale: 1 });
@@ -69,7 +67,7 @@ export default function PdfMapCanvas({ url, className = "" }) {
       observer.disconnect();
       renderTask?.cancel?.();
     };
-  }, [url]);
+  }, [url, normalizedRotation]);
 
   return (
     <div ref={wrapRef} className={`absolute inset-0 flex items-center justify-center bg-background ${className}`}>
@@ -91,7 +89,7 @@ export default function PdfMapCanvas({ url, className = "" }) {
           ref={canvasRef}
           className="absolute left-1/2 top-1/2 block max-w-none"
           style={{
-            transform: `translate(-50%, -50%) rotate(${PDF_DISPLAY_ROTATION}deg)`,
+            transform: `translate(-50%, -50%) rotate(${normalizedRotation}deg)`,
             transformOrigin: "center center",
           }}
         />

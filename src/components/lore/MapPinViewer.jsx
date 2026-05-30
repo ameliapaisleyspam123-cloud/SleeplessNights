@@ -173,7 +173,7 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
             {hasImage ? (
               <img src={entry.image_url} alt="" className="absolute inset-0 w-full h-full object-contain bg-background" draggable={false} />
             ) : pdfSrc ? (
-              <PdfMapCanvas url={pdfSrc} />
+              <PdfMapCanvas url={pdfSrc} rotation={180} />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{hasPdf ? "Loading PDF..." : "No map file attached."}</div>
             )}

@@ -152,8 +152,8 @@ function LayoutInner() {
     onCampaignSettings: () => setCampaignModalOpen(true),
     onThemeSettings: () => setThemeModalOpen(true),
   };
-  const floatingControlsPosition = "top-16 right-4 lg:top-4";
-  const dicePanelPosition = "top-32 right-4 lg:top-20";
+  const floatingControlsPosition = "top-24 right-6 lg:top-28 lg:right-10";
+  const dicePanelPosition = "top-40 right-6 lg:top-44 lg:right-10";
 
   return (
     <div className="h-screen overflow-hidden parchment flex">
