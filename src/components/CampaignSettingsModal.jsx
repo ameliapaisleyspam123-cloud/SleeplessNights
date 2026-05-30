@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { appClient } from "@/api/appClient";
 import { Copy, Check, Loader2, Save } from "lucide-react";
 
@@ -22,16 +23,18 @@ function CopyButton({ value }) {
 
 export default function CampaignSettingsModal({ open, onOpenChange, campaign, onSaved }) {
   const [name, setName] = useState(campaign?.name || "");
+  const [description, setDescription] = useState(campaign?.description || "");
   const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
     setName(campaign?.name || "");
+    setDescription(campaign?.description || "");
   }, [campaign]);
 
   const handleSave = async () => {
     if (!name.trim() || !campaign?.id) return;
     setSaving(true);
-    await appClient.entities.Campaign.update(campaign.id, { name: name.trim() });
+    await appClient.entities.Campaign.update(campaign.id, { name: name.trim(), description: description.trim() });
     setSaving(false);
     onSaved();
     onOpenChange(false);
@@ -53,6 +56,16 @@ export default function CampaignSettingsModal({ open, onOpenChange, campaign, on
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
+          </div>
+
+          <div>
+            <Label>Campaign Description</Label>
+            <Textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="What should players know before entering this campaign?"
+              className="mt-1.5 min-h-24"
+            />
           </div>
 
           <div className="space-y-3">

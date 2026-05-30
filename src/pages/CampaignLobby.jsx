@@ -103,6 +103,11 @@ export default function CampaignLobby() {
     if (isGlobalAdmin) return campaigns;
     return campaigns.filter((campaign) => campaign.dm_email === activeEmail || campaign.player_emails?.includes(activeEmail) || campaign.id === user?.campaign_id);
   }, [activeEmail, campaigns, user, isGlobalAdmin]);
+  const joinPreviewCampaign = useMemo(() => {
+    const code = joinCode.trim().toUpperCase();
+    if (!code) return null;
+    return campaigns.find((item) => item.dm_code === code || item.player_code === code) || null;
+  }, [campaigns, joinCode]);
 
   const loginDetails = () => ({
     email: user?.email || email.trim().toLowerCase(),
@@ -317,6 +322,9 @@ export default function CampaignLobby() {
                   <div className="min-w-0 flex-1">
                     <div className="text-lg font-semibold text-foreground leading-snug">{campaign.name}</div>
                     <div className="text-sm text-muted-foreground mt-0.5">{role}</div>
+                    {campaign.description?.trim() && (
+                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{campaign.description}</p>
+                    )}
                   </div>
                   <ArrowRight className="w-5 h-5 text-muted-foreground shrink-0" />
                 </button>
@@ -347,6 +355,17 @@ export default function CampaignLobby() {
                   <Field label="Enter Code">
                     <Input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="ABCXYZ" className="text-center font-mono tracking-[0.35em] uppercase" />
                   </Field>
+                  {joinPreviewCampaign && (
+                    <div className="border border-border bg-card/70 rounded-sm p-4">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-accent mb-1">Campaign Preview</div>
+                      <div className="text-lg font-semibold text-foreground">{joinPreviewCampaign.name}</div>
+                      {joinPreviewCampaign.description?.trim() ? (
+                        <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{joinPreviewCampaign.description}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mt-2 italic">No description provided.</p>
+                      )}
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">DM code joins as Dungeon Master. Player code joins as a Player.</p>
                   <Button className="w-full h-12 text-base" onClick={joinCampaign}>
                     <Dices className="w-5 h-5" /> Enter the Realm

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { appClient } from "@/api/appClient";
 import CharacterClaimButton from "@/components/characters/CharacterClaimButton";
+import CharacterAssignmentPanel from "@/components/characters/CharacterAssignmentPanel";
 import CharacterSheetCard from "@/components/characters/CharacterSheetCard";
 import CharacterSheetEditor from "@/components/characters/CharacterSheetEditor";
 import CharacterSheetView from "@/components/characters/CharacterSheetView";
@@ -291,14 +292,22 @@ export default function Characters() {
                   onClick={() => setViewing(sheet)}
                   onContextMenu={openContextMenu}
                   action={
-                    <CharacterClaimButton
-                      sheet={sheet}
-                      campaign={currentCampaign}
-                      currentUserEmail={user?.email}
-                      isDM={isAdmin}
-                      onClaimChange={load}
-                      userCharacterCounts={userCharacterCounts}
-                    />
+                    isAdmin ? (
+                      <CharacterAssignmentPanel
+                        sheet={sheet}
+                        campaign={currentCampaign}
+                        onAssignmentChange={syncUpdatedSheet}
+                      />
+                    ) : (
+                      <CharacterClaimButton
+                        sheet={sheet}
+                        campaign={currentCampaign}
+                        currentUserEmail={user?.email}
+                        isDM={isAdmin}
+                        onClaimChange={load}
+                        userCharacterCounts={userCharacterCounts}
+                      />
+                    )
                   }
                 />
               ))}
