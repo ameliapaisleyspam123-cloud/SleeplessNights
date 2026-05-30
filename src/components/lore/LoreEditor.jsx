@@ -6,14 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Loader2, FileText, Eye, EyeOff, Lock, Users, MapPin, Tag, Trash2, Link2, X, Undo2, Redo2, RotateCcw, RotateCw } from "lucide-react";
+import { Upload, Loader2, FileText, Eye, Lock, Users, MapPin, Tag, Trash2, Link2, X, Undo2, Redo2 } from "lucide-react";
 import PdfMapCanvas from "@/components/lore/PdfMapCanvas";
 
 const VISIBILITY_OPTIONS = [
   { value: "public", label: "Public - all players can see", icon: Eye },
   { value: "specific_players", label: "Specific Players - chosen few + DM", icon: Users },
   { value: "dm_only", label: "DM Only - hidden from players", icon: Lock },
-  { value: "archived", label: "Archived - hidden from all", icon: EyeOff },
 ];
 
 const CATEGORIES = [
@@ -80,6 +79,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
   const mapSurfaceRef = useRef(null);
   const suppressNextMapClickRef = useRef(false);
 
+  const isMap = form.category === "map";
   const mapMarks = useMemo(() => (Array.isArray(form.map_pins) ? form.map_pins : []), [form.map_pins]);
   const editingMark = mapMarks.find((mark) => mark.id === editingMarkId);
 
@@ -123,6 +123,12 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     return () => surface.removeEventListener("wheel", handleWheel);
   }, []);
 
+  useEffect(() => {
+    if (!form.pdf_url || !showPdfHint) return undefined;
+    const timeoutId = window.setTimeout(() => setShowPdfHint(false), 2000);
+    return () => window.clearTimeout(timeoutId);
+  }, [form.pdf_url, showPdfHint]);
+
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -135,7 +141,6 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
         campaign_id: f.campaign_id || user?.campaign_id || "",
         pdf_url: file_url,
         image_url: "",
-        category: f.category === "other" ? "map" : f.category,
         pdf_rotation: 0,
       }));
     } else {
@@ -334,13 +339,6 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     onOpenChange(false);
   };
 
-  const archive = async () => {
-    if (!entry?.id) return;
-    await appClient.entities.LoreEntry.update(entry.id, { visibility: "archived" });
-    onSaved?.();
-    onOpenChange(false);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[94vh] overflow-y-auto thin-scroll">
@@ -386,7 +384,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
           </div>
 
           <div>
-            <Label>Image / Map</Label>
+            <Label>Image / PDF</Label>
             {form.image_url ? (
               <div className="relative rounded-sm overflow-hidden border border-border">
                 <img src={form.image_url} alt="" className="w-full max-h-64 object-cover" />
@@ -399,25 +397,45 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
                 </div>
               </div>
             ) : form.pdf_url ? (
-              <div className="flex items-center gap-2 p-3 border border-border rounded-sm bg-secondary/40 mt-1.5">
-                <FileText className="w-4 h-4 text-accent" />
-                <span className="text-sm text-muted-foreground flex-1">PDF map uploaded</span>
-                <label className="text-xs text-muted-foreground hover:text-accent cursor-pointer transition-colors mr-2">
-                  {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : "Replace"}
-                  <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleUpload} />
-                </label>
-                <button onClick={() => setForm((f) => ({ ...f, pdf_url: "", map_pins: [] }))} className="text-xs text-muted-foreground hover:text-destructive transition-colors">Remove</button>
+              <div className="relative h-64 rounded-sm overflow-hidden border border-border bg-background">
+                <PdfMapCanvas url={form.pdf_url} />
+                <a
+                  href={form.pdf_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="absolute left-2 top-2 h-8 px-3 rounded-sm border border-border bg-background/85 text-xs text-foreground hover:border-accent hover:text-accent transition-colors inline-flex items-center justify-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5" /> Open
+                </a>
+                <div className="absolute top-2 right-2 flex gap-2">
+                  <label className="h-8 px-3 rounded-sm border border-border bg-background/85 text-xs text-foreground hover:border-accent hover:text-accent cursor-pointer transition-colors inline-flex items-center justify-center">
+                    {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Replace"}
+                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleUpload} />
+                  </label>
+                  <Button size="sm" variant="destructive" onClick={() => setForm((f) => ({ ...f, pdf_url: "", map_pins: [] }))}>Remove</Button>
+                </div>
               </div>
             ) : (
               <label className="flex items-center justify-center gap-2 h-24 rounded-sm border border-dashed border-border cursor-pointer hover:border-accent hover:bg-secondary/40 transition-all text-sm text-muted-foreground">
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                {uploading ? "Uploading..." : "Upload image or PDF map"}
+                {uploading ? "Uploading..." : "Upload image or PDF"}
                 <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleUpload} />
               </label>
             )}
+            {(form.image_url || form.pdf_url) && form.category !== "map" && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => setForm((f) => ({ ...f, category: "map" }))}
+              >
+                <MapPin className="w-4 h-4" /> Mark as Map
+              </Button>
+            )}
           </div>
 
-          {(form.image_url || form.pdf_url) && (
+          {(form.image_url || form.pdf_url) && isMap && (
             <div className="rounded-sm border border-border bg-secondary/25 overflow-hidden">
               <div className="flex items-center justify-between gap-3 p-3 border-b border-border flex-wrap">
                 <Label className="m-0">Map Pins & Labels</Label>
@@ -461,26 +479,6 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
                   >
                     <Redo2 className="w-3.5 h-3.5" />
                   </button>
-                  {form.pdf_url && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setForm((current) => ({ ...current, pdf_rotation: (((Number(current.pdf_rotation) || 0) - 90) % 360 + 360) % 360 }))}
-                        title="Rotate PDF left"
-                        className="h-8 w-8 rounded-sm border border-border text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setForm((current) => ({ ...current, pdf_rotation: ((Number(current.pdf_rotation) || 0) + 90) % 360 }))}
-                        title="Rotate PDF right"
-                        className="h-8 w-8 rounded-sm border border-border text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
-                      >
-                        <RotateCw className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
                   <button type="button" onClick={() => setMapZoom((value) => Math.max(0.5, value - 0.25))} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">-</button>
                   <button type="button" onClick={() => setMapZoom((value) => Math.min(4, value + 0.25))} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">+</button>
                   <button type="button" onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }} className="h-8 px-2 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">Reset</button>
@@ -515,7 +513,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
                       <img src={form.image_url} alt="" className="absolute inset-0 w-full h-full object-contain" draggable={false} />
                     ) : (
                       <div className="absolute inset-0">
-                        <PdfMapCanvas url={form.pdf_url} rotation={form.pdf_rotation || 0} />
+                        <PdfMapCanvas url={form.pdf_url} />
                       </div>
                     )}
                     {mapMarks.map((mark) => (
@@ -746,13 +744,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
         </div>
 
         <div className="flex justify-between items-center pt-4 mt-4 border-t border-border">
-          <div>
-            {entry?.id && entry.visibility !== "archived" && (
-              <Button variant="ghost" size="sm" onClick={archive} className="text-muted-foreground hover:text-foreground">
-                <EyeOff className="w-4 h-4 mr-1.5" /> Archive
-              </Button>
-            )}
-          </div>
+          <div />
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button onClick={save} disabled={saving || !form.title?.trim()}>

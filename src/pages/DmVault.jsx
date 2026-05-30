@@ -39,6 +39,31 @@ const writeEmptyFolders = (campaignId, folders) => {
   localStorage.setItem(emptyFolderKey(campaignId), JSON.stringify([...new Set(folders.filter(Boolean))].sort()));
 };
 
+const expandFolderPaths = (paths) => {
+  const expanded = new Set();
+  paths.filter(Boolean).forEach((path) => {
+    path.split("/").reduce((prefix, part) => {
+      const next = prefix ? `${prefix}/${part}` : part;
+      expanded.add(next);
+      return next;
+    }, "");
+  });
+  return [...expanded].sort();
+};
+
+const normalizeFolderPath = (path) =>
+  String(path || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("/");
+
+const createChildFolderPath = (currentFolder, name) => {
+  const folderName = normalizeFolderPath(name);
+  if (!folderName) return "";
+  return currentFolder && currentFolder !== "all" ? normalizeFolderPath(`${currentFolder}/${folderName}`) : folderName;
+};
+
 function combatStats(combat) {
   const events = combat.events || [];
   const damage = events.filter((event) => event.type === "damage");
@@ -118,13 +143,13 @@ export default function DmVault() {
     [documents, lore, broadcasts],
   );
   const reusableOverrides = broadcasts.filter((entry) => !entry.archived);
-  const documentFolders = [...new Set([...sealedDocs.map((doc) => doc.folder).filter(Boolean), ...emptyDocumentFolders])].sort();
-  const filteredSealedDocs = sealedDocs.filter((doc) => documentFolder === "all" || doc.folder === documentFolder);
+  const documentFolders = expandFolderPaths([...sealedDocs.map((doc) => doc.folder).filter(Boolean), ...emptyDocumentFolders]);
+  const filteredSealedDocs = sealedDocs.filter((doc) => documentFolder === "all" || doc.folder === documentFolder || doc.folder?.startsWith(`${documentFolder}/`));
   const uploadFolder = documentFolder === "all" ? "" : documentFolder;
 
   const createDocumentFolder = () => {
-    const name = window.prompt("New document folder name");
-    const folderName = name?.trim();
+    const name = window.prompt(documentFolder === "all" ? "New document folder name" : `New subfolder inside "${documentFolder}"`);
+    const folderName = createChildFolderPath(documentFolder, name);
     if (!folderName || !user?.campaign_id) return;
     const next = [...new Set([...emptyDocumentFolders, folderName])].sort();
     setEmptyDocumentFolders(next);
@@ -192,10 +217,19 @@ export default function DmVault() {
 
   const deleteLore = async (entry) => {
     if (!entry?.id) return;
-    if (!window.confirm(`Delete "${entry.title}" from the vault?`)) return;
+    if (!window.confirm(`Permanently delete "${entry.title}" from the vault? This cannot be undone.`)) return;
     await appClient.entities.LoreEntry.delete(entry.id);
     setViewingLore(null);
     setEditingLore(null);
+    await load();
+  };
+
+  const deleteCharacter = async (entry) => {
+    if (!entry?.id) return;
+    if (!window.confirm(`Permanently delete ${entry.name || "this character"} from the vault? This cannot be undone.`)) return;
+    await appClient.entities.CharacterSheet.delete(entry.id);
+    setViewingCharacter(null);
+    setEditingCharacter(null);
     await load();
   };
 
@@ -208,6 +242,13 @@ export default function DmVault() {
     if (!updated?.id) return;
     setLore((current) => current.map((item) => (item.id === updated.id ? updated : item)));
     setViewingLore((current) => (current?.id === updated.id ? updated : current));
+  };
+
+  const syncUpdatedCharacter = (updated) => {
+    if (!updated?.id) return;
+    setCharacters((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setViewingCharacter((current) => (current?.id === updated.id ? updated : current));
+    setEditingCharacter((current) => (current?.id === updated.id ? updated : current));
   };
 
   const restoreCharacter = async (entry) => {
@@ -268,6 +309,11 @@ export default function DmVault() {
         <VaultPanel empty={sealedDocs.length === 0 && documentFolders.length === 0} emptyTitle="The vault is empty." emptyBody="Upload sealed documents for the DM.">
           <div className="border border-border bg-card/50 rounded-sm overflow-hidden">
             <div className="flex flex-wrap gap-2 border-b border-border p-3">
+              {documentFolder !== "all" && (
+                <div className="w-full text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Current folder: <span className="font-mono normal-case tracking-normal text-foreground">{documentFolder}</span>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setDocumentFolder("all")}
@@ -416,8 +462,8 @@ export default function DmVault() {
                 <Archive className="w-4 h-4 text-muted-foreground" />
               </div>
             ))}
-            <ArchiveSection title="Archived Lore Entries" items={archivedLore} empty="No archived lore entries." onRestore={restoreLore} onOpen={setViewingLore} />
-            <ArchiveSection title="Archived Characters" items={archivedCharacters} empty="No archived characters." onRestore={restoreCharacter} onOpen={setViewingCharacter} nameKey="name" />
+            <ArchiveSection title="Archived Lore Entries" items={archivedLore} empty="No archived lore entries." onRestore={restoreLore} onDelete={deleteLore} onOpen={setViewingLore} />
+            <ArchiveSection title="Archived Characters" items={archivedCharacters} empty="No archived characters." onRestore={restoreCharacter} onDelete={deleteCharacter} onOpen={setViewingCharacter} nameKey="name" />
           </div>
         </VaultPanel>
       )}
@@ -482,6 +528,7 @@ export default function DmVault() {
         canEdit
         currentUser={user}
         isDM
+        onSheetUpdated={syncUpdatedCharacter}
         onEdit={() => {
           setEditingCharacter(viewingCharacter);
           setViewingCharacter(null);
@@ -510,7 +557,7 @@ function StatTile({ icon: Icon, label, value }) {
   );
 }
 
-function ArchiveSection({ title, items, empty, onRestore, onOpen, nameKey = "title" }) {
+function ArchiveSection({ title, items, empty, onRestore, onDelete, onOpen, nameKey = "title" }) {
   return (
     <section>
       <div className="text-[10px] uppercase tracking-widest text-accent font-medium mb-3">{title}</div>
@@ -524,9 +571,14 @@ function ArchiveSection({ title, items, empty, onRestore, onOpen, nameKey = "tit
                 <div className="font-medium truncate">{item[nameKey] || "Untitled"}</div>
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">{shortDate(item.updated_date || item.created_date)}</div>
               </button>
-              <Button size="sm" variant="ghost" onClick={() => onRestore(item)}>
-                Restore
-              </Button>
+              <div className="flex gap-2 shrink-0">
+                <Button size="sm" variant="ghost" onClick={() => onRestore(item)}>
+                  Restore
+                </Button>
+                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => onDelete?.(item)}>
+                  Delete
+                </Button>
+              </div>
             </div>
           ))}
         </div>

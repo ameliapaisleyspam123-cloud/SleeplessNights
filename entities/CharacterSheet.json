@@ -219,7 +219,7 @@
     },
     "spells_known": {
       "type": "string",
-      "description": "JSON array of spells [{name, castingTime, rangeArea, components, duration}]"
+      "description": "JSON array of spells [{level, name, castingTime, rangeArea, hit, damage, components, duration}]"
     },
     "attacks": {
       "type": "string",

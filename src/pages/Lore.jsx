@@ -41,6 +41,19 @@ const expandFolderPaths = (paths) => {
   return [...expanded].sort();
 };
 
+const normalizeFolderPath = (path) =>
+  String(path || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("/");
+
+const createChildFolderPath = (currentFolder, name) => {
+  const folderName = normalizeFolderPath(name);
+  if (!folderName) return "";
+  return currentFolder && currentFolder !== "all" ? normalizeFolderPath(`${currentFolder}/${folderName}`) : folderName;
+};
+
 export default function Lore() {
   const [items, setItems] = useState([]);
   const [campaignId, setCampaignId] = useState("");
@@ -82,16 +95,16 @@ export default function Lore() {
 
   const deleteEntry = async (entry) => {
     if (!entry?.id) return;
-    if (!window.confirm(`Delete "${entry.title}" from Lore & Maps?`)) return;
-    await appClient.entities.LoreEntry.delete(entry.id);
+    if (!window.confirm(`Move "${entry.title}" to the DM Vault archive?`)) return;
+    await appClient.entities.LoreEntry.update(entry.id, { visibility: "archived" });
     if (viewing?.id === entry.id) setViewing(null);
     if (editing?.id === entry.id) setEditing(null);
     await load();
   };
 
   const createFolder = () => {
-    const name = window.prompt("New lore folder name");
-    const folderName = name?.trim();
+    const name = window.prompt(folder === "all" ? "New lore folder name" : `New subfolder inside "${folder}"`);
+    const folderName = createChildFolderPath(folder, name);
     if (!folderName) return;
     const next = [...new Set([...emptyFolders, folderName])].sort();
     setEmptyFolders(next);
@@ -162,6 +175,11 @@ export default function Lore() {
           </div>
 
           <div className="flex items-center justify-between gap-3 flex-wrap">
+            {folder !== "all" && (
+              <div className="w-full text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Current folder: <span className="font-mono normal-case tracking-normal text-foreground">{folder}</span>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 min-w-0">
               <button
                 type="button"

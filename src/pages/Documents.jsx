@@ -19,6 +19,31 @@ const writeEmptyFolders = (campaignId, folders) => {
   localStorage.setItem(emptyFolderKey(campaignId), JSON.stringify([...new Set(folders.filter(Boolean))].sort()));
 };
 
+const expandFolderPaths = (paths) => {
+  const expanded = new Set();
+  paths.filter(Boolean).forEach((path) => {
+    path.split("/").reduce((prefix, part) => {
+      const next = prefix ? `${prefix}/${part}` : part;
+      expanded.add(next);
+      return next;
+    }, "");
+  });
+  return [...expanded].sort();
+};
+
+const normalizeFolderPath = (path) =>
+  String(path || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("/");
+
+const createChildFolderPath = (currentFolder, name) => {
+  const folderName = normalizeFolderPath(name);
+  if (!folderName) return "";
+  return currentFolder && currentFolder !== "all" ? normalizeFolderPath(`${currentFolder}/${folderName}`) : folderName;
+};
+
 export default function Documents() {
   const [documents, setDocuments] = useState([]);
   const [user, setUser] = useState(null);
@@ -39,13 +64,13 @@ export default function Documents() {
     load();
   }, []);
 
-  const folders = [...new Set([...documents.map((doc) => doc.folder).filter(Boolean), ...emptyFolders])].sort();
-  const filteredDocuments = documents.filter((doc) => folder === "all" || doc.folder === folder);
+  const folders = expandFolderPaths([...documents.map((doc) => doc.folder).filter(Boolean), ...emptyFolders]);
+  const filteredDocuments = documents.filter((doc) => folder === "all" || doc.folder === folder || doc.folder?.startsWith(`${folder}/`));
   const uploadFolder = folder === "all" ? "" : folder;
 
   const createFolder = () => {
-    const name = window.prompt("New document folder name");
-    const folderName = name?.trim();
+    const name = window.prompt(folder === "all" ? "New document folder name" : `New subfolder inside "${folder}"`);
+    const folderName = createChildFolderPath(folder, name);
     if (!folderName || !user?.campaign_id) return;
     const next = [...new Set([...emptyFolders, folderName])].sort();
     setEmptyFolders(next);
@@ -96,6 +121,11 @@ export default function Documents() {
 
       <div className="border border-border bg-card/50 rounded-sm overflow-hidden">
         <div className="flex flex-wrap gap-2 border-b border-border p-3">
+          {folder !== "all" && (
+            <div className="w-full text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Current folder: <span className="font-mono normal-case tracking-normal text-foreground">{folder}</span>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setFolder("all")}

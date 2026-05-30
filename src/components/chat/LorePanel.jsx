@@ -134,7 +134,7 @@ function EntryCard({ entry }) {
   );
 }
 
-function SpellSlotsEditor({ sheet }) {
+function SpellSlotsEditor({ sheet, onSheetUpdated }) {
   const [slots, setSlots] = useState(() => {
     try {
       return sheet.spell_slots ? JSON.parse(sheet.spell_slots) : {};
@@ -159,7 +159,8 @@ function SpellSlotsEditor({ sheet }) {
     };
     setSlots(newSlots);
     setSaving(true);
-    await appClient.entities.CharacterSheet.update(sheet.id, { spell_slots: JSON.stringify(newSlots) });
+    const updated = await appClient.entities.CharacterSheet.update(sheet.id, { spell_slots: JSON.stringify(newSlots) });
+    onSheetUpdated?.(updated);
     setSaving(false);
   };
 
@@ -200,7 +201,80 @@ function SpellSlotsEditor({ sheet }) {
   );
 }
 
-function CharacterCard({ sheet }) {
+function ClassResourcesEditor({ sheet, onSheetUpdated }) {
+  const [resources, setResources] = useState({
+    ki_points_current: sheet.ki_points_current ?? 0,
+    ki_points_max: sheet.ki_points_max ?? 0,
+    sorcery_points_current: sheet.sorcery_points_current ?? 0,
+    sorcery_points_max: sheet.sorcery_points_max ?? 0,
+  });
+  const [savingField, setSavingField] = useState("");
+
+  useEffect(() => {
+    setResources({
+      ki_points_current: sheet.ki_points_current ?? 0,
+      ki_points_max: sheet.ki_points_max ?? 0,
+      sorcery_points_current: sheet.sorcery_points_current ?? 0,
+      sorcery_points_max: sheet.sorcery_points_max ?? 0,
+    });
+  }, [sheet.ki_points_current, sheet.ki_points_max, sheet.sorcery_points_current, sheet.sorcery_points_max]);
+
+  const updateResource = async (field, value) => {
+    const nextValue = Math.max(0, Number(value) || 0);
+    const nextResources = { ...resources, [field]: nextValue };
+    setResources(nextResources);
+    setSavingField(field);
+    const updated = await appClient.entities.CharacterSheet.update(sheet.id, { [field]: nextValue });
+    onSheetUpdated?.(updated);
+    setSavingField("");
+  };
+
+  const adjustCurrent = (currentField, maxField, delta) => {
+    const max = resources[maxField] || 0;
+    const current = resources[currentField] || 0;
+    updateResource(currentField, Math.max(0, Math.min(max || 99, current + delta)));
+  };
+
+  const rows = [
+    ["Ki Points", "ki_points_current", "ki_points_max"],
+    ["Sorcery Points", "sorcery_points_current", "sorcery_points_max"],
+  ]
+    .map(([label, currentField, maxField]) => {
+      const max = Math.max(0, Number(resources[maxField]) || 0);
+      const current = Math.min(Math.max(0, Number(resources[currentField]) || 0), max);
+      return { label, currentField, maxField, current, max };
+    })
+    .filter((resource) => resource.max > 0);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {rows.map((resource) => (
+        <div key={resource.currentField} className="border border-border rounded-sm bg-secondary/40 px-2 py-1.5 text-center min-w-[84px]">
+          <div className="text-[8px] uppercase text-muted-foreground mb-1">{resource.label}</div>
+          <div className="flex gap-1 justify-center flex-wrap">
+            {Array.from({ length: resource.max }).map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => updateResource(resource.currentField, index < resource.current ? index : index + 1)}
+                className={`w-4 h-4 rounded-full border-2 transition-colors ${
+                  index < resource.current ? "bg-accent border-accent hover:bg-accent/60" : "border-border hover:border-accent/50"
+                }`}
+              />
+            ))}
+          </div>
+          <div className={`text-[9px] text-muted-foreground mt-1 ${savingField === resource.currentField ? "opacity-60" : ""}`}>
+            {resource.current}/{resource.max}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CharacterCard({ sheet, onSheetUpdated }) {
   const [expanded, setExpanded] = useState(true);
   const [hp, setHp] = useState(sheet.hp_current ?? sheet.hp_max ?? 0);
   const [savingDeathSaves, setSavingDeathSaves] = useState(false);
@@ -210,6 +284,12 @@ function CharacterCard({ sheet }) {
   });
   const stats = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
   const spells = readCharacterSpells(sheet.spells_known);
+  const hasClassResources = Boolean(
+    sheet.ki_points_current ||
+      sheet.ki_points_max ||
+      sheet.sorcery_points_current ||
+      sheet.sorcery_points_max
+  );
 
   useEffect(() => {
     setHp(sheet.hp_current ?? sheet.hp_max ?? 0);
@@ -224,7 +304,8 @@ function CharacterCard({ sheet }) {
     const next = Math.max(0, Math.min(max, hp + delta));
     if (next === hp) return;
     setHp(next);
-    await appClient.entities.CharacterSheet.update(sheet.id, { hp_current: next });
+    const updated = await appClient.entities.CharacterSheet.update(sheet.id, { hp_current: next });
+    onSheetUpdated?.(updated);
   };
 
   const updateDeathSave = async (type, delta) => {
@@ -236,7 +317,8 @@ function CharacterCard({ sheet }) {
     const newSaves = { ...deathSaves, [key]: next };
     setDeathSaves(newSaves);
     setSavingDeathSaves(true);
-    await appClient.entities.CharacterSheet.update(sheet.id, { [field]: next });
+    const updated = await appClient.entities.CharacterSheet.update(sheet.id, { [field]: next });
+    onSheetUpdated?.(updated);
     setSavingDeathSaves(false);
   };
 
@@ -331,7 +413,7 @@ function CharacterCard({ sheet }) {
               </div>
             </div>
           )}
-          {(sheet.spells_known || sheet.spell_slots) && (
+          {(sheet.spells_known || sheet.spell_slots || hasClassResources) && (
             <div className="border-t border-border pt-2 space-y-2">
               {spells.length > 0 && (
                 <div>
@@ -342,9 +424,9 @@ function CharacterCard({ sheet }) {
                         <div className="font-medium text-foreground">
                           <span className="text-muted-foreground">{spell.level || "Cantrip"}</span> - {spell.name || "-"}
                         </div>
-                        {(spell.castingTime || spell.rangeArea || spell.components || spell.duration) && (
+                        {(spell.castingTime || spell.rangeArea || spell.hit || spell.damage || spell.components || spell.duration) && (
                           <div className="text-muted-foreground">
-                            {[spell.castingTime, spell.rangeArea, spell.components, spell.duration].filter(Boolean).join(" | ")}
+                            {[spell.castingTime, spell.rangeArea, spell.hit && `Hit ${spell.hit}`, spell.damage && `Damage ${spell.damage}`, spell.components, spell.duration].filter(Boolean).join(" | ")}
                           </div>
                         )}
                       </div>
@@ -353,10 +435,13 @@ function CharacterCard({ sheet }) {
                   </div>
                 </div>
               )}
-              {sheet.spell_slots && (
+              {(sheet.spell_slots || hasClassResources) && (
                 <div>
                   <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Spell Slots</div>
-                  <SpellSlotsEditor sheet={sheet} />
+                  <div className="space-y-2">
+                    {sheet.spell_slots && <SpellSlotsEditor sheet={sheet} onSheetUpdated={onSheetUpdated} />}
+                    {hasClassResources && <ClassResourcesEditor sheet={sheet} onSheetUpdated={onSheetUpdated} />}
+                  </div>
                 </div>
               )}
             </div>
@@ -398,6 +483,10 @@ export default function LorePanel({ onClose }) {
     const q = query.toLowerCase();
     return !q || c.name?.toLowerCase().includes(q) || c.race?.toLowerCase().includes(q) || c.class?.toLowerCase().includes(q);
   });
+  const syncUpdatedCharacter = (updated) => {
+    if (!updated?.id) return;
+    setCharacters((current) => current.map((character) => (character.id === updated.id ? updated : character)));
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -448,7 +537,7 @@ export default function LorePanel({ onClose }) {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto thin-scroll p-3 space-y-2">
+          <div className="flex-1 overflow-y-auto thin-scroll p-3 pb-28 space-y-2">
             {mainTab === "lore" && (
               <>
                 {filtered.length === 0 && (
@@ -468,7 +557,7 @@ export default function LorePanel({ onClose }) {
                     No characters found.
                   </div>
                 )}
-                {filteredChars.map((c) => <CharacterCard key={c.id} sheet={c} />)}
+                {filteredChars.map((c) => <CharacterCard key={c.id} sheet={c} onSheetUpdated={syncUpdatedCharacter} />)}
               </>
             )}
           </div>

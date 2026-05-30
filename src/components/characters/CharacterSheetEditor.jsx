@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Loader2, Eye, Lock, EyeOff, Users, Copy, Trash2 } from "lucide-react";
+import { Upload, Loader2, Eye, Lock, Users, Copy, Trash2 } from "lucide-react";
 import InventoryManager from "@/components/characters/InventoryManager";
 import AttackManager from "@/components/characters/AttackManager";
 import SpellManager from "@/components/characters/SpellManager";
@@ -44,7 +44,6 @@ const VISIBILITY_OPTIONS = [
   { value: "public", label: "Public", icon: Eye },
   { value: "specific_players", label: "Specific Players", icon: Users },
   { value: "dm_only", label: "DM Only", icon: Lock },
-  { value: "archived", label: "Archived", icon: EyeOff },
 ];
 
 const quillModules = { toolbar: [["bold", "italic"], [{ list: "bullet" }], ["clean"]] };
@@ -338,10 +337,14 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                 </div>
               </div>
             </div>
+          </section>
+
+          <section className="space-y-2">
+            <div className="text-[10px] uppercase tracking-widest text-accent font-medium">Damage Defenses</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <Field label="Damage Resistances"><Input value={form.damage_resistances || ""} onChange={(event) => set("damage_resistances", event.target.value)} placeholder="Fire, cold..." /></Field>
-              <Field label="Damage Immunities"><Input value={form.damage_immunities || ""} onChange={(event) => set("damage_immunities", event.target.value)} placeholder="Poison..." /></Field>
-              <Field label="Damage Vulnerabilities"><Input value={form.damage_vulnerabilities || ""} onChange={(event) => set("damage_vulnerabilities", event.target.value)} placeholder="Radiant..." /></Field>
+              <Field label="Resistances"><Input value={form.damage_resistances || ""} onChange={(event) => set("damage_resistances", event.target.value)} placeholder="Fire, cold..." /></Field>
+              <Field label="Immunities"><Input value={form.damage_immunities || ""} onChange={(event) => set("damage_immunities", event.target.value)} placeholder="Poison..." /></Field>
+              <Field label="Vulnerabilities"><Input value={form.damage_vulnerabilities || ""} onChange={(event) => set("damage_vulnerabilities", event.target.value)} placeholder="Radiant..." /></Field>
             </div>
           </section>
 

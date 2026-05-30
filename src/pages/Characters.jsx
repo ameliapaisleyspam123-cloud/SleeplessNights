@@ -51,6 +51,19 @@ const expandFolderPaths = (paths) => {
   return [...expanded].sort();
 };
 
+const normalizeFolderPath = (path) =>
+  String(path || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("/");
+
+const createChildFolderPath = (currentFolder, name) => {
+  const folderName = normalizeFolderPath(name);
+  if (!folderName) return "";
+  return currentFolder && currentFolder !== "all" ? normalizeFolderPath(`${currentFolder}/${folderName}`) : folderName;
+};
+
 const canEditSheet = (sheet, user, isAdmin) => {
   if (!sheet) return false;
   if (isAdmin) return true;
@@ -115,9 +128,17 @@ export default function Characters() {
     return { ...counts, [sheet.assigned_to_email]: (counts[sheet.assigned_to_email] || 0) + 1 };
   }, {});
 
+  const syncUpdatedSheet = (updated) => {
+    if (!updated?.id) return;
+    setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setAllSheets((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setViewing((current) => (current?.id === updated.id ? updated : current));
+    setEditing((current) => (current?.id === updated.id ? updated : current));
+  };
+
   const createFolder = () => {
-    const name = window.prompt("New character folder name");
-    const folderName = name?.trim();
+    const name = window.prompt(folder === "all" ? "New character folder name" : `New subfolder inside "${folder}"`);
+    const folderName = createChildFolderPath(folder, name);
     if (!folderName || !user?.campaign_id) return;
     const next = [...new Set([...emptyFolders, folderName])].sort();
     setEmptyFolders(next);
@@ -140,9 +161,9 @@ export default function Characters() {
 
   const deleteSheet = async (sheet) => {
     if (!sheet?.id) return;
-    const confirmed = window.confirm(`Delete ${sheet.name || "this character"}? This cannot be undone.`);
+    const confirmed = window.confirm(`Move ${sheet.name || "this character"} to the DM Vault archive?`);
     if (!confirmed) return;
-    await appClient.entities.CharacterSheet.delete(sheet.id);
+    await appClient.entities.CharacterSheet.update(sheet.id, { visibility: "archived" });
     setViewing(null);
     setEditing(null);
     setContextMenu(null);
@@ -191,6 +212,11 @@ export default function Characters() {
 
       <div className="border border-border bg-card/50 rounded-sm overflow-hidden">
         <div className="flex flex-wrap gap-2 border-b border-border p-3">
+          {folder !== "all" && (
+            <div className="w-full text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Current folder: <span className="font-mono normal-case tracking-normal text-foreground">{folder}</span>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setFolder("all")}
@@ -294,6 +320,7 @@ export default function Characters() {
         canEdit={canEditSheet(viewing, user, isAdmin)}
         currentUser={user}
         isDM={isAdmin}
+        onSheetUpdated={syncUpdatedSheet}
         onEdit={() => {
           if (!canEditSheet(viewing, user, isAdmin)) return;
           setEditing(viewing);

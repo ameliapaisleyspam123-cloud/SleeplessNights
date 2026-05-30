@@ -41,7 +41,7 @@ function entryWeight(entry) {
   return itemWeight(entry);
 }
 
-function InventoryTable({ items, expandedKey, makeKey, onToggle, readOnly = false, onUpdate, onRemove }) {
+function InventoryTable({ items, expandedKey, makeKey = (index) => `item-${index}`, onToggle = () => {}, readOnly = false, onUpdate, onRemove }) {
   if (items.length === 0) return null;
 
   if (readOnly) {
@@ -57,15 +57,22 @@ function InventoryTable({ items, expandedKey, makeKey, onToggle, readOnly = fals
             </tr>
           </thead>
           <tbody>
-            {items.map((item, index) => (
+            {items.map((item, index) => {
+              const key = makeKey(index);
+              return (
               <React.Fragment key={item.id || `${item.name}-${index}`}>
                 <tr className={`border-b border-border/40 last:border-0 ${item.equipped ? "bg-accent/5" : ""}`}>
-                  <td className="px-2 py-1.5 font-medium">{item.name || "-"}</td>
+                  <td className="px-2 py-1.5 font-medium">
+                    <button type="button" onClick={() => item.notes && onToggle(key)} className={`inline-flex items-center gap-1 text-left ${item.notes ? "hover:text-accent" : ""}`}>
+                      {item.notes ? (expandedKey === key ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : null}
+                      {item.name || "-"}
+                    </button>
+                  </td>
                   <td className="px-2 py-1.5 text-center text-muted-foreground">{item.qty}</td>
                   <td className="px-2 py-1.5 text-center text-muted-foreground">{item.weight || "-"}</td>
                   <td className="px-2 py-1.5 text-center">{item.equipped && <span className="text-accent text-[10px]">Yes</span>}</td>
                 </tr>
-                {item.notes && (
+                {item.notes && expandedKey === key && (
                   <tr className="border-b border-border/40 last:border-0 bg-secondary/10">
                     <td colSpan={4} className="px-2 pb-1.5 text-muted-foreground italic">
                       {item.notes}
@@ -73,7 +80,8 @@ function InventoryTable({ items, expandedKey, makeKey, onToggle, readOnly = fals
                   </tr>
                 )}
               </React.Fragment>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -126,8 +134,10 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
   const looseItems = entries.filter((entry) => !isContainer(entry));
   const containers = entries.filter(isContainer);
   const [expanded, setExpanded] = useState(null);
+  const [expandedContainers, setExpandedContainers] = useState({});
   const save = (next) => onChange?.(JSON.stringify(next));
   const toggleExpanded = (key) => setExpanded((current) => (current === key ? null : key));
+  const toggleContainer = (containerId) => setExpandedContainers((current) => ({ ...current, [containerId]: !current[containerId] }));
 
   const updateEntry = (index, field, val) => {
     save(entries.map((entry, idx) => (idx === index ? { ...entry, [field]: val } : entry)));
@@ -158,7 +168,9 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
   };
 
   const addContainer = () => {
-    save([...entries, emptyContainer()]);
+    const container = emptyContainer();
+    save([...entries, container]);
+    setExpandedContainers((current) => ({ ...current, [container.id]: true }));
   };
 
   const removeContainer = (containerId) => {
@@ -197,22 +209,30 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
           <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Inventory</div>
           {totalWeight > 0 && <div className="text-[10px] text-muted-foreground">{totalWeight.toFixed(1)} lb total</div>}
         </div>
-        {looseItems.length > 0 && <InventoryTable items={looseItems} readOnly />}
+        {looseItems.length > 0 && <InventoryTable items={looseItems} readOnly expandedKey={expanded} makeKey={(index) => `loose-${index}`} onToggle={toggleExpanded} />}
         {containers.map((container) => {
           const weight = entryWeight(container);
+          const open = Boolean(expandedContainers[container.id]);
           return (
             <div key={container.id} className="border border-border rounded-sm bg-card/50 overflow-hidden">
-              <div className="flex items-center justify-between gap-3 px-3 py-2 border-b border-border bg-secondary/30">
+              <button type="button" onClick={() => toggleContainer(container.id)} className="w-full flex items-center justify-between gap-3 px-3 py-2 border-b border-border bg-secondary/30 text-left hover:bg-secondary/50 transition-colors">
                 <div className="flex items-center gap-2 min-w-0">
+                  {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                   <Briefcase className="w-3.5 h-3.5 text-accent shrink-0" />
                   <span className="text-sm font-medium truncate">{container.name || "Container"}</span>
                 </div>
                 {weight > 0 && <span className="text-[10px] text-muted-foreground shrink-0">{weight.toFixed(1)} lb</span>}
-              </div>
-              <div className="p-2">
-                {container.items.length > 0 ? <InventoryTable items={container.items} readOnly /> : <div className="text-xs text-muted-foreground text-center py-3 border border-dashed border-border rounded-sm">Empty.</div>}
-                {container.notes && <div className="text-xs text-muted-foreground italic mt-2">{container.notes}</div>}
-              </div>
+              </button>
+              {open && (
+                <div className="p-2">
+                  {container.items.length > 0 ? (
+                    <InventoryTable items={container.items} readOnly expandedKey={expanded} makeKey={(index) => `container-${container.id}-${index}`} onToggle={toggleExpanded} />
+                  ) : (
+                    <div className="text-xs text-muted-foreground text-center py-3 border border-dashed border-border rounded-sm">Empty.</div>
+                  )}
+                  {container.notes && <div className="text-xs text-muted-foreground italic mt-2">{container.notes}</div>}
+                </div>
+              )}
             </div>
           );
         })}
@@ -260,9 +280,13 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
 
           {containers.map((container, containerIndex) => {
             const weight = entryWeight(container);
+            const open = Boolean(expandedContainers[container.id]);
             return (
               <div key={container.id} className="border border-border rounded-sm bg-card/50 overflow-hidden">
                 <div className="flex items-center gap-2 px-2 py-2 border-b border-border bg-secondary/30">
+                  <button type="button" onClick={() => toggleContainer(container.id)} className="p-1 text-muted-foreground hover:text-foreground shrink-0" title={open ? "Collapse container" : "Expand container"}>
+                    {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
                   <Briefcase className="w-3.5 h-3.5 text-accent shrink-0" />
                   <Input
                     value={container.name}
@@ -278,23 +302,25 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <div className="p-2 space-y-2">
-                  <InventoryTable
-                    items={container.items}
-                    expandedKey={expanded}
-                    makeKey={(index) => `container-${containerIndex}-${index}`}
-                    onToggle={toggleExpanded}
-                    onUpdate={(itemIndex, field, val) => updateContainedItem(container.id, itemIndex, field, val)}
-                    onRemove={(itemIndex) => removeContainedItem(container.id, itemIndex)}
-                  />
-                  {container.items.length === 0 && <div className="border border-dashed border-border rounded-sm py-4 text-center text-xs text-muted-foreground">No items in this container.</div>}
-                  <Input
-                    value={container.notes}
-                    onChange={(event) => updateEntry(entries.findIndex((entry) => entry.id === container.id), "notes", event.target.value)}
-                    placeholder="Container notes..."
-                    className="h-7 text-xs"
-                  />
-                </div>
+                {open && (
+                  <div className="p-2 space-y-2">
+                    <InventoryTable
+                      items={container.items}
+                      expandedKey={expanded}
+                      makeKey={(index) => `container-${containerIndex}-${index}`}
+                      onToggle={toggleExpanded}
+                      onUpdate={(itemIndex, field, val) => updateContainedItem(container.id, itemIndex, field, val)}
+                      onRemove={(itemIndex) => removeContainedItem(container.id, itemIndex)}
+                    />
+                    {container.items.length === 0 && <div className="border border-dashed border-border rounded-sm py-4 text-center text-xs text-muted-foreground">No items in this container.</div>}
+                    <Input
+                      value={container.notes}
+                      onChange={(event) => updateEntry(entries.findIndex((entry) => entry.id === container.id), "notes", event.target.value)}
+                      placeholder="Container notes..."
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
