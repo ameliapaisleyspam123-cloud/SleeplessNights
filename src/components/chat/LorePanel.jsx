@@ -249,24 +249,26 @@ function ClassResourcesEditor({ sheet, onSheetUpdated }) {
   if (rows.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="space-y-1">
       {rows.map((resource) => (
-        <div key={resource.currentField} className="border border-border rounded-sm bg-secondary/40 px-2 py-1.5 text-center min-w-[84px]">
-          <div className="text-[8px] uppercase text-muted-foreground mb-1">{resource.label}</div>
-          <div className="flex gap-1 justify-center flex-wrap">
-            {Array.from({ length: resource.max }).map((_, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => updateResource(resource.currentField, index < resource.current ? index : index + 1)}
-                className={`w-4 h-4 rounded-full border-2 transition-colors ${
-                  index < resource.current ? "bg-accent border-accent hover:bg-accent/60" : "border-border hover:border-accent/50"
-                }`}
-              />
-            ))}
-          </div>
-          <div className={`text-[9px] text-muted-foreground mt-1 ${savingField === resource.currentField ? "opacity-60" : ""}`}>
-            {resource.current}/{resource.max}
+        <div key={resource.currentField} className="flex items-center justify-between text-[10px]">
+          <span className="text-muted-foreground">{resource.label}:</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => adjustCurrent(resource.currentField, resource.maxField, -1)}
+              className="w-4 h-4 rounded border border-border bg-secondary/60 hover:bg-destructive/20 hover:border-destructive/50 text-muted-foreground hover:text-destructive transition-colors leading-none flex items-center justify-center"
+            >
+              <Minus className="w-2.5 h-2.5" />
+            </button>
+            <span className={`min-w-[2rem] text-center font-medium ${savingField === resource.currentField ? "text-muted-foreground" : resource.current === 0 ? "text-destructive" : "text-foreground"}`}>
+              {resource.current}/{resource.max}
+            </span>
+            <button
+              onClick={() => adjustCurrent(resource.currentField, resource.maxField, 1)}
+              className="w-4 h-4 rounded border border-border bg-secondary/60 hover:bg-accent/20 hover:border-accent/50 text-muted-foreground hover:text-accent transition-colors leading-none flex items-center justify-center"
+            >
+              <Plus className="w-2.5 h-2.5" />
+            </button>
           </div>
         </div>
       ))}

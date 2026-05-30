@@ -64,6 +64,19 @@ const createChildFolderPath = (currentFolder, name) => {
   return currentFolder && currentFolder !== "all" ? normalizeFolderPath(`${currentFolder}/${folderName}`) : folderName;
 };
 
+const visibleFolderPaths = (paths, currentFolder) =>
+  paths.filter((path) => {
+    if (currentFolder === "all") return !path.includes("/");
+    if (!path.startsWith(`${currentFolder}/`)) return false;
+    return !path.slice(currentFolder.length + 1).includes("/");
+  });
+
+const parentFolderPath = (path) => {
+  const parts = String(path || "").split("/").filter(Boolean);
+  parts.pop();
+  return parts.join("/");
+};
+
 function combatStats(combat) {
   const events = combat.events || [];
   const damage = events.filter((event) => event.type === "damage");
@@ -144,6 +157,7 @@ export default function DmVault() {
   );
   const reusableOverrides = broadcasts.filter((entry) => !entry.archived);
   const documentFolders = expandFolderPaths([...sealedDocs.map((doc) => doc.folder).filter(Boolean), ...emptyDocumentFolders]);
+  const documentFolderOptions = visibleFolderPaths(documentFolders, documentFolder);
   const filteredSealedDocs = sealedDocs.filter((doc) => documentFolder === "all" || doc.folder === documentFolder || doc.folder?.startsWith(`${documentFolder}/`));
   const uploadFolder = documentFolder === "all" ? "" : documentFolder;
 
@@ -171,18 +185,20 @@ export default function DmVault() {
 
   const deleteDocumentFolder = async (folderName) => {
     if (!folderName || !user?.campaign_id) return;
-    const count = sealedDocs.filter((doc) => doc.folder === folderName).length;
+    const affected = sealedDocs.filter((doc) => doc.folder === folderName || doc.folder?.startsWith(`${folderName}/`));
+    const destination = parentFolderPath(folderName);
+    const destinationLabel = destination || "All Documents";
     const confirmed = window.confirm(
-      count > 0
-        ? `Delete the "${folderName}" folder and move ${count} document${count === 1 ? "" : "s"} back to All Documents?`
+      affected.length > 0
+        ? `Delete the "${folderName}" folder and move ${affected.length} document${affected.length === 1 ? "" : "s"} to ${destinationLabel}?`
         : `Delete the "${folderName}" folder?`,
     );
     if (!confirmed) return;
-    await Promise.all(sealedDocs.filter((doc) => doc.folder === folderName).map((doc) => appClient.entities.Document.update(doc.id, { folder: "" })));
-    const next = emptyDocumentFolders.filter((name) => name !== folderName);
+    await Promise.all(affected.map((doc) => appClient.entities.Document.update(doc.id, { folder: destination })));
+    const next = emptyDocumentFolders.filter((name) => name !== folderName && !name.startsWith(`${folderName}/`));
     setEmptyDocumentFolders(next);
     writeEmptyFolders(user.campaign_id, next);
-    if (documentFolder === folderName) setDocumentFolder("all");
+    if (documentFolder === folderName || documentFolder.startsWith(`${folderName}/`)) setDocumentFolder(destination || "all");
     await load();
   };
 
@@ -322,7 +338,7 @@ export default function DmVault() {
                 <Folder className="w-7 h-7" strokeWidth={1.7} />
                 <span className="text-[10px] leading-tight text-center">All Documents</span>
               </button>
-              {documentFolders.map((name) => (
+              {documentFolderOptions.map((name) => (
                 <div
                   key={name}
                   className={`relative flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${documentFolder === name ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}

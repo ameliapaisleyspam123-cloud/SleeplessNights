@@ -64,6 +64,19 @@ const createChildFolderPath = (currentFolder, name) => {
   return currentFolder && currentFolder !== "all" ? normalizeFolderPath(`${currentFolder}/${folderName}`) : folderName;
 };
 
+const visibleFolderPaths = (paths, currentFolder) =>
+  paths.filter((path) => {
+    if (currentFolder === "all") return !path.includes("/");
+    if (!path.startsWith(`${currentFolder}/`)) return false;
+    return !path.slice(currentFolder.length + 1).includes("/");
+  });
+
+const parentFolderPath = (path) => {
+  const parts = String(path || "").split("/").filter(Boolean);
+  parts.pop();
+  return parts.join("/");
+};
+
 const canEditSheet = (sheet, user, isAdmin) => {
   if (!sheet) return false;
   if (isAdmin) return true;
@@ -122,6 +135,7 @@ export default function Characters() {
   const currentCampaign = campaigns.find((campaign) => campaign.id === user?.campaign_id) || null;
   const visibleItems = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
+  const folderOptions = visibleFolderPaths(folders, folder);
   const filteredItems = visibleItems.filter((item) => folder === "all" || item.folder === folder || item.folder?.startsWith(`${folder}/`));
   const userCharacterCounts = items.reduce((counts, sheet) => {
     if (!sheet.assigned_to_email) return counts;
@@ -172,18 +186,20 @@ export default function Characters() {
 
   const deleteFolder = async (folderName) => {
     if (!folderName || !user?.campaign_id) return;
-    const count = items.filter((item) => item.folder === folderName).length;
+    const affected = items.filter((item) => item.folder === folderName || item.folder?.startsWith(`${folderName}/`));
+    const destination = parentFolderPath(folderName);
+    const destinationLabel = destination || "All Characters";
     const confirmed = window.confirm(
-      count > 0
-        ? `Delete the "${folderName}" folder and move ${count} character${count === 1 ? "" : "s"} back to All Characters?`
+      affected.length > 0
+        ? `Delete the "${folderName}" folder and move ${affected.length} character${affected.length === 1 ? "" : "s"} to ${destinationLabel}?`
         : `Delete the "${folderName}" folder?`,
     );
     if (!confirmed) return;
-    await Promise.all(items.filter((item) => item.folder === folderName).map((item) => appClient.entities.CharacterSheet.update(item.id, { folder: "" })));
-    const next = emptyFolders.filter((name) => name !== folderName);
+    await Promise.all(affected.map((item) => appClient.entities.CharacterSheet.update(item.id, { folder: destination })));
+    const next = emptyFolders.filter((name) => name !== folderName && !name.startsWith(`${folderName}/`));
     setEmptyFolders(next);
     writeEmptyFolders(user.campaign_id, next);
-    if (folder === folderName) setFolder("all");
+    if (folder === folderName || folder.startsWith(`${folderName}/`)) setFolder(destination || "all");
     await load();
   };
 
@@ -225,7 +241,7 @@ export default function Characters() {
             <Folder className="w-7 h-7" strokeWidth={1.7} />
             <span className="text-[10px] leading-tight text-center">All Characters</span>
           </button>
-          {folders.map((name) => (
+          {folderOptions.map((name) => (
             <div
               key={name}
               className={`relative flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${folder === name ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
