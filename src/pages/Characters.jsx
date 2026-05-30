@@ -161,9 +161,9 @@ export default function Characters() {
 
   const deleteSheet = async (sheet) => {
     if (!sheet?.id) return;
-    const confirmed = window.confirm(`Delete ${sheet.name || "this character"}? This cannot be undone.`);
+    const confirmed = window.confirm(`Move ${sheet.name || "this character"} to the DM Vault archive?`);
     if (!confirmed) return;
-    await appClient.entities.CharacterSheet.delete(sheet.id);
+    await appClient.entities.CharacterSheet.update(sheet.id, { visibility: "archived" });
     setViewing(null);
     setEditing(null);
     setContextMenu(null);

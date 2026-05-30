@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-const PDF_DISPLAY_CORRECTION = 180;
+const PDF_DISPLAY_ROTATION = 0;
 
 export default function PdfMapCanvas({ url, className = "" }) {
   const canvasRef = useRef(null);
@@ -25,7 +25,7 @@ export default function PdfMapCanvas({ url, className = "" }) {
         const page = await pdf.getPage(1);
         if (cancelled) return;
 
-        const normalizedRotation = PDF_DISPLAY_CORRECTION;
+        const normalizedRotation = PDF_DISPLAY_ROTATION;
         const turnsSideways = normalizedRotation === 90 || normalizedRotation === 270;
         const container = wrapRef.current.getBoundingClientRect();
         const baseViewport = page.getViewport({ scale: 1 });
@@ -91,7 +91,7 @@ export default function PdfMapCanvas({ url, className = "" }) {
           ref={canvasRef}
           className="absolute left-1/2 top-1/2 block max-w-none"
           style={{
-            transform: `translate(-50%, -50%) rotate(${PDF_DISPLAY_CORRECTION}deg)`,
+            transform: `translate(-50%, -50%) rotate(${PDF_DISPLAY_ROTATION}deg)`,
             transformOrigin: "center center",
           }}
         />

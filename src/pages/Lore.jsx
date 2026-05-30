@@ -95,8 +95,8 @@ export default function Lore() {
 
   const deleteEntry = async (entry) => {
     if (!entry?.id) return;
-    if (!window.confirm(`Delete "${entry.title}" from Lore & Maps?`)) return;
-    await appClient.entities.LoreEntry.delete(entry.id);
+    if (!window.confirm(`Move "${entry.title}" to the DM Vault archive?`)) return;
+    await appClient.entities.LoreEntry.update(entry.id, { visibility: "archived" });
     if (viewing?.id === entry.id) setViewing(null);
     if (editing?.id === entry.id) setEditing(null);
     await load();

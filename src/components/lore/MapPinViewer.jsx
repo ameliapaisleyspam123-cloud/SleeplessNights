@@ -80,6 +80,12 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   }, [entry?.id]);
 
   useEffect(() => {
+    if (!pdfSrc || !showPdfHint) return undefined;
+    const timeoutId = window.setTimeout(() => setShowPdfHint(false), 2000);
+    return () => window.clearTimeout(timeoutId);
+  }, [pdfSrc, showPdfHint]);
+
+  useEffect(() => {
     const surface = mapSurfaceRef.current;
     if (!surface) return undefined;
     const handleWheel = (event) => {

@@ -217,10 +217,19 @@ export default function DmVault() {
 
   const deleteLore = async (entry) => {
     if (!entry?.id) return;
-    if (!window.confirm(`Delete "${entry.title}" from the vault?`)) return;
+    if (!window.confirm(`Permanently delete "${entry.title}" from the vault? This cannot be undone.`)) return;
     await appClient.entities.LoreEntry.delete(entry.id);
     setViewingLore(null);
     setEditingLore(null);
+    await load();
+  };
+
+  const deleteCharacter = async (entry) => {
+    if (!entry?.id) return;
+    if (!window.confirm(`Permanently delete ${entry.name || "this character"} from the vault? This cannot be undone.`)) return;
+    await appClient.entities.CharacterSheet.delete(entry.id);
+    setViewingCharacter(null);
+    setEditingCharacter(null);
     await load();
   };
 
@@ -453,8 +462,8 @@ export default function DmVault() {
                 <Archive className="w-4 h-4 text-muted-foreground" />
               </div>
             ))}
-            <ArchiveSection title="Archived Lore Entries" items={archivedLore} empty="No archived lore entries." onRestore={restoreLore} onOpen={setViewingLore} />
-            <ArchiveSection title="Archived Characters" items={archivedCharacters} empty="No archived characters." onRestore={restoreCharacter} onOpen={setViewingCharacter} nameKey="name" />
+            <ArchiveSection title="Archived Lore Entries" items={archivedLore} empty="No archived lore entries." onRestore={restoreLore} onDelete={deleteLore} onOpen={setViewingLore} />
+            <ArchiveSection title="Archived Characters" items={archivedCharacters} empty="No archived characters." onRestore={restoreCharacter} onDelete={deleteCharacter} onOpen={setViewingCharacter} nameKey="name" />
           </div>
         </VaultPanel>
       )}
@@ -548,7 +557,7 @@ function StatTile({ icon: Icon, label, value }) {
   );
 }
 
-function ArchiveSection({ title, items, empty, onRestore, onOpen, nameKey = "title" }) {
+function ArchiveSection({ title, items, empty, onRestore, onDelete, onOpen, nameKey = "title" }) {
   return (
     <section>
       <div className="text-[10px] uppercase tracking-widest text-accent font-medium mb-3">{title}</div>
@@ -562,9 +571,14 @@ function ArchiveSection({ title, items, empty, onRestore, onOpen, nameKey = "tit
                 <div className="font-medium truncate">{item[nameKey] || "Untitled"}</div>
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">{shortDate(item.updated_date || item.created_date)}</div>
               </button>
-              <Button size="sm" variant="ghost" onClick={() => onRestore(item)}>
-                Restore
-              </Button>
+              <div className="flex gap-2 shrink-0">
+                <Button size="sm" variant="ghost" onClick={() => onRestore(item)}>
+                  Restore
+                </Button>
+                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => onDelete?.(item)}>
+                  Delete
+                </Button>
+              </div>
             </div>
           ))}
         </div>
