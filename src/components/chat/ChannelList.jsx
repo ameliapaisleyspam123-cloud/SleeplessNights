@@ -58,16 +58,16 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="px-4 py-4 border-b border-border shrink-0">
+      <div className="hidden lg:block px-4 py-4 border-b border-border shrink-0">
         <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Channels
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto thin-scroll">
+      <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden lg:overflow-x-hidden lg:overflow-y-auto thin-scroll flex lg:block">
         <button
           onClick={() => handleSelect({ type: "group" })}
-          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary transition-colors ${
+          className={`w-44 lg:w-full shrink-0 flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary transition-colors ${
             activeChannel?.type === "group" ? "bg-secondary" : ""
           }`}
         >
@@ -80,12 +80,12 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
           </div>
         </button>
 
-        <div className="px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        <div className="shrink-0 flex items-center px-3 lg:px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Whispers
         </div>
 
         {others.length === 0 && (
-          <div className="px-4 py-2 text-xs text-muted-foreground">
+          <div className="shrink-0 px-4 py-2 text-xs text-muted-foreground">
             No other members yet.
           </div>
         )}
@@ -102,7 +102,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
             <button
               key={u.id || u.email}
               onClick={() => handleSelect(ch)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary transition-colors ${
+              className={`w-52 lg:w-full shrink-0 flex items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary transition-colors ${
                 active ? "bg-secondary" : ""
               }`}
             >
@@ -159,7 +159,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
 
           return (
             <>
-              <div className="px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground border-t border-border mt-1">
+              <div className="shrink-0 flex items-center px-3 lg:px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground lg:border-t border-border lg:mt-1">
                 Player Whispers
               </div>
 
@@ -177,7 +177,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
                         name: `${a.display_name || a.full_name} ↔ ${b.display_name || b.full_name}`,
                       })
                     }
-                    className={`w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-secondary transition-colors ${
+                    className={`w-52 lg:w-full shrink-0 flex items-center gap-3 px-4 py-2 text-left hover:bg-secondary transition-colors ${
                       active ? "bg-secondary" : ""
                     }`}
                   >

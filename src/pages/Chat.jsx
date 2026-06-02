@@ -61,35 +61,43 @@ export default function Chat() {
   }, [users, currentUser?.email]);
 
   const isAdmin = currentUser?.campaign_role === "dm" || currentUser?.role === "admin";
+  const openSidePanel = () => setSideOpen(true);
+  const closeSidePanel = () => setSideOpen(false);
 
   return (
     <div className="h-[calc(100dvh-3.5rem)] lg:h-screen flex flex-col overflow-hidden">
-      <div className="px-4 sm:px-6 lg:px-10 pt-4 lg:pt-8 pb-3 border-b border-border/60 shrink-0">
+      <div className="px-4 sm:px-6 lg:px-10 pt-3 lg:pt-8 pb-3 border-b border-border/60 shrink-0">
         <PageHeader
           eyebrow="Correspondence"
           title="Correspondence"
           description="Convene with the hall, or whisper to a single soul."
           action={
-            !sideOpen && (
-              <Button variant="outline" onClick={() => setSideOpen(true)}>
+            <Button variant="outline" onClick={openSidePanel} className={`${sideOpen ? "lg:hidden" : ""}`}>
                 <ScrollText className="w-4 h-4" /> Lore & Characters
               </Button>
-            )
           }
         />
       </div>
 
-      <div className={`min-h-0 flex-1 grid overflow-hidden ${sideOpen ? "grid-cols-1 grid-rows-[auto_minmax(0,1fr)_minmax(16rem,42vh)] lg:grid-rows-none lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)_minmax(0,340px)] xl:grid-cols-[minmax(0,296px)_minmax(0,1fr)_minmax(0,376px)]" : "grid-cols-1 grid-rows-[auto_minmax(0,1fr)] md:grid-rows-none md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]"}`}>
-        <aside className="border-b lg:border-b-0 lg:border-r border-border min-h-0 max-h-48 lg:max-h-none overflow-hidden">
-        <ChannelList users={users} currentUser={currentUser} activeChannel={activeChannel} onSelect={setActiveChannel} isAdmin={isAdmin} />
+      <div className={`min-h-0 flex-1 grid overflow-hidden ${sideOpen ? "grid-cols-1 grid-rows-[5.5rem_minmax(0,1fr)] lg:grid-rows-none lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)_minmax(0,340px)] xl:grid-cols-[minmax(0,296px)_minmax(0,1fr)_minmax(0,376px)]" : "grid-cols-1 grid-rows-[5.5rem_minmax(0,1fr)] md:grid-rows-none md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]"}`}>
+        <aside className="border-b lg:border-b-0 lg:border-r border-border min-h-0 overflow-hidden">
+          <ChannelList users={users} currentUser={currentUser} activeChannel={activeChannel} onSelect={setActiveChannel} isAdmin={isAdmin} />
         </aside>
         <ChatWindow activeChannel={activeChannel} currentUser={currentUser} users={users} isAdmin={isAdmin} />
         {sideOpen && (
-          <aside className="flex min-h-0 border-t lg:border-t-0 lg:border-l border-border bg-card/30 overflow-hidden">
-            <LorePanel onClose={() => setSideOpen(false)} />
+          <aside className="hidden lg:flex min-h-0 border-l border-border bg-card/30 overflow-hidden">
+            <LorePanel onClose={closeSidePanel} />
           </aside>
         )}
       </div>
+      {sideOpen && (
+        <div className="fixed inset-0 z-[70] flex lg:hidden">
+          <button type="button" className="absolute inset-0 bg-black/70" onClick={closeSidePanel} aria-label="Close lore panel" />
+          <aside className="relative ml-auto flex h-full w-[min(24rem,92vw)] min-h-0 border-l border-border bg-background shadow-2xl">
+            <LorePanel onClose={closeSidePanel} />
+          </aside>
+        </div>
+      )}
       {showAdminToast && (
         <div className="fixed left-1/2 top-20 z-[80] -translate-x-1/2 rounded-sm border border-accent/60 bg-background/95 px-4 py-3 text-sm font-medium text-foreground shadow-2xl">
           Admin is here
