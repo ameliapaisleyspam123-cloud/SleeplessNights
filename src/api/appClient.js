@@ -686,6 +686,7 @@ function entityApi(entity) {
       return true;
     },
     subscribe(callback) {
+      startRealtimeSync();
       const set = subscribers.get(entity) || new Set();
       set.add(callback);
       subscribers.set(entity, set);

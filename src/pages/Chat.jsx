@@ -28,6 +28,21 @@ export default function Chat() {
   }, []);
 
   useEffect(() => {
+    if (!currentUser?.campaign_id) return undefined;
+    const unsubscribe = appClient.entities.User.subscribe((event) => {
+      const user = event.data;
+      if (!user?.id || user.campaign_id !== currentUser.campaign_id) return;
+      setUsers((current) => {
+        const exists = current.some((item) => item.id === user.id || item.email === user.email);
+        if (!exists) return [...current, user].sort((a, b) => String(a.display_name || a.full_name || a.email).localeCompare(String(b.display_name || b.full_name || b.email)));
+        return current.map((item) => (item.id === user.id || item.email === user.email ? user : item));
+      });
+      if (user.id === currentUser.id) setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, [currentUser?.campaign_id, currentUser?.id]);
+
+  useEffect(() => {
     if (!currentUser?.id) return undefined;
     let cancelled = false;
     const markActive = async () => {
