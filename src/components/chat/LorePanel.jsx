@@ -462,6 +462,7 @@ export default function LorePanel({ onClose }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("all");
   const [tag, setTag] = useState("all");
+  const [showTags, setShowTags] = useState(false);
   const [mainTab, setMainTab] = useState("lore");
   const { user } = useCampaign();
 
@@ -546,27 +547,44 @@ export default function LorePanel({ onClose }) {
                   ))}
                 </div>
                 {tags.length > 0 && (
-                  <div className="flex items-center gap-1 overflow-x-auto thin-scroll pb-1">
-                    <Tag className="w-3 h-3 text-accent shrink-0" />
+                  <div className="space-y-1.5 min-w-0">
                     <button
-                      onClick={() => setTag("all")}
-                      className={`px-2 py-1 text-[10px] rounded-sm border whitespace-nowrap transition-all ${
-                        tag === "all" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"
+                      type="button"
+                      onClick={() => setShowTags((value) => !value)}
+                      className={`px-2 py-1 text-[10px] rounded-sm border whitespace-nowrap transition-all inline-flex items-center gap-1.5 ${
+                        showTags || tag !== "all" ? "bg-primary/15 text-accent border-primary" : "border-border text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      All tags
+                      <Tag className="w-3 h-3" />
+                      {tag === "all" ? `Tags (${tags.length})` : tag}
                     </button>
-                    {tags.map((entryTag) => (
-                      <button
-                        key={entryTag}
-                        onClick={() => setTag(entryTag)}
-                        className={`px-2 py-1 text-[10px] rounded-sm border whitespace-nowrap transition-all ${
-                          tag === entryTag ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {entryTag}
-                      </button>
-                    ))}
+                    {showTags && (
+                      <div className="max-w-full overflow-x-auto overflow-y-hidden thin-scroll pb-2">
+                        <div className="inline-flex min-w-max items-center gap-1 pr-2">
+                          <button
+                            type="button"
+                            onClick={() => setTag("all")}
+                            className={`px-2 py-1 text-[10px] rounded-sm border whitespace-nowrap transition-all ${
+                              tag === "all" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            All tags
+                          </button>
+                          {tags.map((entryTag) => (
+                            <button
+                              type="button"
+                              key={entryTag}
+                              onClick={() => setTag(entryTag)}
+                              className={`px-2 py-1 text-[10px] rounded-sm border whitespace-nowrap transition-all ${
+                                tag === entryTag ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              {entryTag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </>

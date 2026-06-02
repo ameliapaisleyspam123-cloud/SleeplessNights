@@ -78,6 +78,7 @@ export default function Lore() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [tag, setTag] = useState("all");
+  const [showTags, setShowTags] = useState(false);
   const [folder, setFolder] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -211,29 +212,42 @@ export default function Lore() {
           </div>
 
           {tags.length > 0 && (
-            <div className="flex items-center gap-2 overflow-x-auto thin-scroll pb-1">
-              <Tag className="w-3.5 h-3.5 text-accent shrink-0" />
+            <div className="space-y-2">
               <button
                 type="button"
-                onClick={() => setTag("all")}
-                className={`h-8 px-3 rounded-sm border text-[10px] uppercase tracking-[0.18em] whitespace-nowrap transition-all ${
-                  tag === "all" ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                onClick={() => setShowTags((value) => !value)}
+                className={`h-9 px-3 rounded-sm border text-[10px] uppercase tracking-[0.18em] whitespace-nowrap transition-all inline-flex items-center gap-2 ${
+                  showTags || tag !== "all" ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
-                All tags
+                <Tag className="w-3.5 h-3.5" />
+                {tag === "all" ? `Tags (${tags.length})` : `Tag: ${tag}`}
               </button>
-              {tags.map((itemTag) => (
-                <button
-                  key={itemTag}
-                  type="button"
-                  onClick={() => setTag(itemTag)}
-                  className={`h-8 px-3 rounded-sm border text-xs whitespace-nowrap transition-all ${
-                    tag === itemTag ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {itemTag}
-                </button>
-              ))}
+              {showTags && (
+                <div className="flex items-center gap-2 overflow-x-auto thin-scroll pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setTag("all")}
+                    className={`h-8 px-3 rounded-sm border text-[10px] uppercase tracking-[0.18em] whitespace-nowrap transition-all ${
+                      tag === "all" ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    All tags
+                  </button>
+                  {tags.map((itemTag) => (
+                    <button
+                      key={itemTag}
+                      type="button"
+                      onClick={() => setTag(itemTag)}
+                      className={`h-8 px-3 rounded-sm border text-xs whitespace-nowrap transition-all ${
+                        tag === itemTag ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {itemTag}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
