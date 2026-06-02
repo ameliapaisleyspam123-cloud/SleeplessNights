@@ -214,55 +214,60 @@ function HpBlock({ hp, hpMax, hpTemp, onSave }) {
   };
 
   return (
-    <div className="border border-border rounded-sm bg-card p-3 col-span-3 sm:col-span-2 lg:col-span-2">
-      <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1">
-        <Heart className="w-3 h-3" /> Hit Points
-      </div>
-      <div className="w-full h-2 bg-secondary rounded-full mb-2 overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
-      </div>
-      <div className="flex items-center gap-2 mb-2">
-        <button onClick={() => adjustCurrent(-1)} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
-          <Minus className="w-4 h-4" />
-        </button>
-        <div className="flex-1 text-center">
-          <span className="font-display text-3xl leading-none">{current}</span>
-          <span className="text-muted-foreground text-sm">/{hpMax}</span>
+    <>
+      <div className="border border-border rounded-sm bg-card p-3 col-span-3 sm:col-span-3">
+        <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1">
+          <Heart className="w-3 h-3" /> Hit Points
         </div>
-        <button onClick={() => adjustCurrent(1)} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
-          <Plus className="w-4 h-4" />
-        </button>
+        <div className="w-full h-2 bg-secondary rounded-full mb-2 overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+        </div>
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => adjustCurrent(-1)} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
+            <Minus className="w-4 h-4" />
+          </button>
+          <div className="flex-1 text-center">
+            <span className="font-display text-3xl leading-none">{current}</span>
+            <span className="text-muted-foreground text-sm">/{hpMax}</span>
+          </div>
+          <button onClick={() => adjustCurrent(1)} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-muted-foreground uppercase tracking-widest shrink-0">Temp HP</span>
+          <button onClick={() => setTemp((value) => Math.max(0, value - 1))} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
+            <Minus className="w-3 h-3" />
+          </button>
+          <span className="text-sm font-medium w-8 text-center">{temp}</span>
+          <button onClick={() => setTemp((value) => value + 1)} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
+            <Plus className="w-3 h-3" />
+          </button>
+          <button onClick={handleSave} disabled={saving} className="ml-auto text-[11px] px-3 py-2 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50">
+            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
+          </button>
+        </div>
       </div>
-      <div className="grid grid-cols-[1fr_auto_auto] gap-2 mb-2">
+      <div className="border border-border rounded-sm bg-card p-3 col-span-3 sm:col-span-2">
+        <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-2">Damage / Heal</div>
         <input
           type="number"
           min={1}
           value={amount}
           onChange={(event) => setAmount(Math.max(1, Number(event.target.value) || 1))}
-          className="h-9 rounded-sm border border-border bg-background px-2 text-center text-sm text-foreground"
+          className="h-10 w-full rounded-sm border border-border bg-background px-2 text-center text-sm text-foreground mb-2"
           aria-label="Hit point adjustment amount"
         />
-        <button onClick={() => adjustCurrent(-amount)} className="h-9 px-3 rounded-sm border border-border text-xs text-muted-foreground hover:text-destructive hover:border-destructive/60 transition-colors">
-          Damage
-        </button>
-        <button onClick={() => adjustCurrent(amount)} className="h-9 px-3 rounded-sm border border-border text-xs text-muted-foreground hover:text-accent hover:border-accent/60 transition-colors">
-          Heal
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => adjustCurrent(-amount)} className="h-10 rounded-sm border border-border text-xs text-muted-foreground hover:text-destructive hover:border-destructive/60 transition-colors">
+            Damage
+          </button>
+          <button onClick={() => adjustCurrent(amount)} className="h-10 rounded-sm border border-border text-xs text-muted-foreground hover:text-accent hover:border-accent/60 transition-colors">
+            Heal
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-[9px] text-muted-foreground uppercase tracking-widest shrink-0">Temp HP</span>
-        <button onClick={() => setTemp((value) => Math.max(0, value - 1))} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
-          <Minus className="w-3 h-3" />
-        </button>
-        <span className="text-sm font-medium w-8 text-center">{temp}</span>
-        <button onClick={() => setTemp((value) => value + 1)} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
-          <Plus className="w-3 h-3" />
-        </button>
-        <button onClick={handleSave} disabled={saving} className="ml-auto text-[11px] px-3 py-2 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50">
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
 
