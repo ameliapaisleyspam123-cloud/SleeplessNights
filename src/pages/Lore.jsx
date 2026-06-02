@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
-import { Folder, Grid2X2, List, MoveRight, Plus, Search } from "lucide-react";
+import { Folder, Grid2X2, List, MoveRight, Plus, Search, Trash2 } from "lucide-react";
 
 const CATEGORIES = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
 
@@ -54,6 +54,19 @@ const createChildFolderPath = (currentFolder, name) => {
   return currentFolder && currentFolder !== "all" ? normalizeFolderPath(`${currentFolder}/${folderName}`) : folderName;
 };
 
+const visibleFolderPaths = (paths, currentFolder) =>
+  paths.filter((path) => {
+    if (currentFolder === "all") return !path.includes("/");
+    if (!path.startsWith(`${currentFolder}/`)) return false;
+    return !path.slice(currentFolder.length + 1).includes("/");
+  });
+
+const parentFolderPath = (path) => {
+  const parts = String(path || "").split("/").filter(Boolean);
+  parts.pop();
+  return parts.join("/");
+};
+
 export default function Lore() {
   const [items, setItems] = useState([]);
   const [campaignId, setCampaignId] = useState("");
@@ -84,6 +97,7 @@ export default function Lore() {
   }, []);
 
   const folders = expandFolderPaths([...items.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
+  const folderOptions = visibleFolderPaths(folders, folder);
   const visibleItems = items.filter((item) => canViewVisibleItem(item, currentUser, isAdmin));
   const filtered = visibleItems.filter((item) => {
     const q = query.trim().toLowerCase();
@@ -122,6 +136,25 @@ export default function Lore() {
     }
     setMoving(null);
     setContextMenu(null);
+    await load();
+  };
+
+  const deleteFolder = async (folderName) => {
+    if (!folderName || !campaignId) return;
+    const affected = items.filter((item) => item.folder === folderName || item.folder?.startsWith(`${folderName}/`));
+    const destination = parentFolderPath(folderName);
+    const destinationLabel = destination || "All Lore";
+    const confirmed = window.confirm(
+      affected.length > 0
+        ? `Delete the "${folderName}" folder and move ${affected.length} lore entr${affected.length === 1 ? "y" : "ies"} to ${destinationLabel}?`
+        : `Delete the "${folderName}" folder?`,
+    );
+    if (!confirmed) return;
+    await Promise.all(affected.map((item) => appClient.entities.LoreEntry.update(item.id, { folder: destination })));
+    const next = emptyFolders.filter((name) => name !== folderName && !name.startsWith(`${folderName}/`));
+    setEmptyFolders(next);
+    writeEmptyFolders(campaignId, next);
+    if (folder === folderName || folder.startsWith(`${folderName}/`)) setFolder(destination || "all");
     await load();
   };
 
@@ -189,17 +222,29 @@ export default function Lore() {
                 <Folder className="w-7 h-7" strokeWidth={1.7} />
                 <span className="text-[10px] leading-tight text-center">All Lore</span>
               </button>
-              {folders.map((name) => (
-                <button
+              {folderOptions.map((name) => (
+                <div
                   key={name}
-                  type="button"
-                  onClick={() => setFolder(name)}
-                  className={`flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${folder === name ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
+                  className={`relative flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${folder === name ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
                   title={name}
                 >
+                  <button type="button" onClick={() => setFolder(name)} className="absolute inset-0" aria-label={`Open ${name}`} />
                   <Folder className="w-7 h-7" strokeWidth={1.7} />
                   <span className="text-[10px] leading-tight text-center max-w-20 break-words">{name.split("/").pop()}</span>
-                </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deleteFolder(name);
+                      }}
+                      className="absolute top-1 right-1 z-10 p-1 rounded-sm text-muted-foreground hover:text-destructive hover:bg-background/80"
+                      title="Delete folder"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               ))}
               {isAdmin && (
                 <button

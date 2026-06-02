@@ -125,6 +125,12 @@ export function isGlobalAdminEmail(email) {
   return normalizeEmail(email) === GLOBAL_ADMIN_EMAIL;
 }
 
+function stableUserId(email) {
+  const cleanEmail = normalizeEmail(email);
+  const safeEmail = cleanEmail.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return safeEmail ? `user_${safeEmail}` : id("user");
+}
+
 function setCachedStore(store) {
   cachedStore = normalizeStore(store);
   cachedStoreAt = Date.now();
@@ -147,9 +153,37 @@ function recordKey(entity, recordId) {
   return `${entity}:${recordId}`;
 }
 
+function dedupeUsers(users = []) {
+  const byEmail = new Map();
+  const withoutEmail = [];
+
+  for (const user of users) {
+    if (!user?.email) {
+      withoutEmail.push(user);
+      continue;
+    }
+    const email = normalizeEmail(user.email);
+    const existing = byEmail.get(email);
+    const next = existing ? newerRecord(existing, user) : user;
+    byEmail.set(email, {
+      ...next,
+      email,
+      display_name: next.display_name || next.full_name || email,
+      full_name: next.full_name || next.display_name || email,
+    });
+  }
+
+  return [...withoutEmail, ...byEmail.values()];
+}
+
+function dedupeRecords(entity, records = []) {
+  if (entity === "User") return dedupeUsers(records);
+  return records;
+}
+
 function normalizeStore(store) {
   const normalized = emptyStore();
-  for (const name of ENTITY_NAMES) normalized[name] = Array.isArray(store?.[name]) ? store[name] : [];
+  for (const name of ENTITY_NAMES) normalized[name] = dedupeRecords(name, Array.isArray(store?.[name]) ? store[name] : []);
   return normalized;
 }
 
@@ -267,7 +301,7 @@ function ensureGlobalAdmin(store) {
 
   if (adminIndex === -1) {
     next.User.push({
-      id: id("user"),
+      id: stableUserId(GLOBAL_ADMIN_EMAIL),
       email: GLOBAL_ADMIN_EMAIL,
       full_name: "Amelia",
       display_name: "Amelia",
@@ -522,7 +556,7 @@ async function readRemoteEntity(entity, query = {}, sort = "-created_date", limi
     });
     const { data, error } = await request.limit(Math.max(limit * 3, limit, 100));
     if (error) throw error;
-    const records = sortRecords((data || []).map((row) => row.data).filter(Boolean).filter((record) => matches(record, query)), sort).slice(0, limit);
+    const records = sortRecords(dedupeRecords(entity, (data || []).map((row) => row.data).filter(Boolean).filter((record) => matches(record, query))), sort).slice(0, limit);
     entityQueryCache.set(cacheKey, { at: Date.now(), records });
     syncStatus = {
       configured: true,
@@ -751,7 +785,7 @@ export const appClient = {
       if (!password?.trim()) throw new Error("Password is required");
       if (findUserByEmail(store, cleanEmail)) throw new Error("An account already exists for this email");
       const user = {
-        id: id("user"),
+        id: stableUserId(cleanEmail),
         email: cleanEmail,
         password,
         full_name: full_name || display_name || cleanEmail,

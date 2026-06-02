@@ -36,7 +36,7 @@ const ALL_SKILLS = [
 function RichText({ content }) {
   if (!content) return null;
   const looksHtml = /<\/?[a-z][\s\S]*>/i.test(content);
-  if (looksHtml) return <div className="text-sm leading-relaxed border border-border rounded-sm bg-secondary/20 p-3" dangerouslySetInnerHTML={{ __html: content }} />;
+  if (looksHtml) return <div className="rich-content text-sm leading-relaxed border border-border rounded-sm bg-secondary/20 p-3" dangerouslySetInnerHTML={{ __html: content }} />;
   return <div className="text-sm leading-relaxed whitespace-pre-wrap border border-border rounded-sm bg-secondary/20 p-3">{content}</div>;
 }
 

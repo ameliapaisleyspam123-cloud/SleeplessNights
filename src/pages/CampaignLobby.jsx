@@ -9,6 +9,14 @@ import { ArrowRight, Check, Copy, Dices, LogIn, RefreshCw, Shield, Swords, UserP
 
 const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+function normalizeEmail(email = "") {
+  return email.trim().toLowerCase();
+}
+
+function uniqueEmails(emails = []) {
+  return [...new Set(emails.map(normalizeEmail).filter(Boolean))];
+}
+
 function makeCode() {
   return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
 }
@@ -103,6 +111,11 @@ export default function CampaignLobby() {
     if (isGlobalAdmin) return campaigns;
     return campaigns.filter((campaign) => campaign.dm_email === activeEmail || campaign.player_emails?.includes(activeEmail) || campaign.id === user?.campaign_id);
   }, [activeEmail, campaigns, user, isGlobalAdmin]);
+  const joinPreviewCampaign = useMemo(() => {
+    const code = joinCode.trim().toUpperCase();
+    if (!code) return null;
+    return campaigns.find((item) => item.dm_code === code || item.player_code === code) || null;
+  }, [campaigns, joinCode]);
 
   const loginDetails = () => ({
     email: user?.email || email.trim().toLowerCase(),
@@ -214,10 +227,13 @@ export default function CampaignLobby() {
     }
 
     const role = campaign.dm_code === code ? "dm" : "player";
-    if (role === "player" && !campaign.player_emails?.includes(login.email)) {
+    const playerEmails = uniqueEmails(campaign.player_emails || []);
+    if (role === "player" && !playerEmails.includes(login.email)) {
       await appClient.entities.Campaign.update(campaign.id, {
-        player_emails: [...(campaign.player_emails || []), login.email],
+        player_emails: [...playerEmails, login.email],
       });
+    } else if (role === "player" && playerEmails.length !== (campaign.player_emails || []).length) {
+      await appClient.entities.Campaign.update(campaign.id, { player_emails: playerEmails });
     }
 
     await enterCampaign(campaign, role);
@@ -317,6 +333,9 @@ export default function CampaignLobby() {
                   <div className="min-w-0 flex-1">
                     <div className="text-lg font-semibold text-foreground leading-snug">{campaign.name}</div>
                     <div className="text-sm text-muted-foreground mt-0.5">{role}</div>
+                    {campaign.description?.trim() && (
+                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{campaign.description}</p>
+                    )}
                   </div>
                   <ArrowRight className="w-5 h-5 text-muted-foreground shrink-0" />
                 </button>
@@ -347,6 +366,17 @@ export default function CampaignLobby() {
                   <Field label="Enter Code">
                     <Input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="ABCXYZ" className="text-center font-mono tracking-[0.35em] uppercase" />
                   </Field>
+                  {joinPreviewCampaign && (
+                    <div className="border border-border bg-card/70 rounded-sm p-4">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-accent mb-1">Campaign Preview</div>
+                      <div className="text-lg font-semibold text-foreground">{joinPreviewCampaign.name}</div>
+                      {joinPreviewCampaign.description?.trim() ? (
+                        <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{joinPreviewCampaign.description}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mt-2 italic">No description provided.</p>
+                      )}
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">DM code joins as Dungeon Master. Player code joins as a Player.</p>
                   <Button className="w-full h-12 text-base" onClick={joinCampaign}>
                     <Dices className="w-5 h-5" /> Enter the Realm

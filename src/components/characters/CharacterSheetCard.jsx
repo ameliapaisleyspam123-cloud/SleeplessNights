@@ -4,8 +4,23 @@ import { Shield, Swords, Zap, Lock, EyeOff } from "lucide-react";
 
 const STAT_MOD = (v) => Math.floor((v - 10) / 2);
 const fmtMod = (m) => (m >= 0 ? `+${m}` : `${m}`);
+const STATS = [
+  ["strength", "STR"],
+  ["dexterity", "DEX"],
+  ["constitution", "CON"],
+  ["intelligence", "INT"],
+  ["wisdom", "WIS"],
+  ["charisma", "CHA"],
+];
+
+function highestStat(sheet) {
+  return STATS.map(([key, label]) => ({ key, label, value: Number(sheet[key]) || 0 }))
+    .sort((a, b) => b.value - a.value || STATS.findIndex(([key]) => key === a.key) - STATS.findIndex(([key]) => key === b.key))[0];
+}
 
 export default function CharacterSheetCard({ sheet, onClick, onContextMenu, action }) {
+  const topStat = highestStat(sheet);
+
   return (
     <div
       onContextMenu={
@@ -52,8 +67,8 @@ export default function CharacterSheetCard({ sheet, onClick, onContextMenu, acti
           </div>
           <div className="flex flex-col items-center p-1.5 rounded-sm bg-secondary/60 text-center">
             <Swords className="w-3 h-3 text-accent mb-0.5" />
-            <span className="text-xs font-bold">{sheet.strength ? fmtMod(STAT_MOD(sheet.strength)) : "-"}</span>
-            <span className="text-[9px] text-muted-foreground">STR</span>
+            <span className="text-xs font-bold">{topStat?.value ? fmtMod(STAT_MOD(topStat.value)) : "-"}</span>
+            <span className="text-[9px] text-muted-foreground">{topStat?.label || "STAT"}</span>
           </div>
         </div>
       </button>

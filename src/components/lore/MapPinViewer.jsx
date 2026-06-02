@@ -27,7 +27,6 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [createdEntries, setCreatedEntries] = useState([]);
-  const [pdfSrc, setPdfSrc] = useState(entry?.pdf_url || "");
   const [showPdfHint, setShowPdfHint] = useState(true);
   const [mapZoom, setMapZoom] = useState(1);
   const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
@@ -45,35 +44,7 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   );
   const loreById = useMemo(() => new Map(availableEntries.map((item) => [item.id, item])), [availableEntries]);
 
-  useEffect(() => {
-    let objectUrl = "";
-    let cancelled = false;
-
-    const preparePdf = async () => {
-      if (!entry?.pdf_url) {
-        setPdfSrc("");
-        return;
-      }
-      if (!entry.pdf_url.startsWith("data:application/pdf")) {
-        setPdfSrc(entry.pdf_url);
-        return;
-      }
-      try {
-        const blob = await fetch(entry.pdf_url).then((response) => response.blob());
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        setPdfSrc(objectUrl);
-      } catch {
-        if (!cancelled) setPdfSrc(entry.pdf_url);
-      }
-    };
-
-    preparePdf();
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [entry?.pdf_url]);
+  const pdfSrc = entry?.pdf_url || "";
 
   useEffect(() => {
     setOverlayEntry(null);
@@ -202,7 +173,7 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
             {hasImage ? (
               <img src={entry.image_url} alt="" className="absolute inset-0 w-full h-full object-contain bg-background" draggable={false} />
             ) : pdfSrc ? (
-              <PdfMapCanvas url={pdfSrc} />
+              <PdfMapCanvas url={pdfSrc} rotation={180} />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{hasPdf ? "Loading PDF..." : "No map file attached."}</div>
             )}

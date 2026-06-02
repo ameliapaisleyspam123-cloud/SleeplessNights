@@ -44,6 +44,19 @@ const createChildFolderPath = (currentFolder, name) => {
   return currentFolder && currentFolder !== "all" ? normalizeFolderPath(`${currentFolder}/${folderName}`) : folderName;
 };
 
+const visibleFolderPaths = (paths, currentFolder) =>
+  paths.filter((path) => {
+    if (currentFolder === "all") return !path.includes("/");
+    if (!path.startsWith(`${currentFolder}/`)) return false;
+    return !path.slice(currentFolder.length + 1).includes("/");
+  });
+
+const parentFolderPath = (path) => {
+  const parts = String(path || "").split("/").filter(Boolean);
+  parts.pop();
+  return parts.join("/");
+};
+
 export default function Documents() {
   const [documents, setDocuments] = useState([]);
   const [user, setUser] = useState(null);
@@ -65,6 +78,7 @@ export default function Documents() {
   }, []);
 
   const folders = expandFolderPaths([...documents.map((doc) => doc.folder).filter(Boolean), ...emptyFolders]);
+  const folderOptions = visibleFolderPaths(folders, folder);
   const filteredDocuments = documents.filter((doc) => folder === "all" || doc.folder === folder || doc.folder?.startsWith(`${folder}/`));
   const uploadFolder = folder === "all" ? "" : folder;
 
@@ -92,18 +106,20 @@ export default function Documents() {
 
   const deleteFolder = async (folderName) => {
     if (!folderName || !user?.campaign_id) return;
-    const count = documents.filter((doc) => doc.folder === folderName).length;
+    const affected = documents.filter((doc) => doc.folder === folderName || doc.folder?.startsWith(`${folderName}/`));
+    const destination = parentFolderPath(folderName);
+    const destinationLabel = destination || "All Documents";
     const confirmed = window.confirm(
-      count > 0
-        ? `Delete the "${folderName}" folder and move ${count} document${count === 1 ? "" : "s"} back to All Documents?`
+      affected.length > 0
+        ? `Delete the "${folderName}" folder and move ${affected.length} document${affected.length === 1 ? "" : "s"} to ${destinationLabel}?`
         : `Delete the "${folderName}" folder?`,
     );
     if (!confirmed) return;
-    await Promise.all(documents.filter((doc) => doc.folder === folderName).map((doc) => appClient.entities.Document.update(doc.id, { folder: "" })));
-    const next = emptyFolders.filter((name) => name !== folderName);
+    await Promise.all(affected.map((doc) => appClient.entities.Document.update(doc.id, { folder: destination })));
+    const next = emptyFolders.filter((name) => name !== folderName && !name.startsWith(`${folderName}/`));
     setEmptyFolders(next);
     writeEmptyFolders(user.campaign_id, next);
-    if (folder === folderName) setFolder("all");
+    if (folder === folderName || folder.startsWith(`${folderName}/`)) setFolder(destination || "all");
     await load();
   };
 
@@ -134,7 +150,7 @@ export default function Documents() {
             <Folder className="w-7 h-7" strokeWidth={1.7} />
             <span className="text-[10px] leading-tight text-center">All Documents</span>
           </button>
-          {folders.map((name) => (
+          {folderOptions.map((name) => (
             <div
               key={name}
               className={`relative flex flex-col items-center gap-1 min-w-20 px-3 py-2 rounded-sm border transition-all ${folder === name ? "border-accent bg-accent/10 text-accent" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}
