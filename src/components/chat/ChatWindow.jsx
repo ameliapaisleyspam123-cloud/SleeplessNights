@@ -143,24 +143,24 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
 
   return (
     <div
-      className="flex flex-col h-full"
+      className="flex flex-col h-full min-h-0"
       onPaste={handlePaste}
       onDragEnter={handleDrag}
       onDragOver={handleDrag}
       onDragLeave={handleDrag}
       onDrop={handleDrop}
     >
-      <div className="px-5 py-3 border-b border-border flex items-center gap-3">
+      <div className="px-4 sm:px-5 py-3 border-b border-border flex items-center gap-3 shrink-0">
         <div className="w-8 h-8 rounded-sm bg-primary text-primary-foreground flex items-center justify-center">
           <header.icon className="w-4 h-4" />
         </div>
-        <div>
-          <div className="font-display text-lg leading-tight">{header.title}</div>
+        <div className="min-w-0">
+          <div className="font-display text-lg leading-tight truncate">{header.title}</div>
           <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{header.subtitle}</div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto thin-scroll px-5 py-2 space-y-4 relative">
+      <div className="flex-1 min-h-0 overflow-y-auto thin-scroll px-4 sm:px-5 py-2 space-y-4 relative">
         {dragActive && (
           <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-white z-10">
             Drop file here
@@ -174,7 +174,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
 
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div className="max-w-[75%] flex flex-col">
+              <div className="max-w-[88%] sm:max-w-[75%] flex flex-col">
                 {!mine && <div className="text-xs mb-1">{name}</div>}
 
                 <div className={`group/message relative px-4 py-2 rounded ${mine ? "bg-primary text-white" : "bg-card border"}`}>
@@ -210,7 +210,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
       </div>
 
       {activeChannel.type !== "spy" && (
-        <form onSubmit={send} className="border-t p-3 flex flex-col gap-2">
+        <form onSubmit={send} className="border-t p-3 flex flex-col gap-2 shrink-0">
           {filePreview && (
             <div className="border p-2 rounded">
               {filePreview.type.includes("image") ? (
@@ -230,7 +230,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
             </div>
           )}
 
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center min-w-0">
             <input
               type="file"
               id="fileUpload"
@@ -246,7 +246,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1"
+              className="flex-1 min-w-0"
             />
 
             <Button type="submit">

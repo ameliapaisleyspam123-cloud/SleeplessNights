@@ -9,6 +9,14 @@ import { ArrowRight, Check, Copy, Dices, LogIn, RefreshCw, Shield, Swords, UserP
 
 const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+function normalizeEmail(email = "") {
+  return email.trim().toLowerCase();
+}
+
+function uniqueEmails(emails = []) {
+  return [...new Set(emails.map(normalizeEmail).filter(Boolean))];
+}
+
 function makeCode() {
   return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
 }
@@ -219,10 +227,13 @@ export default function CampaignLobby() {
     }
 
     const role = campaign.dm_code === code ? "dm" : "player";
-    if (role === "player" && !campaign.player_emails?.includes(login.email)) {
+    const playerEmails = uniqueEmails(campaign.player_emails || []);
+    if (role === "player" && !playerEmails.includes(login.email)) {
       await appClient.entities.Campaign.update(campaign.id, {
-        player_emails: [...(campaign.player_emails || []), login.email],
+        player_emails: [...playerEmails, login.email],
       });
+    } else if (role === "player" && playerEmails.length !== (campaign.player_emails || []).length) {
+      await appClient.entities.Campaign.update(campaign.id, { player_emails: playerEmails });
     }
 
     await enterCampaign(campaign, role);

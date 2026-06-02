@@ -21,11 +21,24 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
   const [renameValue, setRenameValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [creatingSession, setCreatingSession] = useState(false);
   const saveTimeout = useRef(null);
   const instanceId = useRef(Math.random().toString(36).slice(2));
+  const contentRef = useRef("");
+  const noteIdRef = useRef(null);
+
+  useEffect(() => {
+    contentRef.current = content;
+  }, [content]);
+
+  useEffect(() => {
+    noteIdRef.current = noteId;
+  }, [noteId]);
 
   const loadNotes = async () => {
     if (!currentUser?.campaign_id) return;
+    setLoaded(false);
     const [playerNotes, campaigns] = await Promise.all([
       appClient.entities.PlayerNote.filter({ campaign_id: currentUser.campaign_id, created_by: currentUser.email }, "created_date", 100),
       appClient.entities.Campaign.list("-created_date", 50).catch(() => []),
@@ -43,6 +56,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
       setContent("");
       setNoteId(null);
     }
+    setLoaded(true);
   };
 
   useEffect(() => {
@@ -62,7 +76,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
     const syncContent = (event) => {
       if (event.detail?.key !== selectedSessionKey(currentUser)) return;
       if (event.detail?.sourceId === instanceId.current) return;
-      if (event.detail?.noteId !== noteId) return;
+      if (event.detail?.noteId !== noteIdRef.current) return;
       setContent(event.detail.content || "");
     };
     const unsubscribe = appClient.entities.PlayerNote.subscribe((event) => {
@@ -70,8 +84,11 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
         loadNotes().catch(() => {});
         return;
       }
-      if (event.data?.id === noteId) {
-        setContent(event.data.content || "");
+      if (event.data?.id === noteIdRef.current) {
+        const incomingContent = event.data.content || "";
+        if (incomingContent !== contentRef.current) {
+          setContent(incomingContent);
+        }
         setNotes((items) => items.map((item) => (item.id === event.data.id ? event.data : item)));
       } else if (event.type === "create" || event.type === "update") {
         loadNotes().catch(() => {});
@@ -84,20 +101,24 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
       window.removeEventListener("sleepless-note-selected", syncSelected);
       window.removeEventListener("sleepless-note-content", syncContent);
     };
-  }, [currentUser, noteId, notes]);
+  }, [currentUser, notes]);
 
   const save = async (val) => {
     const v = val !== undefined ? val : content;
-    if (!currentUser?.campaign_id) return;
+    if (!loaded || !currentUser?.campaign_id) return;
     setSaving(true);
     try {
-      if (noteId) {
-        const updated = await appClient.entities.PlayerNote.update(noteId, { content: v });
+      const activeNoteId = noteIdRef.current;
+      if (activeNoteId) {
+        const updated = await appClient.entities.PlayerNote.update(activeNoteId, { content: v });
         setNotes((items) => items.map((item) => (item.id === updated.id ? updated : item)));
-      } else {
+      } else if (notes.length === 0) {
         const created = await appClient.entities.PlayerNote.create({ campaign_id: currentUser.campaign_id, session_label: "Session 0", content: v });
         setNoteId(created.id);
         setNotes([created]);
+      } else {
+        selectNote(notes[0]);
+        return;
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -109,11 +130,11 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
   const autosave = (newContent) => {
     setContent(newContent);
     setSaved(false);
-    if (noteId) {
+    if (noteIdRef.current) {
       window.dispatchEvent(new CustomEvent("sleepless-note-content", {
         detail: {
           key: selectedSessionKey(currentUser),
-          noteId,
+          noteId: noteIdRef.current,
           content: newContent,
           sourceId: instanceId.current,
         },
@@ -133,25 +154,30 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
   };
 
   const createSessionLog = async () => {
-    if (!currentUser?.campaign_id) return;
+    if (creatingSession || !currentUser?.campaign_id) return;
+    setCreatingSession(true);
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    if (noteId) await save(content);
-    const usedSessionNumbers = notes
-      .map((note) => /^Session\s+(\d+)$/i.exec(note.session_label || ""))
-      .filter(Boolean)
-      .map((match) => Number(match[1]));
-    const nextIndex = usedSessionNumbers.length > 0 ? Math.max(...usedSessionNumbers) + 1 : 0;
-    const created = await appClient.entities.PlayerNote.create({
-      campaign_id: currentUser.campaign_id,
-      session_label: `Session ${nextIndex}`,
-      content: "",
-    });
-    setNotes((items) => [...items, created]);
-    setNoteId(created.id);
-    localStorage.setItem(selectedSessionKey(currentUser), created.id);
-    window.dispatchEvent(new CustomEvent("sleepless-note-selected", { detail: { key: selectedSessionKey(currentUser), noteId: created.id } }));
-    setContent("");
-    setSaved(false);
+    try {
+      if (noteIdRef.current) await save(content);
+      const usedSessionNumbers = notes
+        .map((note) => /^Session\s+(\d+)$/i.exec(note.session_label || ""))
+        .filter(Boolean)
+        .map((match) => Number(match[1]));
+      const nextIndex = usedSessionNumbers.length > 0 ? Math.max(...usedSessionNumbers) + 1 : 0;
+      const created = await appClient.entities.PlayerNote.create({
+        campaign_id: currentUser.campaign_id,
+        session_label: `Session ${nextIndex}`,
+        content: "",
+      });
+      setNotes((items) => [...items, created]);
+      setNoteId(created.id);
+      localStorage.setItem(selectedSessionKey(currentUser), created.id);
+      window.dispatchEvent(new CustomEvent("sleepless-note-selected", { detail: { key: selectedSessionKey(currentUser), noteId: created.id } }));
+      setContent("");
+      setSaved(false);
+    } finally {
+      setCreatingSession(false);
+    }
   };
 
   const startRename = (event, note) => {
