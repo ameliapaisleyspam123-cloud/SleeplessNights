@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { appClient } from "@/api/appClient";
+import React, { useEffect, useRef, useState } from "react";
+import { appClient, isGlobalAdminEmail } from "@/api/appClient";
 import ChannelList from "@/components/chat/ChannelList";
 import ChatWindow from "@/components/chat/ChatWindow";
 import LorePanel from "@/components/chat/LorePanel";
@@ -12,14 +12,53 @@ export default function Chat() {
   const [users, setUsers] = useState([]);
   const [activeChannel, setActiveChannel] = useState({ type: "group" });
   const [sideOpen, setSideOpen] = useState(() => (typeof window === "undefined" ? true : window.innerWidth >= 1024));
+  const [showAdminToast, setShowAdminToast] = useState(false);
+  const adminWasActiveRef = useRef(false);
+
+  const loadUsers = async (user) => {
+    const all = await appClient.entities.User.filter({ campaign_id: user.campaign_id }, "display_name", 200);
+    setUsers(all);
+  };
 
   useEffect(() => {
     appClient.auth.me().then(async (user) => {
       setCurrentUser(user);
-      const all = await appClient.entities.User.filter({ campaign_id: user.campaign_id }, "display_name", 200);
-      setUsers(all);
+      await loadUsers(user);
     });
   }, []);
+
+  useEffect(() => {
+    if (!currentUser?.id) return undefined;
+    let cancelled = false;
+    const markActive = async () => {
+      const updated = await appClient.auth.updateMe({ last_seen_at: new Date().toISOString() }).catch(() => null);
+      if (!cancelled && updated) {
+        setCurrentUser(updated);
+        await loadUsers(updated);
+      }
+    };
+    markActive();
+    const intervalId = window.setInterval(markActive, 60000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser?.email || isGlobalAdminEmail(currentUser.email)) return undefined;
+    const activeCutoff = Date.now() - 2 * 60 * 1000;
+    const adminIsActive = users.some((user) => isGlobalAdminEmail(user.email) && Date.parse(user.last_seen_at || user.updated_date || "") >= activeCutoff);
+    if (!adminIsActive) {
+      adminWasActiveRef.current = false;
+      return undefined;
+    }
+    if (adminWasActiveRef.current) return undefined;
+    adminWasActiveRef.current = true;
+    setShowAdminToast(true);
+    const timeoutId = window.setTimeout(() => setShowAdminToast(false), 2000);
+    return () => window.clearTimeout(timeoutId);
+  }, [users, currentUser?.email]);
 
   const isAdmin = currentUser?.campaign_role === "dm" || currentUser?.role === "admin";
 
@@ -42,7 +81,7 @@ export default function Chat() {
 
       <div className={`min-h-0 flex-1 grid overflow-hidden ${sideOpen ? "grid-cols-1 grid-rows-[auto_minmax(0,1fr)_minmax(16rem,42vh)] lg:grid-rows-none lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)_minmax(0,340px)] xl:grid-cols-[minmax(0,296px)_minmax(0,1fr)_minmax(0,376px)]" : "grid-cols-1 grid-rows-[auto_minmax(0,1fr)] md:grid-rows-none md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]"}`}>
         <aside className="border-b lg:border-b-0 lg:border-r border-border min-h-0 max-h-48 lg:max-h-none overflow-hidden">
-          <ChannelList users={users} currentUser={currentUser} activeChannel={activeChannel} onSelect={setActiveChannel} isAdmin={isAdmin} />
+        <ChannelList users={users} currentUser={currentUser} activeChannel={activeChannel} onSelect={setActiveChannel} isAdmin={isAdmin} />
         </aside>
         <ChatWindow activeChannel={activeChannel} currentUser={currentUser} users={users} isAdmin={isAdmin} />
         {sideOpen && (
@@ -51,6 +90,11 @@ export default function Chat() {
           </aside>
         )}
       </div>
+      {showAdminToast && (
+        <div className="fixed left-1/2 top-20 z-[80] -translate-x-1/2 rounded-sm border border-accent/60 bg-background/95 px-4 py-3 text-sm font-medium text-foreground shadow-2xl">
+          Admin is here
+        </div>
+      )}
     </div>
   );
 }

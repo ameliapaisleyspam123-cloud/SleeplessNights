@@ -8,6 +8,7 @@ import MoveFolderDialog from "@/components/lore/MoveFolderDialog";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { sortClaimedCharactersFirst } from "@/lib/characters";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 import { Copy, Download, Folder, MoveRight, Plus, Trash2 } from "lucide-react";
 
@@ -136,7 +137,10 @@ export default function Characters() {
   const visibleItems = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
   const folderOptions = visibleFolderPaths(folders, folder);
-  const filteredItems = visibleItems.filter((item) => folder === "all" || item.folder === folder || item.folder?.startsWith(`${folder}/`));
+  const filteredItems = sortClaimedCharactersFirst(
+    visibleItems.filter((item) => folder === "all" || item.folder === folder || item.folder?.startsWith(`${folder}/`)),
+    user?.email,
+  );
   const userCharacterCounts = items.reduce((counts, sheet) => {
     if (!sheet.assigned_to_email) return counts;
     return { ...counts, [sheet.assigned_to_email]: (counts[sheet.assigned_to_email] || 0) + 1 };

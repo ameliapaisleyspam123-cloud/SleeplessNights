@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
-import { Folder, Grid2X2, List, MoveRight, Plus, Search, Trash2 } from "lucide-react";
+import { Folder, Grid2X2, List, MoveRight, Plus, Search, Tag, Trash2 } from "lucide-react";
 
 const CATEGORIES = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
 
@@ -77,6 +77,7 @@ export default function Lore() {
   const [contextMenu, setContextMenu] = useState(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
+  const [tag, setTag] = useState("all");
   const [folder, setFolder] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -99,12 +100,14 @@ export default function Lore() {
   const folders = expandFolderPaths([...items.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
   const folderOptions = visibleFolderPaths(folders, folder);
   const visibleItems = items.filter((item) => canViewVisibleItem(item, currentUser, isAdmin));
+  const tags = [...new Set(visibleItems.flatMap((item) => item.tags || []).map((itemTag) => String(itemTag).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const filtered = visibleItems.filter((item) => {
     const q = query.trim().toLowerCase();
     const matchesQuery = !q || item.title?.toLowerCase().includes(q) || plainText(item.content).toLowerCase().includes(q) || item.tags?.some((tag) => tag.toLowerCase().includes(q));
     const matchesCategory = category === "all" || item.category === category;
+    const matchesTag = tag === "all" || (item.tags || []).some((itemTag) => itemTag === tag);
     const matchesFolder = folder === "all" || item.folder === folder || item.folder?.startsWith(`${folder}/`);
-    return matchesQuery && matchesCategory && matchesFolder;
+    return matchesQuery && matchesCategory && matchesTag && matchesFolder;
   });
 
   const deleteEntry = async (entry) => {
@@ -206,6 +209,33 @@ export default function Lore() {
               ))}
             </div>
           </div>
+
+          {tags.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto thin-scroll pb-1">
+              <Tag className="w-3.5 h-3.5 text-accent shrink-0" />
+              <button
+                type="button"
+                onClick={() => setTag("all")}
+                className={`h-8 px-3 rounded-sm border text-[10px] uppercase tracking-[0.18em] whitespace-nowrap transition-all ${
+                  tag === "all" ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All tags
+              </button>
+              {tags.map((itemTag) => (
+                <button
+                  key={itemTag}
+                  type="button"
+                  onClick={() => setTag(itemTag)}
+                  className={`h-8 px-3 rounded-sm border text-xs whitespace-nowrap transition-all ${
+                    tag === itemTag ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {itemTag}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-3 flex-wrap">
             {folder !== "all" && (

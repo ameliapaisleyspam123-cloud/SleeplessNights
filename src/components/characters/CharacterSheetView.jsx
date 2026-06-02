@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Lock, EyeOff, Users, Heart, Minus, Plus, Loader2, Swords } from "lucide-react";
+import { Pencil, Lock, EyeOff, Users, Heart, Minus, Plus, Loader2, Swords, Sparkles } from "lucide-react";
 import InventoryManager from "@/components/characters/InventoryManager";
 import AttackManager from "@/components/characters/AttackManager";
 import SpellManager from "@/components/characters/SpellManager";
@@ -192,6 +192,7 @@ function AddToInitiativeButton({ sheet, ownerEmail }) {
 function HpBlock({ hp, hpMax, hpTemp, onSave }) {
   const [current, setCurrent] = useState(hp ?? hpMax);
   const [temp, setTemp] = useState(hpTemp ?? 0);
+  const [amount, setAmount] = useState(5);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -208,6 +209,10 @@ function HpBlock({ hp, hpMax, hpTemp, onSave }) {
     setSaving(false);
   };
 
+  const adjustCurrent = (delta) => {
+    setCurrent((value) => Math.max(0, Math.min(hpMax || value + delta, value + delta)));
+  };
+
   return (
     <div className="border border-border rounded-sm bg-card p-3 col-span-3 sm:col-span-2 lg:col-span-2">
       <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1">
@@ -217,15 +222,31 @@ function HpBlock({ hp, hpMax, hpTemp, onSave }) {
         <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
       </div>
       <div className="flex items-center gap-2 mb-2">
-        <button onClick={() => setCurrent((value) => Math.max(0, value - 1))} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
+        <button onClick={() => adjustCurrent(-1)} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
           <Minus className="w-4 h-4" />
         </button>
         <div className="flex-1 text-center">
           <span className="font-display text-3xl leading-none">{current}</span>
           <span className="text-muted-foreground text-sm">/{hpMax}</span>
         </div>
-        <button onClick={() => setCurrent((value) => Math.min(hpMax || value + 1, value + 1))} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
+        <button onClick={() => adjustCurrent(1)} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
           <Plus className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-[1fr_auto_auto] gap-2 mb-2">
+        <input
+          type="number"
+          min={1}
+          value={amount}
+          onChange={(event) => setAmount(Math.max(1, Number(event.target.value) || 1))}
+          className="h-9 rounded-sm border border-border bg-background px-2 text-center text-sm text-foreground"
+          aria-label="Hit point adjustment amount"
+        />
+        <button onClick={() => adjustCurrent(-amount)} className="h-9 px-3 rounded-sm border border-border text-xs text-muted-foreground hover:text-destructive hover:border-destructive/60 transition-colors">
+          Damage
+        </button>
+        <button onClick={() => adjustCurrent(amount)} className="h-9 px-3 rounded-sm border border-border text-xs text-muted-foreground hover:text-accent hover:border-accent/60 transition-colors">
+          Heal
         </button>
       </div>
       <div className="flex items-center gap-2">
@@ -491,7 +512,7 @@ export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenC
                 </Button>
               )}
               <button onClick={toggleInspiration} disabled={savingInspiration} className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-sm border text-xs font-medium transition-all disabled:opacity-50 ${inspired ? "bg-accent text-accent-foreground border-accent hover:bg-accent/90" : "border-border bg-card text-foreground hover:border-accent/60 hover:bg-accent/10"}`}>
-                {savingInspiration ? <Loader2 className="w-3 h-3 animate-spin" /> : <span>*</span>}
+                {savingInspiration ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                 {inspired ? "Inspired" : "Inspiration"}
               </button>
               {sheet.campaign_id && canRollInitiative && <AddToInitiativeButton sheet={sheet} ownerEmail={initiativeOwnerEmail} />}

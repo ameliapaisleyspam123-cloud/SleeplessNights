@@ -279,6 +279,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
                           onClick={(event) => event.stopPropagation()}
                           onBlur={finishRename}
                           onKeyDown={(event) => {
+                            event.stopPropagation();
                             if (event.key === "Enter") finishRename();
                             if (event.key === "Escape") setRenamingId(null);
                           }}

@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { appClient } from "@/api/appClient";
-import { Users, User } from "lucide-react";
+import { ShieldCheck, Users, User } from "lucide-react";
+
+function isActiveUser(user) {
+  const seenAt = Date.parse(user?.last_seen_at || user?.updated_date || "");
+  return Boolean(seenAt && Date.now() - seenAt < 2 * 60 * 1000);
+}
 
 export default function ChannelList({ users, currentUser, activeChannel, onSelect, isAdmin }) {
   const [unread, setUnread] = useState({});
@@ -90,6 +95,8 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
           const key = channelKey(ch, currentUser);
           const active = activeChannel?.type === "dm" && activeChannel.email === u.email;
           const hasUnread = unread[key];
+          const userActive = isActiveUser(u);
+          const userIsAdmin = u.role === "admin" || u.campaign_role === "dm";
 
           return (
             <button
@@ -100,7 +107,13 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
               }`}
             >
               <div className="relative w-8 h-8 rounded-sm flex items-center justify-center bg-accent/20 text-accent-foreground">
-                <User className="w-4 h-4" />
+                {userIsAdmin ? <ShieldCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                <span
+                  className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-background ${
+                    userActive ? "bg-accent shadow-[0_0_10px_hsl(var(--accent)/0.7)]" : "bg-muted"
+                  }`}
+                  title={userActive ? "Active now" : "Away"}
+                />
                 {hasUnread && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-accent border-2 border-background" />
                 )}
@@ -111,6 +124,11 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
                   <div className={`text-sm truncate ${hasUnread ? "font-semibold text-foreground" : "font-medium"}`}>
                     {u.display_name || u.full_name}
                   </div>
+                  {userActive && (
+                    <span className="text-[9px] uppercase tracking-widest text-accent shrink-0">
+                      Active
+                    </span>
+                  )}
 
                   {hasUnread && (
                     <span className="text-[9px] uppercase tracking-widest text-accent shrink-0 ml-auto">
