@@ -849,14 +849,22 @@ export const appClient = {
         campaign_id,
         campaign_role: isGlobalAdminEmail(cleanEmail) ? "dm" : campaign_role,
         role: isGlobalAdminEmail(cleanEmail) ? "admin" : role,
+        last_seen_at: "",
       });
       saveUserSession(updated.email, Boolean(localStorage.getItem(SESSION_KEY)));
       return updated;
     },
-    logout() {
-      sessionStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem(SESSION_KEY);
-      window.location.assign("/campaign");
+    async logout() {
+      try {
+        const user = await currentSessionAsync();
+        if (user?.id) await entities.User.update(user.id, { last_seen_at: "" });
+      } catch {
+        // Best effort only; local sign-out should still continue.
+      } finally {
+        sessionStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(SESSION_KEY);
+        window.location.assign("/campaign");
+      }
     },
     redirectToLogin() {
       window.location.assign("/campaign");

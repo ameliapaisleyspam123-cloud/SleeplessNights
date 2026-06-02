@@ -48,7 +48,7 @@ export default function Chat() {
   useEffect(() => {
     if (!currentUser?.email || isGlobalAdminEmail(currentUser.email)) return undefined;
     const activeCutoff = Date.now() - 2 * 60 * 1000;
-    const adminIsActive = users.some((user) => isGlobalAdminEmail(user.email) && Date.parse(user.last_seen_at || user.updated_date || "") >= activeCutoff);
+    const adminIsActive = users.some((user) => isGlobalAdminEmail(user.email) && Date.parse(user.last_seen_at || "") >= activeCutoff);
     if (!adminIsActive) {
       adminWasActiveRef.current = false;
       return undefined;

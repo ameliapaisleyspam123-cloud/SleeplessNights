@@ -3,7 +3,7 @@ import { appClient } from "@/api/appClient";
 import { ShieldCheck, Users, User } from "lucide-react";
 
 function isActiveUser(user) {
-  const seenAt = Date.parse(user?.last_seen_at || user?.updated_date || "");
+  const seenAt = Date.parse(user?.last_seen_at || "");
   return Boolean(seenAt && Date.now() - seenAt < 2 * 60 * 1000);
 }
 
