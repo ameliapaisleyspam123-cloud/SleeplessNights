@@ -27,6 +27,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
   const instanceId = useRef(Math.random().toString(36).slice(2));
   const contentRef = useRef("");
   const noteIdRef = useRef(null);
+  const draftDirtyRef = useRef(false);
 
   useEffect(() => {
     contentRef.current = content;
@@ -50,10 +51,12 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
     const selected = playerNotes.find((note) => note.id === (noteId || savedSelectedId)) || playerNotes[0];
     if (selected) {
       setContent(selected.content || "");
+      draftDirtyRef.current = false;
       setNoteId(selected.id);
       localStorage.setItem(selectedSessionKey(currentUser), selected.id);
     } else {
       setContent("");
+      draftDirtyRef.current = false;
       setNoteId(null);
     }
     setLoaded(true);
@@ -71,12 +74,14 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
       if (selected) {
         setNoteId(selected.id);
         setContent(selected.content || "");
+        draftDirtyRef.current = false;
       }
     };
     const syncContent = (event) => {
       if (event.detail?.key !== selectedSessionKey(currentUser)) return;
       if (event.detail?.sourceId === instanceId.current) return;
       if (event.detail?.noteId !== noteIdRef.current) return;
+      if (draftDirtyRef.current) return;
       setContent(event.detail.content || "");
     };
     const unsubscribe = appClient.entities.PlayerNote.subscribe((event) => {
@@ -86,7 +91,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
       }
       if (event.data?.id === noteIdRef.current) {
         const incomingContent = event.data.content || "";
-        if (incomingContent !== contentRef.current) {
+        if (!draftDirtyRef.current && incomingContent !== contentRef.current) {
           setContent(incomingContent);
         }
         setNotes((items) => items.map((item) => (item.id === event.data.id ? event.data : item)));
@@ -120,6 +125,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
         selectNote(notes[0]);
         return;
       }
+      draftDirtyRef.current = false;
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -129,6 +135,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
 
   const autosave = (newContent) => {
     setContent(newContent);
+    draftDirtyRef.current = true;
     setSaved(false);
     if (noteIdRef.current) {
       window.dispatchEvent(new CustomEvent("sleepless-note-content", {
@@ -141,12 +148,16 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
       }));
     }
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => save(newContent), 1200);
+    saveTimeout.current = setTimeout(() => save(newContent), 3000);
   };
 
-  const selectNote = (note) => {
+  const selectNote = async (note) => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    if (draftDirtyRef.current && noteIdRef.current) {
+      await save(contentRef.current);
+    }
     setSaved(false);
+    draftDirtyRef.current = false;
     setNoteId(note.id);
     setContent(note.content || "");
     localStorage.setItem(selectedSessionKey(currentUser), note.id);
@@ -174,6 +185,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
       localStorage.setItem(selectedSessionKey(currentUser), created.id);
       window.dispatchEvent(new CustomEvent("sleepless-note-selected", { detail: { key: selectedSessionKey(currentUser), noteId: created.id } }));
       setContent("");
+      draftDirtyRef.current = false;
       setSaved(false);
     } finally {
       setCreatingSession(false);
@@ -209,6 +221,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
       const next = remaining[0];
       setNoteId(next?.id || null);
       setContent(next?.content || "");
+      draftDirtyRef.current = false;
     }
     setRenamingId(null);
   };
@@ -260,7 +273,9 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
                       key={note.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => selectNote(note)}
+                      onClick={() => {
+                        selectNote(note);
+                      }}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
@@ -279,6 +294,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
                           onClick={(event) => event.stopPropagation()}
                           onBlur={finishRename}
                           onKeyDown={(event) => {
+                            event.stopPropagation();
                             if (event.key === "Enter") finishRename();
                             if (event.key === "Escape") setRenamingId(null);
                           }}

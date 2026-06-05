@@ -8,7 +8,9 @@ import MoveFolderDialog from "@/components/lore/MoveFolderDialog";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { sortClaimedCharactersFirst } from "@/lib/characters";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
+import { campaignDate, datedCreatePayload, hasTimelineDate, isRecordOnDate } from "@/lib/timeline";
 import { Copy, Download, Folder, MoveRight, Plus, Trash2 } from "lucide-react";
 
 function cloneSheet(sheet, campaignId, suffix = "Copy") {
@@ -88,6 +90,7 @@ export default function Characters() {
   const [user, setUser] = useState(null);
   const [emptyFolders, setEmptyFolders] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
+  const [campaign, setCampaign] = useState(null);
   const [allSheets, setAllSheets] = useState([]);
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
@@ -99,7 +102,7 @@ export default function Characters() {
   const load = async () => {
     const currentUser = await appClient.auth.me();
     const [currentSheets, everyCampaign, everySheet] = await Promise.all([
-      appClient.entities.CharacterSheet.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 200),
+      appClient.entities.CharacterSheet.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 500),
       appClient.entities.Campaign.list("-created_date", 200),
       appClient.entities.CharacterSheet.list("-updated_date", 500),
     ]);
@@ -107,6 +110,7 @@ export default function Characters() {
     setEmptyFolders(readEmptyFolders(currentUser.campaign_id));
     setItems(currentSheets);
     setCampaigns(everyCampaign);
+    setCampaign(everyCampaign.find((item) => item.id === currentUser.campaign_id) || null);
     setAllSheets(everySheet);
   };
 
@@ -116,7 +120,10 @@ export default function Characters() {
 
   const duplicateSheet = async (sheet) => {
     if (!sheet || !user?.campaign_id) return;
-    await appClient.entities.CharacterSheet.create(cloneSheet(sheet, user.campaign_id));
+    const created = await appClient.entities.CharacterSheet.create(
+      datedCreatePayload(cloneSheet(sheet, user.campaign_id), campaignDate(campaign, campaign?.calendar_system), campaign?.calendar_system),
+    );
+    if (!created.timeline_series_id) await appClient.entities.CharacterSheet.update(created.id, { timeline_series_id: created.id });
     setViewing(null);
     setEditing(null);
     await load();
@@ -124,7 +131,10 @@ export default function Characters() {
 
   const importSheet = async (sheet) => {
     if (!sheet || !user?.campaign_id) return;
-    await appClient.entities.CharacterSheet.create(cloneSheet(sheet, user.campaign_id, "Imported"));
+    const created = await appClient.entities.CharacterSheet.create(
+      datedCreatePayload(cloneSheet(sheet, user.campaign_id, "Imported"), campaignDate(campaign, campaign?.calendar_system), campaign?.calendar_system),
+    );
+    if (!created.timeline_series_id) await appClient.entities.CharacterSheet.update(created.id, { timeline_series_id: created.id });
     setImportOpen(false);
     await load();
   };
@@ -132,11 +142,18 @@ export default function Characters() {
   const importableSheets = allSheets.filter((sheet) => sheet.campaign_id && sheet.campaign_id !== user?.campaign_id);
   const campaignName = (campaignId) => campaigns.find((campaign) => campaign.id === campaignId)?.name || "Unknown campaign";
   const isAdmin = isDmUser(user);
-  const currentCampaign = campaigns.find((campaign) => campaign.id === user?.campaign_id) || null;
-  const visibleItems = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
+  const currentCampaign = campaign || campaigns.find((campaign) => campaign.id === user?.campaign_id) || null;
+  const activeDate = campaignDate(currentCampaign, currentCampaign?.calendar_system);
+  const visibleItems = items.filter((item) => {
+    if (!canViewVisibleItem(item, user, isAdmin)) return false;
+    return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, currentCampaign?.calendar_system) : !currentCampaign?.timeline_started;
+  });
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
   const folderOptions = visibleFolderPaths(folders, folder);
-  const filteredItems = visibleItems.filter((item) => folder === "all" || item.folder === folder || item.folder?.startsWith(`${folder}/`));
+  const filteredItems = sortClaimedCharactersFirst(
+    visibleItems.filter((item) => folder === "all" || item.folder === folder || item.folder?.startsWith(`${folder}/`)),
+    user?.email,
+  );
   const userCharacterCounts = items.reduce((counts, sheet) => {
     if (!sheet.assigned_to_email) return counts;
     return { ...counts, [sheet.assigned_to_email]: (counts[sheet.assigned_to_email] || 0) + 1 };
@@ -213,7 +230,7 @@ export default function Characters() {
       <PageHeader
         eyebrow="Roster"
         title="Characters"
-        description="Track your heroes — stats, spells, and stories."
+        description="Track your heroes - stats, spells, and stories."
         action={
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setImportOpen(true)}>

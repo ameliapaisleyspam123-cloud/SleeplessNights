@@ -43,6 +43,7 @@ const PLAYER_NAV = [
   { to: "/lore", label: "Lore & Maps", icon: ScrollText },
   { to: "/notes", label: "Grimoire", icon: NotebookPen },
   { to: "/shop", label: "Shop", icon: Store },
+  { to: "/timeline", label: "Timeline", icon: GitBranch },
 ];
 
 const GM_NAV = [
@@ -51,9 +52,9 @@ const GM_NAV = [
   { to: "/characters", label: "Characters", icon: User },
   { to: "/chat", label: "Correspondence", icon: MessageSquare },
   { to: "/lore", label: "Lore & Maps", icon: ScrollText },
-  { to: "/timeline", label: "Timeline", icon: GitBranch },
   { to: "/notes", label: "Grimoire", icon: NotebookPen },
   { to: "/shop", label: "Shop", icon: Store },
+  { to: "/timeline", label: "Timeline", icon: GitBranch },
   { to: "/vault", label: "DM Vault", icon: Lock, gmOnly: true },
 ];
 

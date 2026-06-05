@@ -195,7 +195,7 @@ export interface PlayerNote extends AppRecord {
   content?: string;
 }
 
-export type TimelineEventType = "event" | "character" | "lore" | "omen" | "session";
+export type TimelineEventType = "event" | "character" | "lore" | "session";
 
 export interface TimelineEvent extends AppRecord {
   campaign_id?: string;

@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { appClient } from "@/api/appClient";
-import { Users, User } from "lucide-react";
+import { ShieldCheck, Users, User } from "lucide-react";
+
+function isActiveUser(user) {
+  const seenAt = Date.parse(user?.last_seen_at || "");
+  return Boolean(seenAt && Date.now() - seenAt < 2 * 60 * 1000);
+}
 
 export default function ChannelList({ users, currentUser, activeChannel, onSelect, isAdmin }) {
   const [unread, setUnread] = useState({});
@@ -53,16 +58,16 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="px-4 py-4 border-b border-border shrink-0">
+      <div className="hidden lg:block px-4 py-4 border-b border-border shrink-0">
         <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Channels
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto thin-scroll">
+      <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden lg:overflow-x-hidden lg:overflow-y-auto thin-scroll flex lg:block">
         <button
           onClick={() => handleSelect({ type: "group" })}
-          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary transition-colors ${
+          className={`w-44 lg:w-full shrink-0 flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary transition-colors ${
             activeChannel?.type === "group" ? "bg-secondary" : ""
           }`}
         >
@@ -75,12 +80,12 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
           </div>
         </button>
 
-        <div className="px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        <div className="shrink-0 flex items-center px-3 lg:px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Whispers
         </div>
 
         {others.length === 0 && (
-          <div className="px-4 py-2 text-xs text-muted-foreground">
+          <div className="shrink-0 px-4 py-2 text-xs text-muted-foreground">
             No other members yet.
           </div>
         )}
@@ -90,17 +95,25 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
           const key = channelKey(ch, currentUser);
           const active = activeChannel?.type === "dm" && activeChannel.email === u.email;
           const hasUnread = unread[key];
+          const userActive = isActiveUser(u);
+          const userIsAdmin = u.role === "admin" || u.campaign_role === "dm";
 
           return (
             <button
               key={u.id || u.email}
               onClick={() => handleSelect(ch)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary transition-colors ${
+              className={`w-52 lg:w-full shrink-0 flex items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary transition-colors ${
                 active ? "bg-secondary" : ""
               }`}
             >
               <div className="relative w-8 h-8 rounded-sm flex items-center justify-center bg-accent/20 text-accent-foreground">
-                <User className="w-4 h-4" />
+                {userIsAdmin ? <ShieldCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                <span
+                  className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-background ${
+                    userActive ? "bg-accent shadow-[0_0_10px_hsl(var(--accent)/0.7)]" : "bg-muted"
+                  }`}
+                  title={userActive ? "Active now" : "Away"}
+                />
                 {hasUnread && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-accent border-2 border-background" />
                 )}
@@ -111,6 +124,11 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
                   <div className={`text-sm truncate ${hasUnread ? "font-semibold text-foreground" : "font-medium"}`}>
                     {u.display_name || u.full_name}
                   </div>
+                  {userActive && (
+                    <span className="text-[9px] uppercase tracking-widest text-accent shrink-0">
+                      Active
+                    </span>
+                  )}
 
                   {hasUnread && (
                     <span className="text-[9px] uppercase tracking-widest text-accent shrink-0 ml-auto">
@@ -141,7 +159,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
 
           return (
             <>
-              <div className="px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground border-t border-border mt-1">
+              <div className="shrink-0 flex items-center px-3 lg:px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground lg:border-t border-border lg:mt-1">
                 Player Whispers
               </div>
 
@@ -159,7 +177,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
                         name: `${a.display_name || a.full_name} ↔ ${b.display_name || b.full_name}`,
                       })
                     }
-                    className={`w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-secondary transition-colors ${
+                    className={`w-52 lg:w-full shrink-0 flex items-center gap-3 px-4 py-2 text-left hover:bg-secondary transition-colors ${
                       active ? "bg-secondary" : ""
                     }`}
                   >

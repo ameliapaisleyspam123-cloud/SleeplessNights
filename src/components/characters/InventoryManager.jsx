@@ -41,7 +41,7 @@ function entryWeight(entry) {
   return itemWeight(entry);
 }
 
-function InventoryTable({ items, expandedKey, makeKey = (index) => `item-${index}`, onToggle = () => {}, readOnly = false, onUpdate, onRemove }) {
+function InventoryTable({ items, expandedKey, makeKey = (index) => `item-${index}`, onToggle = () => {}, readOnly = false, onUpdate, onRemove, onItemContextMenu }) {
   if (items.length === 0) return null;
 
   if (readOnly) {
@@ -100,7 +100,11 @@ function InventoryTable({ items, expandedKey, makeKey = (index) => `item-${index
       {items.map((item, index) => {
         const key = makeKey(index);
         return (
-          <div key={item.id || index} className={item.equipped ? "bg-accent/5" : ""}>
+          <div
+            key={item.id || index}
+            className={item.equipped ? "bg-accent/5" : ""}
+            onContextMenu={(event) => onItemContextMenu?.(event, index, item)}
+          >
             <div className="grid grid-cols-[1fr_56px_64px_56px_56px] gap-1 px-2 py-1.5 items-center">
               <Input value={item.name} onChange={(event) => onUpdate(index, "name", event.target.value)} placeholder="Item name" className="h-7 text-xs px-2" />
               <Input type="number" min={1} value={item.qty} onChange={(event) => onUpdate(index, "qty", parseInt(event.target.value, 10) || 1)} className="h-7 text-xs px-1 text-center" />
@@ -135,6 +139,7 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
   const containers = entries.filter(isContainer);
   const [expanded, setExpanded] = useState(null);
   const [expandedContainers, setExpandedContainers] = useState({});
+  const [moveMenu, setMoveMenu] = useState(null);
   const save = (next) => onChange?.(JSON.stringify(next));
   const toggleExpanded = (key) => setExpanded((current) => (current === key ? null : key));
   const toggleContainer = (containerId) => setExpandedContainers((current) => ({ ...current, [containerId]: !current[containerId] }));
@@ -199,6 +204,58 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
     setExpanded(null);
   };
 
+  const openMoveMenu = (event, source) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setMoveMenu({ ...source, x: event.clientX, y: event.clientY });
+  };
+
+  const moveLooseItemToContainer = (looseIndex, containerId) => {
+    const item = looseItems[looseIndex];
+    if (!item) return;
+    let seenLoose = -1;
+    save(entries.map((entry) => {
+      if (isContainer(entry)) {
+        return entry.id === containerId ? { ...entry, items: [...entry.items, item] } : entry;
+      }
+      seenLoose += 1;
+      return seenLoose === looseIndex ? null : entry;
+    }).filter(Boolean));
+    setExpandedContainers((current) => ({ ...current, [containerId]: true }));
+    setMoveMenu(null);
+    setExpanded(null);
+  };
+
+  const moveContainedItemToLoose = (containerId, itemIndex) => {
+    const container = containers.find((entry) => entry.id === containerId);
+    const item = container?.items?.[itemIndex];
+    if (!item) return;
+    save([
+      ...entries.map((entry) => (entry.id === containerId ? { ...entry, items: entry.items.filter((_, idx) => idx !== itemIndex) } : entry)),
+      item,
+    ]);
+    setMoveMenu(null);
+    setExpanded(null);
+  };
+
+  const moveContainedItemToContainer = (fromContainerId, itemIndex, toContainerId) => {
+    if (fromContainerId === toContainerId) {
+      setMoveMenu(null);
+      return;
+    }
+    const sourceContainer = containers.find((entry) => entry.id === fromContainerId);
+    const item = sourceContainer?.items?.[itemIndex];
+    if (!item) return;
+    save(entries.map((entry) => {
+      if (entry.id === fromContainerId) return { ...entry, items: entry.items.filter((_, idx) => idx !== itemIndex) };
+      if (entry.id === toContainerId) return { ...entry, items: [...entry.items, item] };
+      return entry;
+    }));
+    setExpandedContainers((current) => ({ ...current, [toContainerId]: true }));
+    setMoveMenu(null);
+    setExpanded(null);
+  };
+
   const totalWeight = entries.reduce((sum, entry) => sum + entryWeight(entry), 0);
 
   if (readOnly) {
@@ -241,7 +298,7 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" onClick={() => setMoveMenu(null)}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Package className="w-3.5 h-3.5 text-accent" />
@@ -272,6 +329,7 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
                 onToggle={toggleExpanded}
                 onUpdate={updateLooseItem}
                 onRemove={removeLooseItem}
+                onItemContextMenu={(event, index) => openMoveMenu(event, { type: "loose", itemIndex: index })}
               />
             ) : (
               <div className="border border-dashed border-border rounded-sm py-4 text-center text-xs text-muted-foreground">No loose items.</div>
@@ -311,6 +369,7 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
                       onToggle={toggleExpanded}
                       onUpdate={(itemIndex, field, val) => updateContainedItem(container.id, itemIndex, field, val)}
                       onRemove={(itemIndex) => removeContainedItem(container.id, itemIndex)}
+                      onItemContextMenu={(event, itemIndex) => openMoveMenu(event, { type: "contained", containerId: container.id, itemIndex })}
                     />
                     {container.items.length === 0 && <div className="border border-dashed border-border rounded-sm py-4 text-center text-xs text-muted-foreground">No items in this container.</div>}
                     <Input
@@ -325,6 +384,43 @@ export default function InventoryManager({ value, onChange, readOnly = false }) 
             );
           })}
         </>
+      )}
+      {moveMenu && (
+        <div
+          className="fixed z-[130] min-w-52 rounded-sm border border-border bg-card p-1 shadow-2xl"
+          style={{ left: moveMenu.x, top: moveMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="px-3 py-2 text-[10px] uppercase tracking-widest text-muted-foreground">Move Item</div>
+          {moveMenu.type === "contained" && (
+            <button
+              type="button"
+              onClick={() => moveContainedItemToLoose(moveMenu.containerId, moveMenu.itemIndex)}
+              className="w-full rounded-sm px-3 py-2 text-left text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              Move to loose items
+            </button>
+          )}
+          {containers
+            .filter((container) => !(moveMenu.type === "contained" && container.id === moveMenu.containerId))
+            .map((container) => (
+              <button
+                type="button"
+                key={container.id}
+                onClick={() =>
+                  moveMenu.type === "loose"
+                    ? moveLooseItemToContainer(moveMenu.itemIndex, container.id)
+                    : moveContainedItemToContainer(moveMenu.containerId, moveMenu.itemIndex, container.id)
+                }
+                className="w-full rounded-sm px-3 py-2 text-left text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                Move to {container.name || "Container"}
+              </button>
+            ))}
+          {moveMenu.type === "loose" && containers.length === 0 && (
+            <div className="px-3 py-2 text-xs text-muted-foreground">Add a container first.</div>
+          )}
+        </div>
       )}
     </div>
   );

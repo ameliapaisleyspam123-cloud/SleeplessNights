@@ -238,7 +238,7 @@ export default function Shop() {
       <PageHeader
         eyebrow="Market"
         title="Shop"
-        description={isAdmin ? "Build stores, stock shelves, and audit every player purchase." : "Buy supplies directly with your character's coin."}
+        description={isAdmin ? "Stock the shelves, set the prices, and watch every coin change hands." : "Browse the shelves, spend your coin, and carry new supplies into the night."}
         action={
           isAdmin ? (
             <div className="flex flex-wrap gap-2">

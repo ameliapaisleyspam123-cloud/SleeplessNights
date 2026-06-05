@@ -174,10 +174,10 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
 
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div className="max-w-[88%] sm:max-w-[75%] flex flex-col">
+              <div className="max-w-[88%] sm:max-w-[75%] flex flex-col min-w-0">
                 {!mine && <div className="text-xs mb-1">{name}</div>}
 
-                <div className={`group/message relative px-4 py-2 rounded ${mine ? "bg-primary text-white" : "bg-card border"}`}>
+                <div className={`group/message relative px-4 py-2 rounded min-w-0 ${mine ? "bg-primary text-white" : "bg-card border"}`}>
                   {isAdmin && (
                     <button
                       type="button"
@@ -190,10 +190,10 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  <div className={isAdmin ? "pr-7" : ""}>{m.content}</div>
+                  <div className={`${isAdmin ? "pr-7" : ""} whitespace-pre-wrap break-words`}>{m.content}</div>
 
                   {m.file_url && m.file_type === "image" && (
-                    <img src={m.file_url} alt={m.content || "Chat attachment"} className="mt-2 max-w-xs rounded" />
+                    <img src={m.file_url} alt={m.content || "Chat attachment"} className="mt-2 max-w-full sm:max-w-xs rounded" />
                   )}
 
                   {m.file_url && m.file_type === "pdf" && (
