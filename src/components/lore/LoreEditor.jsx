@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { campaignDate, datedCreatePayload } from "@/lib/timeline";
 import { Upload, Loader2, FileText, Eye, Lock, Users, MapPin, Tag, Trash2, Link2, X, Undo2, Redo2 } from "lucide-react";
 import PdfMapCanvas from "@/components/lore/PdfMapCanvas";
 
@@ -309,7 +310,8 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     if (!editingMark) return;
     setCreatingLore(true);
     const user = await appClient.auth.me().catch(() => null);
-    const created = await appClient.entities.LoreEntry.create({
+    const campaign = user?.campaign_id ? await appClient.entities.Campaign.get(user.campaign_id).catch(() => null) : null;
+    const created = await appClient.entities.LoreEntry.create(datedCreatePayload({
       campaign_id: user?.campaign_id,
       title: editingMark.label?.trim() || "New map lore",
       category: "place",
@@ -318,7 +320,10 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
       visibility: form.visibility || "public",
       allowed_emails: form.allowed_emails || [],
       tags: [],
-    });
+    }, campaignDate(campaign, campaign?.calendar_system), campaign?.calendar_system));
+    if (!created.timeline_series_id) {
+      await appClient.entities.LoreEntry.update(created.id, { timeline_series_id: created.id });
+    }
     setExistingEntries((current) => [...current, created]);
     updateEditingMark({ lore_entry_id: created.id, label: created.title });
     setCreatingLore(false);
@@ -332,7 +337,13 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     if (entry?.id) {
       await appClient.entities.LoreEntry.update(entry.id, payload);
     } else {
-      await appClient.entities.LoreEntry.create(payload);
+      const campaign = u?.campaign_id ? await appClient.entities.Campaign.get(u.campaign_id).catch(() => null) : null;
+      const created = await appClient.entities.LoreEntry.create(
+        datedCreatePayload(payload, campaignDate(campaign, campaign?.calendar_system), campaign?.calendar_system),
+      );
+      if (!created.timeline_series_id) {
+        await appClient.entities.LoreEntry.update(created.id, { timeline_series_id: created.id });
+      }
     }
     setSaving(false);
     onSaved?.();

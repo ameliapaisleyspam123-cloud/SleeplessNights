@@ -1,7 +1,7 @@
 const SUPERUSER_EMAIL = "ameliapaisleyspam123@gmail.com";
 
 export function isDmUser(user) {
-  return user?.campaign_role === "dm" || user?.role === "admin" || user?.email === SUPERUSER_EMAIL;
+  return user?.campaign_role?.toLowerCase?.() === "dm" || user?.role === "admin" || user?.email === SUPERUSER_EMAIL;
 }
 
 export function canViewVisibleItem(item, user, isDm = isDmUser(user)) {

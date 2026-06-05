@@ -11,6 +11,7 @@ import InventoryManager from "@/components/characters/InventoryManager";
 import AttackManager from "@/components/characters/AttackManager";
 import SpellManager from "@/components/characters/SpellManager";
 import CharacterClaimButton from "@/components/characters/CharacterClaimButton";
+import { campaignDate, datedCreatePayload } from "@/lib/timeline";
 
 const ALIGNMENTS = ["Lawful Good", "Neutral Good", "Chaotic Good", "Lawful Neutral", "True Neutral", "Chaotic Neutral", "Lawful Evil", "Neutral Evil", "Chaotic Evil"];
 const ABILITY_SCORES = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
@@ -237,7 +238,13 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
       await appClient.entities.CharacterSheet.update(sheet.id, dataToSave);
     } else {
       const user = await appClient.auth.me().catch(() => null);
-      await appClient.entities.CharacterSheet.create({ ...dataToSave, campaign_id: user?.campaign_id });
+      const campaign = user?.campaign_id ? await appClient.entities.Campaign.get(user.campaign_id).catch(() => null) : null;
+      const created = await appClient.entities.CharacterSheet.create(
+        datedCreatePayload({ ...dataToSave, campaign_id: user?.campaign_id }, campaignDate(campaign, campaign?.calendar_system), campaign?.calendar_system),
+      );
+      if (!created.timeline_series_id) {
+        await appClient.entities.CharacterSheet.update(created.id, { timeline_series_id: created.id });
+      }
     }
     setSaving(false);
     onSaved?.();

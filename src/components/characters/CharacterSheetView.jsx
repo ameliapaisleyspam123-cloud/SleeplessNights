@@ -203,14 +203,33 @@ function HpBlock({ hp, hpMax, hpTemp, onSave }) {
   const pct = Math.max(0, Math.min(100, (current / (hpMax || 1)) * 100));
   const barColor = pct > 50 ? "bg-accent" : pct > 25 ? "bg-primary" : "bg-destructive";
 
-  const handleSave = async () => {
+  const saveHp = async (nextCurrent, nextTemp) => {
     setSaving(true);
-    await onSave({ hp_current: current, hp_temp: temp });
+    await onSave({ hp_current: nextCurrent, hp_temp: nextTemp });
     setSaving(false);
   };
 
+  const applyHp = (nextCurrent, nextTemp = temp) => {
+    const cleanCurrent = Math.max(0, Math.min(hpMax || nextCurrent, nextCurrent));
+    const cleanTemp = Math.max(0, nextTemp);
+    setCurrent(cleanCurrent);
+    setTemp(cleanTemp);
+    saveHp(cleanCurrent, cleanTemp);
+  };
+
   const adjustCurrent = (delta) => {
-    setCurrent((value) => Math.max(0, Math.min(hpMax || value + delta, value + delta)));
+    applyHp(current + delta, temp);
+  };
+
+  const adjustTemp = (delta) => {
+    applyHp(current, temp + delta);
+  };
+
+  const applyDamage = () => {
+    const damage = Math.max(1, Number(amount) || 1);
+    const tempDamage = Math.min(temp, damage);
+    const remainingDamage = damage - tempDamage;
+    applyHp(current - remainingDamage, temp - tempDamage);
   };
 
   return (
@@ -223,29 +242,27 @@ function HpBlock({ hp, hpMax, hpTemp, onSave }) {
           <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
         </div>
         <div className="flex items-center gap-2 mb-2">
-          <button onClick={() => adjustCurrent(-1)} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
+          <button type="button" onClick={() => adjustCurrent(-1)} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
             <Minus className="w-4 h-4" />
           </button>
           <div className="flex-1 text-center">
             <span className="font-display text-3xl leading-none">{current}</span>
             <span className="text-muted-foreground text-sm">/{hpMax}</span>
           </div>
-          <button onClick={() => adjustCurrent(1)} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
+          <button type="button" onClick={() => adjustCurrent(1)} className="w-10 h-10 rounded-sm border border-border flex items-center justify-center hover:bg-secondary transition-colors">
             <Plus className="w-4 h-4" />
           </button>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[9px] text-muted-foreground uppercase tracking-widest shrink-0">Temp HP</span>
-          <button onClick={() => setTemp((value) => Math.max(0, value - 1))} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
+          <button type="button" onClick={() => adjustTemp(-1)} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
             <Minus className="w-3 h-3" />
           </button>
           <span className="text-sm font-medium w-8 text-center">{temp}</span>
-          <button onClick={() => setTemp((value) => value + 1)} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
+          <button type="button" onClick={() => adjustTemp(1)} className="w-8 h-8 rounded-sm border border-border flex items-center justify-center hover:bg-secondary text-muted-foreground">
             <Plus className="w-3 h-3" />
           </button>
-          <button onClick={handleSave} disabled={saving} className="ml-auto text-[11px] px-3 py-2 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50">
-            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
-          </button>
+          {saving && <span className="ml-auto text-[10px] uppercase tracking-widest text-muted-foreground">Saving</span>}
         </div>
       </div>
       <div className="border border-border rounded-sm bg-card p-3 col-span-3 sm:col-span-2">
@@ -259,10 +276,10 @@ function HpBlock({ hp, hpMax, hpTemp, onSave }) {
           aria-label="Hit point adjustment amount"
         />
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => adjustCurrent(-amount)} className="h-10 rounded-sm border border-border text-xs text-muted-foreground hover:text-destructive hover:border-destructive/60 transition-colors">
+          <button type="button" onClick={applyDamage} className="h-10 rounded-sm border border-border text-xs text-muted-foreground hover:text-destructive hover:border-destructive/60 transition-colors">
             Damage
           </button>
-          <button onClick={() => adjustCurrent(amount)} className="h-10 rounded-sm border border-border text-xs text-muted-foreground hover:text-accent hover:border-accent/60 transition-colors">
+          <button type="button" onClick={() => adjustCurrent(amount)} className="h-10 rounded-sm border border-border text-xs text-muted-foreground hover:text-accent hover:border-accent/60 transition-colors">
             Heal
           </button>
         </div>
@@ -281,10 +298,21 @@ function DeathSaveBlock({ successes, failures, onSave }) {
     setFail(failures || 0);
   }, [successes, failures]);
 
-  const handleSave = async () => {
+  const saveDeathSaves = async (nextSucc, nextFail) => {
     setSaving(true);
-    await onSave({ death_save_successes: succ, death_save_failures: fail });
+    await onSave({ death_save_successes: nextSucc, death_save_failures: nextFail });
     setSaving(false);
+  };
+
+  const setDeathValue = (kind, currentValue, nextValue) => {
+    const value = currentValue > nextValue ? nextValue : nextValue + 1;
+    if (kind === "succ") {
+      setSucc(value);
+      saveDeathSaves(value, fail);
+    } else {
+      setFail(value);
+      saveDeathSaves(succ, value);
+    }
   };
 
   return (
@@ -300,8 +328,12 @@ function DeathSaveBlock({ successes, failures, onSave }) {
             <div className="flex gap-2">
               {[0, 1, 2].map((index) => (
                 <button
+                  type="button"
                   key={index}
-                  onClick={() => setter(value > index ? index : index + 1)}
+                  onClick={() => {
+                    setter(value > index ? index : index + 1);
+                    setDeathValue(key, value, index);
+                  }}
                   className={`w-7 h-7 rounded-full border-2 transition-colors ${index < value ? (color === "green" ? "bg-accent border-accent" : "bg-destructive border-destructive") : `border-border ${color === "green" ? "hover:border-accent/60" : "hover:border-destructive/60"}`}`}
                 />
               ))}
@@ -309,9 +341,7 @@ function DeathSaveBlock({ successes, failures, onSave }) {
           </div>
         ))}
       </div>
-      <button onClick={handleSave} disabled={saving} className="mt-2 text-[11px] px-3 py-2 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50 w-full text-center">
-        {saving ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : "Save"}
-      </button>
+      {saving && <div className="mt-2 text-[10px] uppercase tracking-widest text-muted-foreground text-center">Saving</div>}
     </div>
   );
 }
@@ -351,13 +381,10 @@ function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
     const used = slot.used || 0;
     const remaining = slot.total - used;
     const newUsed = index < remaining ? used + 1 : Math.max(0, used - 1);
-    setSlots((prev) => ({ ...prev, [level]: { ...slot, used: newUsed } }));
-  };
-
-  const handleSave = async () => {
+    const nextSlots = { ...slots, [level]: { ...slot, used: newUsed } };
+    setSlots(nextSlots);
     setSaving(true);
-    await onSave({ spell_slots: JSON.stringify(slots), ...resources });
-    setSaving(false);
+    onSave({ spell_slots: JSON.stringify(nextSlots), ...resources }).finally(() => setSaving(false));
   };
 
   const classResources = [
@@ -375,10 +402,13 @@ function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
   const hasResources = classResources.length > 0;
 
   const setResourceCurrent = (resource, nextValue) => {
-    setResources((current) => ({
-      ...current,
+    const nextResources = {
+      ...resources,
       [resource.currentKey]: Math.min(Math.max(0, nextValue), resource.max),
-    }));
+    };
+    setResources(nextResources);
+    setSaving(true);
+    onSave({ spell_slots: JSON.stringify(slots), ...nextResources }).finally(() => setSaving(false));
   };
 
   if (!hasSpellSlots && !hasResources) {
@@ -394,9 +424,7 @@ function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
     <div>
       <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center justify-between">
         <span>Spell Slots</span>
-        <button onClick={handleSave} disabled={saving} className="text-[10px] px-2 py-0.5 rounded-sm bg-accent/20 hover:bg-accent/30 text-accent transition-colors disabled:opacity-50">
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
-        </button>
+        {saving && <span className="text-[10px] text-muted-foreground">Saving</span>}
       </div>
       <div className="flex flex-wrap gap-2">
         {hasSpellSlots && [1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => {
@@ -409,7 +437,7 @@ function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
               <div className="text-[8px] uppercase text-muted-foreground mb-1">Lvl {level}</div>
               <div className="flex gap-1.5 justify-center flex-wrap">
                 {Array.from({ length: slot.total }).map((_, index) => (
-                  <button key={index} onClick={() => toggleSlot(level, index)} className={`w-5 h-5 rounded-full border-2 transition-colors ${index < remaining ? "bg-accent border-accent hover:bg-accent/60" : "border-border hover:border-accent/50"}`} />
+                  <button type="button" key={index} onClick={() => toggleSlot(level, index)} className={`w-5 h-5 rounded-full border-2 transition-colors ${index < remaining ? "bg-accent border-accent hover:bg-accent/60" : "border-border hover:border-accent/50"}`} />
                 ))}
               </div>
               <div className="text-[9px] text-muted-foreground mt-1">
@@ -424,6 +452,7 @@ function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
             <div className="flex gap-1.5 justify-center flex-wrap">
               {Array.from({ length: resource.max }).map((_, index) => (
                 <button
+                  type="button"
                   key={index}
                   onClick={() => setResourceCurrent(resource, index < resource.current ? index : index + 1)}
                   className={`w-5 h-5 rounded-full border-2 transition-colors ${index < resource.current ? "bg-accent border-accent hover:bg-accent/60" : "border-border hover:border-accent/50"}`}

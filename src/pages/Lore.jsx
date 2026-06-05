@@ -8,9 +8,11 @@ import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
+import { campaignDate, hasTimelineDate, isRecordOnDate } from "@/lib/timeline";
 import { Folder, Grid2X2, List, MoveRight, Plus, Search, Tag, Trash2 } from "lucide-react";
 
 const CATEGORIES = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
+const VIEW_MODE_KEY = "sleepless_lore_view_mode_v1";
 
 function plainText(value = "") {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -70,6 +72,7 @@ const parentFolderPath = (path) => {
 export default function Lore() {
   const [items, setItems] = useState([]);
   const [campaignId, setCampaignId] = useState("");
+  const [campaign, setCampaign] = useState(null);
   const [emptyFolders, setEmptyFolders] = useState([]);
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
@@ -80,7 +83,7 @@ export default function Lore() {
   const [tag, setTag] = useState("all");
   const [showTags, setShowTags] = useState(false);
   const [folder, setFolder] = useState("all");
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem(VIEW_MODE_KEY) || "grid");
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -91,16 +94,25 @@ export default function Lore() {
     setIsAdmin(isDm);
     setCampaignId(user.campaign_id);
     setEmptyFolders(readEmptyFolders(user.campaign_id));
-    setItems(await appClient.entities.LoreEntry.filter({ campaign_id: user.campaign_id }, "-updated_date", 200));
+    const [currentCampaign, entries] = await Promise.all([
+      user.campaign_id ? appClient.entities.Campaign.get(user.campaign_id) : null,
+      appClient.entities.LoreEntry.filter({ campaign_id: user.campaign_id }, "-updated_date", 500),
+    ]);
+    setCampaign(currentCampaign);
+    setItems(entries);
   };
 
   useEffect(() => {
     load();
   }, []);
 
-  const folders = expandFolderPaths([...items.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
+  const activeDate = campaignDate(campaign, campaign?.calendar_system);
+  const visibleItems = items.filter((item) => {
+    if (!canViewVisibleItem(item, currentUser, isAdmin)) return false;
+    return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, campaign?.calendar_system) : !campaign?.timeline_started;
+  });
+  const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
   const folderOptions = visibleFolderPaths(folders, folder);
-  const visibleItems = items.filter((item) => canViewVisibleItem(item, currentUser, isAdmin));
   const tags = [...new Set(visibleItems.flatMap((item) => item.tags || []).map((itemTag) => String(itemTag).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const filtered = visibleItems.filter((item) => {
     const q = query.trim().toLowerCase();
@@ -173,12 +185,17 @@ export default function Lore() {
     setContextMenu({ x: event.clientX, y: event.clientY, entry });
   };
 
+  const chooseViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem(VIEW_MODE_KEY, mode);
+  };
+
   return (
     <div className="p-6 lg:p-10 space-y-5" onClick={() => setContextMenu(null)}>
       <PageHeader
         eyebrow="World"
         title="Lore & Maps"
-        description="Browse the annals of the world — places, people, events, and ancient secrets."
+        description="Browse the annals of the world - places, people, events, and ancient secrets."
         action={
           isAdmin ? (
             <Button onClick={() => setEditing({})}>
@@ -303,10 +320,10 @@ export default function Lore() {
             </div>
 
             <div className="flex border border-border rounded-sm overflow-hidden shrink-0">
-              <button type="button" onClick={() => setViewMode("grid")} className={`h-8 px-3 flex items-center gap-1.5 text-xs transition-colors ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+              <button type="button" onClick={() => chooseViewMode("grid")} className={`h-8 px-3 flex items-center gap-1.5 text-xs transition-colors ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
                 <Grid2X2 className="w-3.5 h-3.5" /> Grid
               </button>
-              <button type="button" onClick={() => setViewMode("list")} className={`h-8 px-3 flex items-center gap-1.5 text-xs border-l border-border transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+              <button type="button" onClick={() => chooseViewMode("list")} className={`h-8 px-3 flex items-center gap-1.5 text-xs border-l border-border transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
                 <List className="w-3.5 h-3.5" /> List
               </button>
             </div>
