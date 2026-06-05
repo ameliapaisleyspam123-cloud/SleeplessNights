@@ -27,12 +27,15 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [createdEntries, setCreatedEntries] = useState([]);
+  const [pdfSrc, setPdfSrc] = useState(entry?.pdf_url || "");
   const [showPdfHint, setShowPdfHint] = useState(true);
   const [mapZoom, setMapZoom] = useState(1);
   const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState(null);
   const [overlayEntry, setOverlayEntry] = useState(null);
   const mapSurfaceRef = useRef(null);
+  const mapZoomRef = useRef(1);
+  const mapPanRef = useRef({ x: 0, y: 0 });
   const hasPdf = Boolean(entry?.pdf_url);
   const hasImage = Boolean(entry?.image_url);
 
@@ -44,11 +47,70 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   );
   const loreById = useMemo(() => new Map(availableEntries.map((item) => [item.id, item])), [availableEntries]);
 
-  const pdfSrc = entry?.pdf_url || "";
+  const setZoomAndPan = (nextZoom, nextPan) => {
+    mapZoomRef.current = nextZoom;
+    mapPanRef.current = nextPan;
+    setMapZoom(nextZoom);
+    setMapPan(nextPan);
+  };
+
+  const zoomAtPoint = (nextZoom, pointerX, pointerY) => {
+    const currentZoom = mapZoomRef.current;
+    const currentPan = mapPanRef.current;
+    const clampedZoom = Math.min(4, Math.max(0.5, nextZoom));
+    if (clampedZoom === currentZoom) return;
+    const contentX = (pointerX - currentPan.x) / currentZoom;
+    const contentY = (pointerY - currentPan.y) / currentZoom;
+    setZoomAndPan(clampedZoom, {
+      x: pointerX - contentX * clampedZoom,
+      y: pointerY - contentY * clampedZoom,
+    });
+  };
+
+  const zoomFromCenter = (amount) => {
+    const surface = mapSurfaceRef.current;
+    if (!surface) {
+      setZoomAndPan(Math.min(4, Math.max(0.5, mapZoomRef.current + amount)), mapPanRef.current);
+      return;
+    }
+    const rect = surface.getBoundingClientRect();
+    zoomAtPoint(mapZoomRef.current + amount, rect.width / 2, rect.height / 2);
+  };
 
   useEffect(() => {
     setOverlayEntry(null);
+    setZoomAndPan(1, { x: 0, y: 0 });
   }, [entry?.id]);
+
+  useEffect(() => {
+    let objectUrl = "";
+    let cancelled = false;
+
+    const preparePdf = async () => {
+      if (!entry?.pdf_url) {
+        setPdfSrc("");
+        return;
+      }
+      if (!entry.pdf_url.startsWith("data:application/pdf")) {
+        setPdfSrc(entry.pdf_url);
+        return;
+      }
+      try {
+        const blob = await fetch(entry.pdf_url).then((response) => response.blob());
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPdfSrc(objectUrl);
+      } catch {
+        if (!cancelled) setPdfSrc(entry.pdf_url);
+      }
+    };
+
+    preparePdf();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [entry?.pdf_url]);
 
   useEffect(() => {
     if (!pdfSrc || !showPdfHint) return undefined;
@@ -62,7 +124,9 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
     const handleWheel = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      setMapZoom((value) => Math.min(4, Math.max(0.5, value + (event.deltaY > 0 ? -0.12 : 0.12))));
+      const rect = surface.getBoundingClientRect();
+      const factor = event.deltaY > 0 ? 0.9 : 1.1;
+      zoomAtPoint(mapZoomRef.current * factor, event.clientX - rect.left, event.clientY - rect.top);
     };
     surface.addEventListener("wheel", handleWheel, { passive: false });
     return () => surface.removeEventListener("wheel", handleWheel);
@@ -130,13 +194,15 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
     setOverlayEntry(linked);
   };
 
-  const startPan = (event) => setDragStart({ x: event.clientX, y: event.clientY, pan: mapPan, moved: false });
+  const startPan = (event) => setDragStart({ x: event.clientX, y: event.clientY, pan: mapPanRef.current, moved: false });
   const movePan = (event) => {
     if (!dragStart) return;
     const dx = event.clientX - dragStart.x;
     const dy = event.clientY - dragStart.y;
     setDragStart((current) => ({ ...current, moved: Math.abs(dx) + Math.abs(dy) > 3 }));
-    setMapPan({ x: dragStart.pan.x + dx, y: dragStart.pan.y + dy });
+    const nextPan = { x: dragStart.pan.x + dx, y: dragStart.pan.y + dy };
+    mapPanRef.current = nextPan;
+    setMapPan(nextPan);
   };
   const endPan = () => setDragStart(null);
 
@@ -148,9 +214,9 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
           <div className="text-xs text-muted-foreground">{pins.length} pin{pins.length === 1 ? "" : "s"}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => setMapZoom((value) => Math.max(0.5, value - 0.25))}>-</Button>
-          <Button variant="outline" size="sm" onClick={() => setMapZoom((value) => Math.min(4, value + 0.25))}>+</Button>
-          <Button variant="outline" size="sm" onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }}>Reset</Button>
+          <Button variant="outline" size="sm" onClick={() => zoomFromCenter(-0.25)}>-</Button>
+          <Button variant="outline" size="sm" onClick={() => zoomFromCenter(0.25)}>+</Button>
+          <Button variant="outline" size="sm" onClick={() => setZoomAndPan(1, { x: 0, y: 0 })}>Reset</Button>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="w-4 h-4" /> Close
           </Button>
@@ -173,7 +239,7 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
             {hasImage ? (
               <img src={entry.image_url} alt="" className="absolute inset-0 w-full h-full object-contain bg-background" draggable={false} />
             ) : pdfSrc ? (
-              <PdfMapCanvas url={pdfSrc} rotation={entry.pdf_rotation || 0} />
+              <PdfMapCanvas url={pdfSrc} rotation={entry.pdf_rotation || 0} className="pointer-events-none" />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{hasPdf ? "Loading PDF..." : "No map file attached."}</div>
             )}

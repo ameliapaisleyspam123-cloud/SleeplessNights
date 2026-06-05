@@ -1,19 +1,23 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 export default function PdfMapCanvas({ url, rotation = 0, className = "" }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const [status, setStatus] = useState("loading");
-  const [renderSize, setRenderSize] = useState({ canvasWidth: 0, canvasHeight: 0, frameWidth: 0, frameHeight: 0 });
-  const normalizedRotation = ((Number(rotation) || 0) % 360 + 360) % 360;
+  const [renderSize, setRenderSize] = useState({ canvasWidth: 0, canvasHeight: 0 });
+  const normalizedRotation = useMemo(() => ((Number(rotation) || 0) % 360 + 360) % 360, [rotation]);
 
   useEffect(() => {
     let cancelled = false;
     let renderTask = null;
+    let renderRun = 0;
 
     const renderPdf = async () => {
       if (!url || !canvasRef.current || !wrapRef.current) return;
+      const currentRun = ++renderRun;
+      renderTask?.cancel?.();
+      renderTask = null;
       setStatus("loading");
       try {
         const pdfjs = await import("pdfjs-dist");
@@ -22,24 +26,21 @@ export default function PdfMapCanvas({ url, rotation = 0, className = "" }) {
 
         const pdf = await pdfjs.getDocument(url).promise;
         const page = await pdf.getPage(1);
-        if (cancelled) return;
+        if (cancelled || currentRun !== renderRun) return;
 
-        const turnsSideways = normalizedRotation === 90 || normalizedRotation === 270;
         const container = wrapRef.current.getBoundingClientRect();
-        const baseViewport = page.getViewport({ scale: 1 });
-        const frameBaseWidth = turnsSideways ? baseViewport.height : baseViewport.width;
-        const frameBaseHeight = turnsSideways ? baseViewport.width : baseViewport.height;
-        const scale = Math.min(container.width / frameBaseWidth, container.height / frameBaseHeight) || 1;
-        const viewport = page.getViewport({ scale });
+        if (container.width < 2 || container.height < 2) return;
+        const pageRotation = ((page.rotate || 0) + normalizedRotation) % 360;
+        const baseViewport = page.getViewport({ scale: 1, rotation: pageRotation });
+        const scale = Math.min(container.width / baseViewport.width, container.height / baseViewport.height) || 1;
+        const viewport = page.getViewport({ scale, rotation: pageRotation });
         const canvas = canvasRef.current;
         const context = canvas.getContext("2d");
         const ratio = window.devicePixelRatio || 1;
         const canvasWidth = viewport.width;
         const canvasHeight = viewport.height;
-        const frameWidth = turnsSideways ? canvasHeight : canvasWidth;
-        const frameHeight = turnsSideways ? canvasWidth : canvasHeight;
 
-        setRenderSize({ canvasWidth, canvasHeight, frameWidth, frameHeight });
+        setRenderSize({ canvasWidth, canvasHeight });
         canvas.width = Math.floor(canvasWidth * ratio);
         canvas.height = Math.floor(canvasHeight * ratio);
         canvas.style.width = `${canvasWidth}px`;
@@ -53,9 +54,9 @@ export default function PdfMapCanvas({ url, rotation = 0, className = "" }) {
           transform: ratio === 1 ? null : [ratio, 0, 0, ratio, 0, 0],
         });
         await renderTask.promise;
-        if (!cancelled) setStatus("ready");
+        if (!cancelled && currentRun === renderRun) setStatus("ready");
       } catch (error) {
-        if (!cancelled) setStatus("error");
+        if (!cancelled && error?.name !== "RenderingCancelledException") setStatus("error");
       }
     };
 
@@ -83,15 +84,11 @@ export default function PdfMapCanvas({ url, rotation = 0, className = "" }) {
       )}
       <div
         className={status === "ready" ? "relative" : "invisible"}
-        style={{ width: `${renderSize.frameWidth}px`, height: `${renderSize.frameHeight}px` }}
+        style={{ width: `${renderSize.canvasWidth}px`, height: `${renderSize.canvasHeight}px` }}
       >
         <canvas
           ref={canvasRef}
-          className="absolute left-1/2 top-1/2 block max-w-none"
-          style={{
-            transform: `translate(-50%, -50%) rotate(${normalizedRotation}deg)`,
-            transformOrigin: "center center",
-          }}
+          className="absolute inset-0 block max-w-none"
         />
       </div>
     </div>
