@@ -59,7 +59,7 @@ export default function LoreCard({ entry, onClick, onContextMenu, onEdit, onDele
         </div>
       ) : entry.pdf_url ? (
         <div className={`${isList ? "w-28 self-stretch shrink-0" : "aspect-[4/3]"} relative overflow-hidden bg-muted`}>
-          <PdfMapCanvas url={entry.pdf_url} className="pointer-events-none" />
+          <PdfMapCanvas url={entry.pdf_url} rotation={entry.pdf_rotation || 0} className="pointer-events-none" />
         </div>
       ) : (
         <div className={`${isList ? "w-28 self-stretch shrink-0" : "aspect-[4/3]"} bg-secondary/60 flex items-center justify-center`}>

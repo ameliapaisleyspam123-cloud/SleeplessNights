@@ -447,7 +447,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
               </div>
             ) : form.pdf_url ? (
               <div className="relative h-64 rounded-sm overflow-hidden border border-border bg-background">
-                <PdfMapCanvas url={form.pdf_url} />
+                <PdfMapCanvas url={form.pdf_url} rotation={form.pdf_rotation || 0} />
                 <a
                   href={form.pdf_url}
                   target="_blank"
@@ -562,7 +562,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
                       <img src={form.image_url} alt="" className="absolute inset-0 w-full h-full object-contain" draggable={false} />
                     ) : (
                       <div className="absolute inset-0">
-                        <PdfMapCanvas url={form.pdf_url} />
+                        <PdfMapCanvas url={form.pdf_url} rotation={form.pdf_rotation || 0} />
                       </div>
                     )}
                     {mapMarks.map((mark) => (

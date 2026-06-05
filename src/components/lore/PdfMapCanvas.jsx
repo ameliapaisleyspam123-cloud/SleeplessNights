@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-export default function PdfMapCanvas({ url, rotation = 180, className = "" }) {
+export default function PdfMapCanvas({ url, rotation = 0, className = "" }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const [status, setStatus] = useState("loading");
