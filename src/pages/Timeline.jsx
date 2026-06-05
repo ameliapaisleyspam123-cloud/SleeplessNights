@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { canViewVisibleItem } from "@/lib/visibility";
 import { isDmUser } from "@/lib/visibility";
 import { campaignDate, dateKey, formatTimelineDate, hasTimelineDate, isRecordOnDate, makeDatedRecord, timelineSeriesId } from "@/lib/timeline";
-import { CalendarDays, ChevronDown, ChevronUp, Eye, EyeOff, GitBranch, Link2, ListTree, Lock, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import { BookOpen, CalendarDays, ChevronDown, ChevronUp, Eye, EyeOff, GitBranch, Link2, ListTree, Lock, Plus, Save, Sparkles, Trash2, Users } from "lucide-react";
 
 const DEFAULT_CALENDAR = {
   days_per_month: 30,
@@ -151,17 +151,6 @@ function buildTimelineMarkers({ events, characters, lore, activeDate, calendar, 
   return [...markers.values()].sort(compareTimelineDates);
 }
 
-function groupMarkers(markers) {
-  const years = new Map();
-  for (const marker of markers) {
-    if (!years.has(marker.year)) years.set(marker.year, []);
-    years.get(marker.year).push(marker);
-  }
-  return [...years.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([year, points]) => ({ year, points }));
-}
-
 function recordsToCarry(records, activeDate, calendar) {
   const activeKey = dateKey(activeDate, calendar);
   const activeSeries = new Set(records.filter((item) => item.timeline_date_key === activeKey).map((item) => timelineSeriesId(item)));
@@ -204,6 +193,7 @@ export default function Timeline() {
   const [dateDraft, setDateDraft] = useState({ year: 1, month: 1, day: 1 });
   const [carrySelection, setCarrySelection] = useState({ characters: [], lore: [] });
   const [showCalendarRules, setShowCalendarRules] = useState(false);
+  const [showRecordIndex, setShowRecordIndex] = useState(false);
   const [timelineView, setTimelineView] = useState(() => localStorage.getItem("sleepless_timeline_view_v1") || "rail");
   const [savingCalendar, setSavingCalendar] = useState(false);
   const [savingEntry, setSavingEntry] = useState(false);
@@ -278,7 +268,8 @@ export default function Timeline() {
     }),
     [visibleEvents, visibleCharacters, visibleLore, activeDate, calendar, timelineStarted],
   );
-  const markerGroups = useMemo(() => groupMarkers(timelineMarkers), [timelineMarkers]);
+  const indexedCharacters = useMemo(() => [...visibleCharacters].sort((a, b) => (a.name || "").localeCompare(b.name || "")), [visibleCharacters]);
+  const indexedLore = useMemo(() => [...visibleLore].sort((a, b) => (a.title || "").localeCompare(b.title || "")), [visibleLore]);
 
   if (!loaded) {
     return (
@@ -336,6 +327,12 @@ export default function Timeline() {
     });
     setSavingDate(false);
     await load();
+  };
+
+  const jumpToMarker = async (marker) => {
+    const nextDate = { year: marker.year, month: marker.month, day: marker.day };
+    setDateDraft(nextDate);
+    if (canManage) await saveCurrentDate(nextDate);
   };
 
   const togglePlayerTimeline = async () => {
@@ -579,6 +576,43 @@ export default function Timeline() {
         </section>
       )}
 
+      <section className="border border-border bg-card/50 rounded-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowRecordIndex((open) => !open)}
+          className="w-full p-4 flex items-center justify-between gap-3 text-left hover:bg-secondary/50 transition-colors"
+          aria-expanded={showRecordIndex}
+        >
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-accent font-medium">Timeline Records</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              {indexedCharacters.length} character{indexedCharacters.length === 1 ? "" : "s"} and {indexedLore.length} lore entr{indexedLore.length === 1 ? "y" : "ies"}
+            </div>
+          </div>
+          {showRecordIndex ? <ChevronUp className="w-4 h-4 text-accent shrink-0" /> : <ChevronDown className="w-4 h-4 text-accent shrink-0" />}
+        </button>
+        {showRecordIndex && (
+          <div className="border-t border-border p-4 grid lg:grid-cols-2 gap-4">
+            <RecordIndexList
+              title="Characters"
+              icon={Users}
+              items={indexedCharacters}
+              calendar={calendar}
+              getLabel={(item) => item.name || "Unnamed"}
+              getMeta={(item) => [item.race, item.class].filter(Boolean).join(" - ")}
+            />
+            <RecordIndexList
+              title="Lore Entries"
+              icon={BookOpen}
+              items={indexedLore}
+              calendar={calendar}
+              getLabel={(item) => item.title || "Untitled"}
+              getMeta={(item) => item.category || "lore"}
+            />
+          </div>
+        )}
+      </section>
+
       <Dialog open={Boolean(entry && canManage)} onOpenChange={(open) => !open && setEntry(null)}>
         <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto thin-scroll p-0">
           {entry && (
@@ -683,42 +717,37 @@ export default function Timeline() {
             onEdit={setEntry}
             onDelete={deleteEntry}
           />
-        ) : markerGroups.length === 0 ? (
+        ) : timelineMarkers.length === 0 ? (
           <div className="p-10 text-center text-muted-foreground border border-dashed border-border m-4 rounded-sm">Move to a date to place the first marker on the timeline.</div>
         ) : (
-          <div className="space-y-8 p-4">
-            {markerGroups.map((yearGroup) => (
-              <div key={yearGroup.year} className="overflow-x-auto thin-scroll pb-3">
-                <div className="flex items-center gap-2 font-display text-2xl mb-5">
-                  <GitBranch className="w-5 h-5 text-accent" /> {formatYear(yearGroup.year, calendar)}
-                </div>
-                <div
-                  className="relative grid min-w-[52rem] gap-4 py-10"
-                  style={{ gridTemplateColumns: `repeat(${Math.max(yearGroup.points.length, 1)}, minmax(12rem, 1fr))` }}
-                >
-                  <div
-                    className="absolute left-6 right-6 top-1/2 h-2 -translate-y-1/2 rounded-full shadow-sm"
-                    style={{ background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--border)))" }}
-                  />
-                  {yearGroup.points.map((marker, index) => (
-                    <TimelineMarker
-                      key={marker.key}
-                      marker={marker}
-                      index={index}
-                      calendar={calendar}
-                      active={marker.key === dateKey(activeDate, calendar)}
-                      canManage={canManage}
-                      user={user}
-                      characterById={characterById}
-                      loreById={loreById}
-                      onEdit={setEntry}
-                      onAdd={() => setEntry({ ...emptyEvent(user?.campaign_id, calendar), year: marker.year, month: marker.month, day: marker.day })}
-                      onDelete={deleteEntry}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto thin-scroll p-4 pb-6">
+            <div
+              className="relative grid min-w-[52rem] gap-4 py-12"
+              style={{ gridTemplateColumns: `repeat(${Math.max(timelineMarkers.length, 1)}, minmax(12rem, 1fr))` }}
+            >
+              <div
+                className="absolute left-6 right-6 top-1/2 h-2 -translate-y-1/2 rounded-full shadow-sm"
+                style={{ background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--border)))" }}
+              />
+              {timelineMarkers.map((marker, index) => (
+                <TimelineMarker
+                  key={marker.key}
+                  marker={marker}
+                  index={index}
+                  previousMarker={timelineMarkers[index - 1]}
+                  calendar={calendar}
+                  active={marker.key === dateKey(activeDate, calendar)}
+                  canManage={canManage}
+                  user={user}
+                  characterById={characterById}
+                  loreById={loreById}
+                  onEdit={setEntry}
+                  onAdd={() => setEntry({ ...emptyEvent(user?.campaign_id, calendar), year: marker.year, month: marker.month, day: marker.day })}
+                  onDelete={deleteEntry}
+                  onJump={() => jumpToMarker(marker)}
+                />
+              ))}
+            </div>
           </div>
         )}
       </section>
@@ -802,28 +831,63 @@ function CarryPicker({ title, items, selected, getLabel, getMeta, onToggle, onSe
   );
 }
 
+function RecordIndexList({ title, icon: Icon, items, calendar, getLabel, getMeta }) {
+  return (
+    <div className="border border-border rounded-sm bg-background/50 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border text-[10px] uppercase tracking-[0.2em] text-accent">
+        <Icon className="w-3.5 h-3.5" /> {title}
+      </div>
+      <div className="max-h-72 overflow-y-auto thin-scroll p-2 space-y-1">
+        {items.length === 0 ? (
+          <div className="text-sm text-muted-foreground px-2 py-4">None found.</div>
+        ) : (
+          items.map((item) => (
+            <div key={item.id} className="rounded-sm px-2 py-2 text-sm hover:bg-secondary/60">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-foreground">{getLabel(item)}</div>
+                  {getMeta(item) && <div className="truncate text-xs text-muted-foreground mt-0.5">{getMeta(item)}</div>}
+                </div>
+                <div className="shrink-0 text-right text-[10px] uppercase tracking-[0.14em] text-accent">
+                  {hasTimelineDate(item) ? formatTimelineDate(item.timeline_date, calendar) : "Unplaced"}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TimelineTree({ grouped, calendar, canManage, user, characterById, loreById, onEdit, onDelete }) {
   if (grouped.length === 0) {
     return <div className="p-10 text-center text-muted-foreground border border-dashed border-border m-4 rounded-sm">No event entries in tree view yet.</div>;
   }
 
   return (
-    <div className="p-4 space-y-5">
+    <div className="relative p-4 pl-8 space-y-5">
+      <div className="absolute left-6 top-4 bottom-4 w-2 rounded-full bg-gradient-to-b from-primary via-accent to-border shadow-sm" />
       {grouped.map((yearGroup) => (
-        <div key={yearGroup.year} className="relative pl-6">
-          <div className="absolute left-2 top-7 bottom-0 w-px bg-accent/40" />
-          <div className="flex items-center gap-2 font-display text-2xl">
+        <div key={yearGroup.year} className="relative pl-8">
+          <div className="absolute left-[-1.25rem] top-4 h-4 w-4 rounded-full border-4 border-background bg-primary shadow-sm" />
+          <div className="absolute left-[-1.25rem] top-6 h-px w-8 bg-accent/60" />
+          <div className="flex items-center gap-2 font-display text-2xl min-h-8">
             <GitBranch className="w-5 h-5 text-accent" /> {formatYear(yearGroup.year, calendar)}
           </div>
-          <div className="mt-3 space-y-4">
+          <div className="relative mt-3 ml-2 space-y-4 pl-6">
+            <div className="absolute left-0 top-0 bottom-0 w-px bg-accent/35" />
             {yearGroup.months.map((monthGroup) => (
               <div key={`${yearGroup.year}-${monthGroup.month}`} className="relative pl-6">
-                <div className="absolute left-[-0.9rem] top-3 h-px w-6 bg-accent/40" />
-                <div className="text-sm uppercase tracking-[0.2em] text-accent">{calendar.month_names[monthGroup.month - 1] || `Month ${monthGroup.month}`}</div>
-                <div className="mt-3 space-y-3">
+                <div className="absolute left-[-1.35rem] top-2.5 h-3 w-3 rounded-full border-2 border-background bg-accent" />
+                <div className="absolute left-[-1.35rem] top-4 h-px w-8 bg-accent/45" />
+                <div className="text-sm uppercase tracking-[0.2em] text-accent min-h-6">{calendar.month_names[monthGroup.month - 1] || `Month ${monthGroup.month}`}</div>
+                <div className="relative mt-3 space-y-3 pl-5">
+                  <div className="absolute left-0 top-0 bottom-0 w-px bg-border" />
                   {monthGroup.days.map((dayGroup) => (
                     <div key={`${yearGroup.year}-${monthGroup.month}-${dayGroup.day}`} className="relative pl-5">
-                      <div className="absolute left-[-0.45rem] top-3 h-px w-5 bg-border" />
+                      <div className="absolute left-[-1.2rem] top-2 h-2.5 w-2.5 rounded-full border border-background bg-border" />
+                      <div className="absolute left-[-1.2rem] top-3 h-px w-7 bg-border" />
                       <div className="text-xs text-muted-foreground">{calendar.day_names[dayGroup.day - 1] || `Day ${dayGroup.day}`}</div>
                       <div className="mt-2 grid lg:grid-cols-2 gap-3">
                         {dayGroup.events.map((timelineEvent) => (
@@ -857,10 +921,11 @@ function formatYear(year, calendar) {
   return `${Math.abs(year)} ${label}`;
 }
 
-function TimelineMarker({ marker, index, calendar, active, canManage, user, characterById, loreById, onEdit, onAdd, onDelete }) {
+function TimelineMarker({ marker, index, previousMarker, calendar, active, canManage, user, characterById, loreById, onEdit, onAdd, onDelete, onJump }) {
   const above = index % 2 === 0;
   const monthName = calendar.month_names[marker.month - 1] || `Month ${marker.month}`;
   const dayName = calendar.day_names[marker.day - 1] || `Day ${marker.day}`;
+  const startsYear = !previousMarker || previousMarker.year !== marker.year;
   const countLabel = [
     marker.events.length ? `${marker.events.length} event${marker.events.length === 1 ? "" : "s"}` : "",
     marker.characterCount ? `${marker.characterCount} character${marker.characterCount === 1 ? "" : "s"}` : "",
@@ -869,14 +934,24 @@ function TimelineMarker({ marker, index, calendar, active, canManage, user, char
 
   return (
     <div className="relative min-h-72">
-      <div className={`absolute left-1/2 z-10 flex h-16 w-16 -translate-x-1/2 items-center justify-center rounded-full border-4 bg-background text-center shadow-lg ${
-        active ? "top-1/2 -translate-y-1/2 border-accent text-accent" : "top-1/2 -translate-y-1/2 border-primary text-primary"
-      }`}>
+      {startsYear && (
+        <div className="absolute left-1/2 top-0 z-10 flex -translate-x-1/2 items-center gap-2 rounded-sm border border-border bg-background/95 px-3 py-1 text-xs text-muted-foreground shadow-sm">
+          <GitBranch className="w-3.5 h-3.5 text-accent" /> {formatYear(marker.year, calendar)}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onJump}
+        title={canManage ? `Move to ${formatTimelineDate(marker, calendar)}` : formatTimelineDate(marker, calendar)}
+        className={`absolute left-1/2 top-1/2 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 bg-background text-center shadow-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background ${
+          active ? "border-accent text-accent" : "border-primary text-primary"
+        }`}
+      >
         <div>
           <div className="font-display text-lg leading-none">{Math.abs(marker.year)}</div>
           <div className="mt-0.5 text-[9px] uppercase tracking-widest">{marker.month}/{marker.day}</div>
         </div>
-      </div>
+      </button>
       <div className={`absolute left-1/2 w-px -translate-x-1/2 bg-border ${above ? "bottom-1/2 h-9" : "top-1/2 h-9"}`} />
       <div className={`absolute left-0 right-0 ${above ? "bottom-[calc(50%+3.2rem)]" : "top-[calc(50%+3.2rem)]"}`}>
         <div className="mx-auto max-w-56 text-center">
