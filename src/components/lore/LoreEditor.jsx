@@ -78,6 +78,8 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
   const [markDrag, setMarkDrag] = useState(null);
   const [mapHistory, setMapHistory] = useState({ past: [], future: [] });
   const mapSurfaceRef = useRef(null);
+  const mapZoomRef = useRef(1);
+  const mapPanRef = useRef({ x: 0, y: 0 });
   const suppressNextMapClickRef = useRef(false);
 
   const isMap = form.category === "map";
@@ -92,6 +94,8 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
       setShowPdfHint(true);
       setMapZoom(1);
       setMapPan({ x: 0, y: 0 });
+      mapZoomRef.current = 1;
+      mapPanRef.current = { x: 0, y: 0 };
       setDragStart(null);
       setMarkDrag(null);
       setMapHistory({ past: [], future: [] });
@@ -118,11 +122,43 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     const handleWheel = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      setMapZoom((value) => Math.min(4, Math.max(0.5, value + (event.deltaY > 0 ? -0.12 : 0.12))));
+      const rect = surface.getBoundingClientRect();
+      const factor = event.deltaY > 0 ? 0.9 : 1.1;
+      zoomAtPoint(mapZoomRef.current * factor, event.clientX - rect.left, event.clientY - rect.top);
     };
     surface.addEventListener("wheel", handleWheel, { passive: false });
     return () => surface.removeEventListener("wheel", handleWheel);
   }, []);
+
+  const setZoomAndPan = (nextZoom, nextPan) => {
+    mapZoomRef.current = nextZoom;
+    mapPanRef.current = nextPan;
+    setMapZoom(nextZoom);
+    setMapPan(nextPan);
+  };
+
+  const zoomAtPoint = (nextZoom, pointerX, pointerY) => {
+    const currentZoom = mapZoomRef.current;
+    const currentPan = mapPanRef.current;
+    const clampedZoom = Math.min(4, Math.max(0.5, nextZoom));
+    if (clampedZoom === currentZoom) return;
+    const contentX = (pointerX - currentPan.x) / currentZoom;
+    const contentY = (pointerY - currentPan.y) / currentZoom;
+    setZoomAndPan(clampedZoom, {
+      x: pointerX - contentX * clampedZoom,
+      y: pointerY - contentY * clampedZoom,
+    });
+  };
+
+  const zoomFromCenter = (amount) => {
+    const surface = mapSurfaceRef.current;
+    if (!surface) {
+      setZoomAndPan(Math.min(4, Math.max(0.5, mapZoomRef.current + amount)), mapPanRef.current);
+      return;
+    }
+    const rect = surface.getBoundingClientRect();
+    zoomAtPoint(mapZoomRef.current + amount, rect.width / 2, rect.height / 2);
+  };
 
   useEffect(() => {
     if (!form.pdf_url || !showPdfHint) return undefined;
@@ -219,7 +255,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
 
   const startPan = (event) => {
     if (mapTool !== "pan") return;
-    setDragStart({ x: event.clientX, y: event.clientY, pan: mapPan, moved: false });
+    setDragStart({ x: event.clientX, y: event.clientY, pan: mapPanRef.current, moved: false });
   };
 
   const movePan = (event) => {
@@ -227,7 +263,9 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     const dx = event.clientX - dragStart.x;
     const dy = event.clientY - dragStart.y;
     setDragStart((current) => ({ ...current, moved: Math.abs(dx) + Math.abs(dy) > 3 }));
-    setMapPan({ x: dragStart.pan.x + dx, y: dragStart.pan.y + dy });
+    const nextPan = { x: dragStart.pan.x + dx, y: dragStart.pan.y + dy };
+    mapPanRef.current = nextPan;
+    setMapPan(nextPan);
   };
 
   const endPan = () => setDragStart(null);
@@ -490,9 +528,9 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
                   >
                     <Redo2 className="w-3.5 h-3.5" />
                   </button>
-                  <button type="button" onClick={() => setMapZoom((value) => Math.max(0.5, value - 0.25))} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">-</button>
-                  <button type="button" onClick={() => setMapZoom((value) => Math.min(4, value + 0.25))} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">+</button>
-                  <button type="button" onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }} className="h-8 px-2 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">Reset</button>
+                  <button type="button" onClick={() => zoomFromCenter(-0.25)} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">-</button>
+                  <button type="button" onClick={() => zoomFromCenter(0.25)} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">+</button>
+                  <button type="button" onClick={() => setZoomAndPan(1, { x: 0, y: 0 })} className="h-8 px-2 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">Reset</button>
                 </div>
               </div>
 

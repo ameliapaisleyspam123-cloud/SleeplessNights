@@ -14,13 +14,14 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
       setMapOpen(false);
       return;
     }
-    if ((entry?.pdf_url || entry?.image_url) && entry?.category === "map") {
+    if (entry?.pdf_url || (entry?.image_url && entry?.category === "map")) {
       setMapOpen(true);
     }
   }, [open, entry?.id, entry?.pdf_url, entry?.image_url, entry?.category]);
 
   if (!entry) return null;
   const isMap = entry.category === "map";
+  const canOpenFullView = Boolean(entry.pdf_url || (entry.image_url && isMap));
 
   const broadcast = async () => {
     const all = await appClient.entities.Broadcast.list("-updated_date", 100);
@@ -85,9 +86,9 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
             <div className="mt-4 p-3 border border-border rounded-sm bg-secondary/30 flex items-center gap-3">
               <FileText className="w-4 h-4 text-accent" />
               <span className="text-sm flex-1">{isMap ? "PDF map attached" : "PDF attached"}</span>
-              {isMap ? (
+              {canOpenFullView ? (
                 <button type="button" onClick={() => setMapOpen(true)} className="text-xs text-muted-foreground hover:text-accent transition-colors">
-                  Open map
+                  Open full view
                 </button>
               ) : (
                 <a href={entry.pdf_url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-accent transition-colors">
@@ -106,7 +107,7 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
           </div>
         </div>
 
-        {mapOpen && isMap && (entry.pdf_url || entry.image_url) && createPortal(
+        {mapOpen && canOpenFullView && createPortal(
           <MapPinViewer
             entry={entry}
             entries={entries}
