@@ -1,18 +1,23 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-export default function PdfMapCanvas({ url, className = "" }) {
+export default function PdfMapCanvas({ url, rotation = 180, className = "" }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const [status, setStatus] = useState("loading");
   const [renderSize, setRenderSize] = useState({ canvasWidth: 0, canvasHeight: 0 });
+  const normalizedRotation = useMemo(() => ((Number(rotation) || 0) % 360 + 360) % 360, [rotation]);
 
   useEffect(() => {
     let cancelled = false;
     let renderTask = null;
+    let renderRun = 0;
 
     const renderPdf = async () => {
       if (!url || !canvasRef.current || !wrapRef.current) return;
+      const currentRun = ++renderRun;
+      renderTask?.cancel?.();
+      renderTask = null;
       setStatus("loading");
       try {
         const pdfjs = await import("pdfjs-dist");
@@ -21,12 +26,14 @@ export default function PdfMapCanvas({ url, className = "" }) {
 
         const pdf = await pdfjs.getDocument(url).promise;
         const page = await pdf.getPage(1);
-        if (cancelled) return;
+        if (cancelled || currentRun !== renderRun) return;
 
         const container = wrapRef.current.getBoundingClientRect();
-        const baseViewport = page.getViewport({ scale: 1 });
+        if (container.width < 2 || container.height < 2) return;
+        const pageRotation = ((page.rotate || 0) + normalizedRotation) % 360;
+        const baseViewport = page.getViewport({ scale: 1, rotation: pageRotation });
         const scale = Math.min(container.width / baseViewport.width, container.height / baseViewport.height) || 1;
-        const viewport = page.getViewport({ scale });
+        const viewport = page.getViewport({ scale, rotation: pageRotation });
         const canvas = canvasRef.current;
         const context = canvas.getContext("2d");
         const ratio = window.devicePixelRatio || 1;
@@ -47,9 +54,9 @@ export default function PdfMapCanvas({ url, className = "" }) {
           transform: ratio === 1 ? null : [ratio, 0, 0, ratio, 0, 0],
         });
         await renderTask.promise;
-        if (!cancelled) setStatus("ready");
+        if (!cancelled && currentRun === renderRun) setStatus("ready");
       } catch (error) {
-        if (!cancelled) setStatus("error");
+        if (!cancelled && error?.name !== "RenderingCancelledException") setStatus("error");
       }
     };
 
@@ -61,7 +68,7 @@ export default function PdfMapCanvas({ url, className = "" }) {
       observer.disconnect();
       renderTask?.cancel?.();
     };
-  }, [url]);
+  }, [url, normalizedRotation]);
 
   return (
     <div ref={wrapRef} className={`absolute inset-0 flex items-center justify-center bg-background ${className}`}>

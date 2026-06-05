@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, MapPin, X } from "lucide-react";
+import PdfMapCanvas from "@/components/lore/PdfMapCanvas";
 
 const unlinkedValue = "__unlinked__";
 
@@ -37,7 +38,6 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   const mapPanRef = useRef({ x: 0, y: 0 });
   const hasPdf = Boolean(entry?.pdf_url);
   const hasImage = Boolean(entry?.image_url);
-  const nativePdfSrc = pdfSrc ? `${pdfSrc}#toolbar=0&navpanes=0&scrollbar=0&view=FitH` : "";
 
   const pins = Array.isArray(entry?.map_pins) ? entry.map_pins : [];
   const availableEntries = [...entries, ...createdEntries];
@@ -239,18 +239,7 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
             {hasImage ? (
               <img src={entry.image_url} alt="" className="absolute inset-0 w-full h-full object-contain bg-background" draggable={false} />
             ) : pdfSrc ? (
-              <object
-                data={nativePdfSrc}
-                type="application/pdf"
-                className="absolute inset-0 h-full w-full bg-background pointer-events-none"
-                aria-label={`${entry.title || "PDF"} map`}
-              >
-                <iframe
-                  src={nativePdfSrc}
-                  title={`${entry.title || "PDF"} map`}
-                  className="absolute inset-0 h-full w-full border-0 bg-background pointer-events-none"
-                />
-              </object>
+              <PdfMapCanvas url={pdfSrc} className="pointer-events-none" />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{hasPdf ? "Loading PDF..." : "No map file attached."}</div>
             )}
