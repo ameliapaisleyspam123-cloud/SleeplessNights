@@ -14,10 +14,10 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
       setMapOpen(false);
       return;
     }
-    if (entry?.pdf_url && entry?.category === "map") {
+    if ((entry?.pdf_url || entry?.image_url) && entry?.category === "map") {
       setMapOpen(true);
     }
-  }, [open, entry?.id, entry?.pdf_url, entry?.category]);
+  }, [open, entry?.id, entry?.pdf_url, entry?.image_url, entry?.category]);
 
   if (!entry) return null;
   const isMap = entry.category === "map";

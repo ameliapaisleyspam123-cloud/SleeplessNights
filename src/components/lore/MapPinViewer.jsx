@@ -33,6 +33,8 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   const [dragStart, setDragStart] = useState(null);
   const [overlayEntry, setOverlayEntry] = useState(null);
   const mapSurfaceRef = useRef(null);
+  const mapZoomRef = useRef(1);
+  const mapPanRef = useRef({ x: 0, y: 0 });
   const hasPdf = Boolean(entry?.pdf_url);
   const hasImage = Boolean(entry?.image_url);
 
@@ -56,17 +58,53 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
     return () => window.clearTimeout(timeoutId);
   }, [pdfSrc, showPdfHint]);
 
+  const setZoomAndPan = (nextZoom, nextPan) => {
+    mapZoomRef.current = nextZoom;
+    mapPanRef.current = nextPan;
+    setMapZoom(nextZoom);
+    setMapPan(nextPan);
+  };
+
+  const zoomAtPoint = (nextZoom, pointerX, pointerY) => {
+    const currentZoom = mapZoomRef.current;
+    const currentPan = mapPanRef.current;
+    const clampedZoom = Math.min(4, Math.max(0.5, nextZoom));
+    if (clampedZoom === currentZoom) return;
+    const contentX = (pointerX - currentPan.x) / currentZoom;
+    const contentY = (pointerY - currentPan.y) / currentZoom;
+    setZoomAndPan(clampedZoom, {
+      x: pointerX - contentX * clampedZoom,
+      y: pointerY - contentY * clampedZoom,
+    });
+  };
+
   useEffect(() => {
     const surface = mapSurfaceRef.current;
     if (!surface) return undefined;
     const handleWheel = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      setMapZoom((value) => Math.min(4, Math.max(0.5, value + (event.deltaY > 0 ? -0.12 : 0.12))));
+      const rect = surface.getBoundingClientRect();
+      const pointerX = event.clientX - rect.left;
+      const pointerY = event.clientY - rect.top;
+      const factor = event.deltaY > 0 ? 0.9 : 1.1;
+      zoomAtPoint(mapZoomRef.current * factor, pointerX, pointerY);
     };
     surface.addEventListener("wheel", handleWheel, { passive: false });
     return () => surface.removeEventListener("wheel", handleWheel);
   }, []);
+
+  const zoomFromCenter = (amount) => {
+    const surface = mapSurfaceRef.current;
+    if (!surface) {
+      setZoomAndPan(Math.min(4, Math.max(0.5, mapZoomRef.current + amount)), mapPanRef.current);
+      return;
+    }
+    const rect = surface.getBoundingClientRect();
+    const pointerX = rect.width / 2;
+    const pointerY = rect.height / 2;
+    zoomAtPoint(mapZoomRef.current + amount, pointerX, pointerY);
+  };
 
   const updatePins = async (nextPins) => {
     if (!entry?.id) return;
@@ -130,13 +168,15 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
     setOverlayEntry(linked);
   };
 
-  const startPan = (event) => setDragStart({ x: event.clientX, y: event.clientY, pan: mapPan, moved: false });
+  const startPan = (event) => setDragStart({ x: event.clientX, y: event.clientY, pan: mapPanRef.current, moved: false });
   const movePan = (event) => {
     if (!dragStart) return;
     const dx = event.clientX - dragStart.x;
     const dy = event.clientY - dragStart.y;
     setDragStart((current) => ({ ...current, moved: Math.abs(dx) + Math.abs(dy) > 3 }));
-    setMapPan({ x: dragStart.pan.x + dx, y: dragStart.pan.y + dy });
+    const nextPan = { x: dragStart.pan.x + dx, y: dragStart.pan.y + dy };
+    mapPanRef.current = nextPan;
+    setMapPan(nextPan);
   };
   const endPan = () => setDragStart(null);
 
@@ -148,9 +188,9 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
           <div className="text-xs text-muted-foreground">{pins.length} pin{pins.length === 1 ? "" : "s"}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => setMapZoom((value) => Math.max(0.5, value - 0.25))}>-</Button>
-          <Button variant="outline" size="sm" onClick={() => setMapZoom((value) => Math.min(4, value + 0.25))}>+</Button>
-          <Button variant="outline" size="sm" onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }}>Reset</Button>
+          <Button variant="outline" size="sm" onClick={() => zoomFromCenter(-0.25)}>-</Button>
+          <Button variant="outline" size="sm" onClick={() => zoomFromCenter(0.25)}>+</Button>
+          <Button variant="outline" size="sm" onClick={() => setZoomAndPan(1, { x: 0, y: 0 })}>Reset</Button>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="w-4 h-4" /> Close
           </Button>
@@ -168,12 +208,14 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
         >
           <div
             className="absolute inset-0 origin-top-left"
-            style={{ transform: `translate(${mapPan.x}px, ${mapPan.y}px) scale(${mapZoom})` }}
+            style={{ transform: `matrix(${mapZoom}, 0, 0, ${mapZoom}, ${mapPan.x}, ${mapPan.y})` }}
           >
             {hasImage ? (
-              <img src={entry.image_url} alt="" className="absolute inset-0 w-full h-full object-contain bg-background" draggable={false} />
+              <div className="absolute inset-0 flex items-center justify-center bg-background">
+                <img src={entry.image_url} alt="" className="max-h-full max-w-full object-contain" draggable={false} />
+              </div>
             ) : pdfSrc ? (
-              <PdfMapCanvas url={pdfSrc} rotation={entry.pdf_rotation || 0} />
+              <PdfMapCanvas url={pdfSrc} />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{hasPdf ? "Loading PDF..." : "No map file attached."}</div>
             )}
