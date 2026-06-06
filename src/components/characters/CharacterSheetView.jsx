@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Pencil, Lock, EyeOff, Users, Heart, Minus, Plus, Loader2, Swords, Sparkles } from "lucide-react";
@@ -9,6 +9,7 @@ import { appClient } from "@/api/appClient";
 
 const STATS = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
 const ABBR = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
+const SHEET_AUTO_SAVE_DELAY_MS = 400;
 const mod = (value) => Math.floor(((value || 10) - 10) / 2);
 const fmt = (value) => (value >= 0 ? `+${value}` : `${value}`);
 
@@ -473,14 +474,76 @@ export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenC
   const [sheet, setSheet] = useState(incomingSheet);
   const [inspired, setInspired] = useState(Boolean(incomingSheet?.inspiration));
   const [savingInspiration, setSavingInspiration] = useState(false);
+  const latestSheetRef = useRef(incomingSheet);
+  const autoSaveTimerRef = useRef(null);
+  const pendingSaveRef = useRef({});
+  const pendingCallbacksRef = useRef([]);
+  const saveInFlightRef = useRef(false);
 
   useEffect(() => {
-    setSheet(incomingSheet);
+    if (!incomingSheet) {
+      latestSheetRef.current = incomingSheet;
+      setSheet(incomingSheet);
+      return;
+    }
+    const nextSheet = { ...incomingSheet, ...pendingSaveRef.current };
+    latestSheetRef.current = nextSheet;
+    setSheet(nextSheet);
   }, [incomingSheet]);
+
+  useEffect(() => () => {
+    if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
+  }, []);
 
   useEffect(() => {
     setInspired(Boolean(sheet?.inspiration));
   }, [sheet?.inspiration]);
+
+  const flushPendingSave = useCallback(async () => {
+    if (saveInFlightRef.current) return;
+    const patch = pendingSaveRef.current;
+    if (!Object.keys(patch).length || !latestSheetRef.current?.id || !canEdit) return;
+
+    pendingSaveRef.current = {};
+    const callbacks = pendingCallbacksRef.current;
+    pendingCallbacksRef.current = [];
+    saveInFlightRef.current = true;
+
+    try {
+      const updated = await appClient.entities.CharacterSheet.update(latestSheetRef.current.id, patch);
+      const nextSheet = { ...updated, ...pendingSaveRef.current };
+      latestSheetRef.current = nextSheet;
+      setSheet(nextSheet);
+      onSheetUpdated?.(nextSheet);
+      callbacks.forEach(({ resolve }) => resolve(updated));
+    } catch (error) {
+      pendingSaveRef.current = { ...patch, ...pendingSaveRef.current };
+      callbacks.forEach(({ reject }) => reject(error));
+    } finally {
+      saveInFlightRef.current = false;
+      if (Object.keys(pendingSaveRef.current).length) {
+        if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = window.setTimeout(flushPendingSave, SHEET_AUTO_SAVE_DELAY_MS);
+      }
+    }
+  }, [canEdit, onSheetUpdated]);
+
+  const saveField = useCallback((data) => {
+    if (!latestSheetRef.current?.id || !canEdit) return Promise.resolve(null);
+
+    pendingSaveRef.current = { ...pendingSaveRef.current, ...data };
+    const optimisticSheet = { ...latestSheetRef.current, ...data };
+    latestSheetRef.current = optimisticSheet;
+    setSheet(optimisticSheet);
+    onSheetUpdated?.(optimisticSheet);
+
+    if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = window.setTimeout(flushPendingSave, SHEET_AUTO_SAVE_DELAY_MS);
+
+    return new Promise((resolve, reject) => {
+      pendingCallbacksRef.current.push({ resolve, reject });
+    });
+  }, [canEdit, flushPendingSave, onSheetUpdated]);
 
   if (!sheet) return null;
 
@@ -489,13 +552,6 @@ export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenC
   const profSaves = (sheet.saving_throws || "").split(",").map((value) => value.trim()).filter(Boolean);
   const pb = sheet.proficiency_bonus || 2;
   const passivePerc = 10 + mod(sheet.wisdom || 10) + (expertSkills.includes("Perception") ? pb * 2 : profSkills.includes("Perception") ? pb : 0);
-  const saveField = async (data) => {
-    if (!sheet?.id || !canEdit) return null;
-    const updated = await appClient.entities.CharacterSheet.update(sheet.id, data);
-    setSheet(updated);
-    onSheetUpdated?.(updated);
-    return updated;
-  };
 
   const toggleInspiration = async () => {
     if (!canEdit) return;
