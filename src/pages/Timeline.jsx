@@ -82,32 +82,6 @@ function formatDate(event, calendar) {
   return formatTimelineDate(event, calendar);
 }
 
-function groupEvents(events) {
-  const years = new Map();
-  for (const event of events) {
-    const year = toSignedYear(event.year, 1);
-    const month = toNumber(event.month, 1);
-    const day = toNumber(event.day, 1);
-    if (!years.has(year)) years.set(year, new Map());
-    const months = years.get(year);
-    if (!months.has(month)) months.set(month, new Map());
-    const days = months.get(month);
-    if (!days.has(day)) days.set(day, []);
-    days.get(day).push(event);
-  }
-  return [...years.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([year, months]) => ({
-      year,
-      months: [...months.entries()]
-        .sort((a, b) => a[0] - b[0])
-        .map(([month, days]) => ({
-          month,
-          days: [...days.entries()].sort((a, b) => a[0] - b[0]).map(([day, dayEvents]) => ({ day, events: dayEvents.sort(compareTimelineDates) })),
-        })),
-    }));
-}
-
 function markerId(date, calendar) {
   return dateKey(date, calendar);
 }
@@ -125,6 +99,8 @@ function buildTimelineMarkers({ events, characters, lore, activeDate, calendar, 
       ...normalized,
       key,
       events: [],
+      characters: [],
+      lore: [],
       characterCount: 0,
       loreCount: 0,
       hasStandalone: false,
@@ -141,14 +117,36 @@ function buildTimelineMarkers({ events, characters, lore, activeDate, calendar, 
   }
   for (const character of characters) {
     if (!character.timeline_date) continue;
-    ensureMarker(character.timeline_date, "character").characterCount += 1;
+    const marker = ensureMarker(character.timeline_date, "character");
+    marker.characters.push(character);
+    marker.characterCount = marker.characters.length;
   }
   for (const item of lore) {
     if (!item.timeline_date) continue;
-    ensureMarker(item.timeline_date, "lore").loreCount += 1;
+    const marker = ensureMarker(item.timeline_date, "lore");
+    marker.lore.push(item);
+    marker.loreCount = marker.lore.length;
   }
 
   return [...markers.values()].sort(compareTimelineDates);
+}
+
+function groupMarkersForTree(markers) {
+  const years = new Map();
+  for (const marker of markers) {
+    if (!years.has(marker.year)) years.set(marker.year, new Map());
+    const months = years.get(marker.year);
+    if (!months.has(marker.month)) months.set(marker.month, []);
+    months.get(marker.month).push(marker);
+  }
+  return [...years.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([year, months]) => ({
+      year,
+      months: [...months.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([month, points]) => ({ month, points: points.sort(compareTimelineDates) })),
+    }));
 }
 
 function recordsToCarry(records, activeDate, calendar) {
@@ -235,7 +233,6 @@ export default function Timeline() {
   }, [calendar, entry?.id]);
 
   const visibleEvents = useMemo(() => events.filter((event) => canViewVisibleItem(event, user, canManage)), [events, user, canManage]);
-  const grouped = useMemo(() => groupEvents(visibleEvents), [visibleEvents]);
   const visibleCharacters = useMemo(() => characters.filter((item) => canViewVisibleItem(item, user, canManage)), [characters, user, canManage]);
   const visibleLore = useMemo(() => lore.filter((item) => canViewVisibleItem(item, user, canManage)), [lore, user, canManage]);
   const characterById = useMemo(() => new Map(characters.map((character) => [character.id, character])), [characters]);
@@ -268,6 +265,7 @@ export default function Timeline() {
     }),
     [visibleEvents, visibleCharacters, visibleLore, activeDate, calendar, timelineStarted],
   );
+  const markerTree = useMemo(() => groupMarkersForTree(timelineMarkers), [timelineMarkers]);
   const indexedCharacters = useMemo(() => [...visibleCharacters].sort((a, b) => (a.name || "").localeCompare(b.name || "")), [visibleCharacters]);
   const indexedLore = useMemo(() => [...visibleLore].sort((a, b) => (a.title || "").localeCompare(b.title || "")), [visibleLore]);
 
@@ -708,7 +706,7 @@ export default function Timeline() {
         </div>
         {timelineView === "tree" ? (
           <TimelineTree
-            grouped={grouped}
+            grouped={markerTree}
             calendar={calendar}
             canManage={canManage}
             user={user}
@@ -722,8 +720,8 @@ export default function Timeline() {
         ) : (
           <div className="overflow-x-auto thin-scroll p-4 pb-6">
             <div
-              className="relative grid min-w-[52rem] gap-4 py-12"
-              style={{ gridTemplateColumns: `repeat(${Math.max(timelineMarkers.length, 1)}, minmax(12rem, 1fr))` }}
+              className="relative grid w-max min-w-full gap-6 py-12"
+              style={{ gridTemplateColumns: `repeat(${Math.max(timelineMarkers.length, 1)}, minmax(17rem, 17rem))` }}
             >
               <div
                 className="absolute left-6 right-6 top-1/2 h-2 -translate-y-1/2 rounded-full shadow-sm"
@@ -738,12 +736,8 @@ export default function Timeline() {
                   calendar={calendar}
                   active={marker.key === dateKey(activeDate, calendar)}
                   canManage={canManage}
-                  user={user}
-                  characterById={characterById}
-                  loreById={loreById}
                   onEdit={setEntry}
                   onAdd={() => setEntry({ ...emptyEvent(user?.campaign_id, calendar), year: marker.year, month: marker.month, day: marker.day })}
-                  onDelete={deleteEntry}
                   onJump={() => jumpToMarker(marker)}
                 />
               ))}
@@ -862,7 +856,7 @@ function RecordIndexList({ title, icon: Icon, items, calendar, getLabel, getMeta
 
 function TimelineTree({ grouped, calendar, canManage, user, characterById, loreById, onEdit, onDelete }) {
   if (grouped.length === 0) {
-    return <div className="p-10 text-center text-muted-foreground border border-dashed border-border m-4 rounded-sm">No event entries in tree view yet.</div>;
+    return <div className="p-10 text-center text-muted-foreground border border-dashed border-border m-4 rounded-sm">No dated entries in tree view yet.</div>;
   }
 
   return (
@@ -884,26 +878,29 @@ function TimelineTree({ grouped, calendar, canManage, user, characterById, loreB
                 <div className="text-sm uppercase tracking-[0.2em] text-accent min-h-6">{calendar.month_names[monthGroup.month - 1] || `Month ${monthGroup.month}`}</div>
                 <div className="relative mt-3 space-y-3 pl-5">
                   <div className="absolute left-0 top-0 bottom-0 w-px bg-border" />
-                  {monthGroup.days.map((dayGroup) => (
-                    <div key={`${yearGroup.year}-${monthGroup.month}-${dayGroup.day}`} className="relative pl-5">
+                  {monthGroup.points.map((marker) => (
+                    <div key={marker.key} className="relative pl-5">
                       <div className="absolute left-[-1.2rem] top-2 h-2.5 w-2.5 rounded-full border border-background bg-border" />
                       <div className="absolute left-[-1.2rem] top-3 h-px w-7 bg-border" />
-                      <div className="text-xs text-muted-foreground">{calendar.day_names[dayGroup.day - 1] || `Day ${dayGroup.day}`}</div>
-                      <div className="mt-2 grid lg:grid-cols-2 gap-3">
-                        {dayGroup.events.map((timelineEvent) => (
-                          <TimelineCard
-                            key={timelineEvent.id}
-                            event={timelineEvent}
-                            calendar={calendar}
-                            canManage={canManage}
-                            user={user}
-                            characterById={characterById}
-                            loreById={loreById}
-                            onEdit={() => onEdit(timelineEvent)}
-                            onDelete={() => onDelete(timelineEvent)}
-                          />
-                        ))}
-                      </div>
+                      <div className="text-xs text-muted-foreground">{calendar.day_names[marker.day - 1] || `Day ${marker.day}`}</div>
+                      <DayRecordSummary marker={marker} calendar={calendar} />
+                      {marker.events.length > 0 && (
+                        <div className="mt-2 grid lg:grid-cols-2 gap-3">
+                          {marker.events.map((timelineEvent) => (
+                            <TimelineCard
+                              key={timelineEvent.id}
+                              event={timelineEvent}
+                              calendar={calendar}
+                              canManage={canManage}
+                              user={user}
+                              characterById={characterById}
+                              loreById={loreById}
+                              onEdit={() => onEdit(timelineEvent)}
+                              onDelete={() => onDelete(timelineEvent)}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -921,7 +918,60 @@ function formatYear(year, calendar) {
   return `${Math.abs(year)} ${label}`;
 }
 
-function TimelineMarker({ marker, index, previousMarker, calendar, active, canManage, user, characterById, loreById, onEdit, onAdd, onDelete, onJump }) {
+function DayRecordSummary({ marker, calendar, events = [] }) {
+  const eventItems = events.length > 0 ? events : marker.events || [];
+  const characters = marker.characters || [];
+  const lore = marker.lore || [];
+  const total = eventItems.length + characters.length + lore.length;
+
+  if (total === 0) return null;
+
+  return (
+    <details className="mt-3 rounded-sm border border-border bg-background/70 text-left">
+      <summary className="cursor-pointer list-none px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
+        <span className="font-medium text-foreground">{total}</span> item{total === 1 ? "" : "s"} on {formatTimelineDate(marker, calendar)}
+      </summary>
+      <div className="border-t border-border p-3 space-y-3">
+        {eventItems.length > 0 && (
+          <RecordNameGroup
+            title="Events"
+            items={eventItems}
+            getLabel={(item) => item.title || "Untitled"}
+          />
+        )}
+        {characters.length > 0 && (
+          <RecordNameGroup
+            title="Characters"
+            items={characters}
+            getLabel={(item) => item.name || "Unnamed"}
+          />
+        )}
+        {lore.length > 0 && (
+          <RecordNameGroup
+            title="Lore Entries"
+            items={lore}
+            getLabel={(item) => item.title || "Untitled"}
+          />
+        )}
+      </div>
+    </details>
+  );
+}
+
+function RecordNameGroup({ title, items, getLabel }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-[0.18em] text-accent">{title}</div>
+      <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+        {items.map((item) => (
+          <li key={item.id} className="truncate">{getLabel(item)}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function TimelineMarker({ marker, index, previousMarker, calendar, active, canManage, onEdit, onAdd, onJump }) {
   const above = index % 2 === 0;
   const monthName = calendar.month_names[marker.month - 1] || `Month ${marker.month}`;
   const dayName = calendar.day_names[marker.day - 1] || `Day ${marker.day}`;
@@ -933,7 +983,7 @@ function TimelineMarker({ marker, index, previousMarker, calendar, active, canMa
   ].filter(Boolean).join(" / ");
 
   return (
-    <div className="relative min-h-72">
+    <div className="relative min-h-[34rem]">
       {startsYear && (
         <div className="absolute left-1/2 top-0 z-10 flex -translate-x-1/2 items-center gap-2 rounded-sm border border-border bg-background/95 px-3 py-1 text-xs text-muted-foreground shadow-sm">
           <GitBranch className="w-3.5 h-3.5 text-accent" /> {formatYear(marker.year, calendar)}
@@ -952,35 +1002,27 @@ function TimelineMarker({ marker, index, previousMarker, calendar, active, canMa
           <div className="mt-0.5 text-[9px] uppercase tracking-widest">{marker.month}/{marker.day}</div>
         </div>
       </button>
-      <div className={`absolute left-1/2 w-px -translate-x-1/2 bg-border ${above ? "bottom-1/2 h-9" : "top-1/2 h-9"}`} />
-      <div className={`absolute left-0 right-0 ${above ? "bottom-[calc(50%+3.2rem)]" : "top-[calc(50%+3.2rem)]"}`}>
-        <div className="mx-auto max-w-56 text-center">
+      <div className={`absolute left-1/2 w-px -translate-x-1/2 bg-border ${above ? "bottom-1/2 h-14" : "top-1/2 h-14"}`} />
+      <div className={`absolute left-0 right-0 ${above ? "bottom-[calc(50%+5rem)]" : "top-[calc(50%+5rem)]"}`}>
+        <div className="mx-auto max-w-64 text-center">
           <div className="text-[10px] uppercase tracking-[0.2em] text-accent">{monthName} / {dayName}</div>
-          <div className="font-display text-xl leading-tight mt-1">{formatTimelineDate(marker, calendar)}</div>
+          <div className="font-display text-lg leading-tight mt-1 break-words">{formatTimelineDate(marker, calendar)}</div>
           <div className="text-xs text-muted-foreground mt-1">{countLabel || "Standalone timepoint"}</div>
           {active && <div className="mt-2 inline-flex rounded-sm border border-accent/50 bg-accent/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-accent">Current</div>}
-          {marker.events.length === 0 ? (
-            canManage && (
-              <Button type="button" size="sm" variant="outline" className="mt-3" onClick={onAdd}>
-                <Plus className="w-3.5 h-3.5" /> Add Event
-              </Button>
-            )
-          ) : (
-            <div className="mt-3 space-y-2 text-left">
+          <DayRecordSummary marker={marker} calendar={calendar} />
+          {marker.events.length > 0 && canManage && (
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
               {marker.events.map((event) => (
-                <TimelineCard
-                  key={event.id}
-                  event={event}
-                  calendar={calendar}
-                  canManage={canManage}
-                  user={user}
-                  characterById={characterById}
-                  loreById={loreById}
-                  onEdit={() => onEdit(event)}
-                  onDelete={() => onDelete(event)}
-                />
+                <Button key={event.id} type="button" size="sm" variant="ghost" onClick={() => onEdit(event)}>
+                  Edit {event.title || "Event"}
+                </Button>
               ))}
             </div>
+          )}
+          {canManage && (
+            <Button type="button" size="sm" variant="outline" className="mt-3" onClick={onAdd}>
+              <Plus className="w-3.5 h-3.5" /> Add Event
+            </Button>
           )}
         </div>
       </div>
