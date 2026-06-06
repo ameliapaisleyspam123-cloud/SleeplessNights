@@ -732,7 +732,6 @@ export default function Timeline() {
                   key={marker.key}
                   marker={marker}
                   index={index}
-                  previousMarker={timelineMarkers[index - 1]}
                   calendar={calendar}
                   active={marker.key === dateKey(activeDate, calendar)}
                   canManage={canManage}
@@ -971,11 +970,10 @@ function RecordNameGroup({ title, items, getLabel }) {
   );
 }
 
-function TimelineMarker({ marker, index, previousMarker, calendar, active, canManage, onEdit, onAdd, onJump }) {
+function TimelineMarker({ marker, index, calendar, active, canManage, onEdit, onAdd, onJump }) {
   const above = index % 2 === 0;
   const monthName = calendar.month_names[marker.month - 1] || `Month ${marker.month}`;
   const dayName = calendar.day_names[marker.day - 1] || `Day ${marker.day}`;
-  const startsYear = !previousMarker || previousMarker.year !== marker.year;
   const countLabel = [
     marker.events.length ? `${marker.events.length} event${marker.events.length === 1 ? "" : "s"}` : "",
     marker.characterCount ? `${marker.characterCount} character${marker.characterCount === 1 ? "" : "s"}` : "",
@@ -984,11 +982,6 @@ function TimelineMarker({ marker, index, previousMarker, calendar, active, canMa
 
   return (
     <div className="relative min-h-[34rem]">
-      {startsYear && (
-        <div className="absolute left-1/2 top-0 z-10 flex -translate-x-1/2 items-center gap-2 rounded-sm border border-border bg-background/95 px-3 py-1 text-xs text-muted-foreground shadow-sm">
-          <GitBranch className="w-3.5 h-3.5 text-accent" /> {formatYear(marker.year, calendar)}
-        </div>
-      )}
       <button
         type="button"
         onClick={onJump}
