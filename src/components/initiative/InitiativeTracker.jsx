@@ -37,6 +37,25 @@ const SPELL_DURATIONS = [
   { label: "Concentration (up to 1 hr)", rounds: 600 },
 ];
 
+function rollD20WithMode(advantage, disadvantage) {
+  if (!advantage && !disadvantage) {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    return { roll, rolls: [roll], rollMode: "normal" };
+  }
+  const rolls = [Math.floor(Math.random() * 20) + 1, Math.floor(Math.random() * 20) + 1];
+  return {
+    roll: advantage ? Math.max(...rolls) : Math.min(...rolls),
+    rolls,
+    rollMode: advantage ? "advantage" : "disadvantage",
+  };
+}
+
+function formatRollDetail(entry) {
+  const rolls = Array.isArray(entry.rolls) && entry.rolls.length > 1 ? entry.rolls.join(", ") : entry.roll;
+  const mode = entry.rollMode === "advantage" ? " adv" : entry.rollMode === "disadvantage" ? " dis" : "";
+  return `d20:${rolls}${mode}`;
+}
+
 function formatRoundsLeft(rounds, turnSecs) {
   const secs = rounds * turnSecs;
   if (secs < 60) return `${secs}s`;
@@ -186,7 +205,8 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
     const selected = addForm.mode === "character" ? characters.find((character) => character.id === addForm.characterId) : null;
     const dexMod = selected ? Math.floor(((selected.dexterity || 10) - 10) / 2) : 0;
     const initMod = selected ? (selected.initiative !== undefined && selected.initiative !== 0 ? selected.initiative : dexMod) : Number(addForm.modifier) || 0;
-    const roll = addForm.roll !== "" ? Number(addForm.roll) : Math.floor(Math.random() * 20) + 1;
+    const rolled = addForm.roll !== "" ? { roll: Number(addForm.roll), rolls: [Number(addForm.roll)], rollMode: "normal" } : rollD20WithMode(selected?.initiative_advantage, selected?.initiative_disadvantage);
+    const { roll, rolls, rollMode } = rolled;
     const entry = selected
       ? {
           id: selected.id,
@@ -194,6 +214,8 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
           name: selected.name || "Unknown",
           image_url: selected.image_url || "",
           roll,
+          rolls,
+          rollMode,
           modifier: initMod,
           total: roll + initMod,
           hpCurrent: selected.hp_current ?? selected.hp_max ?? 0,
@@ -208,6 +230,8 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
           id: `manual_${Date.now()}`,
           name: addForm.name || "Unknown",
           roll,
+          rolls,
+          rollMode,
           modifier: initMod,
           total: roll + initMod,
           hpCurrent: addForm.hpCurrent === "" ? null : Number(addForm.hpCurrent),
@@ -402,7 +426,7 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
                     <div className="text-xs text-muted-foreground">
                       Initiative: <span className="text-foreground font-medium">{entry.total}</span>
                       <span className="ml-2 opacity-60">
-                        (d20:{entry.roll} + {entry.modifier >= 0 ? "+" : ""}
+                        ({formatRollDetail(entry)} + {entry.modifier >= 0 ? "+" : ""}
                         {entry.modifier})
                       </span>
                     </div>

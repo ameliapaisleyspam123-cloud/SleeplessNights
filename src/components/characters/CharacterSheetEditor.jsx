@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Loader2, Eye, Lock, Users, Copy, Trash2 } from "lucide-react";
+import { Upload, Loader2, Eye, Lock, Users, Copy, Trash2, ChevronsUp, ChevronsDown } from "lucide-react";
 import InventoryManager from "@/components/characters/InventoryManager";
 import AttackManager from "@/components/characters/AttackManager";
 import SpellManager from "@/components/characters/SpellManager";
@@ -73,6 +73,8 @@ const defaultForm = () => ({
   hp_temp: 0,
   ac: 10,
   initiative: 0,
+  initiative_advantage: false,
+  initiative_disadvantage: false,
   speed: 30,
   damage_resistances: "",
   damage_immunities: "",
@@ -82,6 +84,10 @@ const defaultForm = () => ({
   death_save_failures: 0,
   skills: "",
   skill_expertises: "",
+  advantage_skills: "",
+  disadvantage_skills: "",
+  advantage_saving_throws: "",
+  disadvantage_saving_throws: "",
   passive_perception: 10,
   languages: "",
   traits: "",
@@ -133,9 +139,19 @@ function AbilityBox({ label, value, onChange }) {
   );
 }
 
-function SkillRow({ skill, profList, expertiseList, abilityScores, profBonus, onToggle, onExpertiseToggle }) {
+function MarkerButton({ active, onClick, title, activeClass, children }) {
+  return (
+    <button type="button" aria-label={title} title={title} onClick={onClick} className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${active ? activeClass : "border-border text-muted-foreground hover:border-accent/60"}`}>
+      {children}
+    </button>
+  );
+}
+
+function SkillRow({ skill, profList, expertiseList, advantageList, disadvantageList, abilityScores, profBonus, onToggle, onExpertiseToggle, onAdvantageToggle, onDisadvantageToggle }) {
   const proficient = profList.includes(skill.name);
   const expertise = expertiseList.includes(skill.name);
+  const advantage = advantageList.includes(skill.name);
+  const disadvantage = disadvantageList.includes(skill.name);
   const total = mod(abilityScores[skill.ability] || 10) + (expertise ? profBonus * 2 : proficient ? profBonus : 0);
   return (
     <div className="flex items-center gap-2 py-0.5">
@@ -145,6 +161,12 @@ function SkillRow({ skill, profList, expertiseList, abilityScores, profBonus, on
       <button type="button" onClick={() => onExpertiseToggle(skill.name)} className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${expertise ? "bg-primary border-primary" : "border-border"}`}>
         {expertise && <div className="w-1.5 h-1.5 rounded-sm bg-primary-foreground" />}
       </button>
+      <MarkerButton active={advantage} onClick={() => onAdvantageToggle(skill.name)} title={`${skill.name} has advantage`} activeClass="bg-accent/20 border-accent text-accent">
+        <ChevronsUp className="w-3 h-3" />
+      </MarkerButton>
+      <MarkerButton active={disadvantage} onClick={() => onDisadvantageToggle(skill.name)} title={`${skill.name} has disadvantage`} activeClass="bg-destructive/20 border-destructive text-destructive">
+        <ChevronsDown className="w-3 h-3" />
+      </MarkerButton>
       <span className="text-xs flex-1">
         {skill.name} <span className="text-muted-foreground text-[10px]">({ABILITY_ABBR[skill.ability]})</span>
       </span>
@@ -153,14 +175,22 @@ function SkillRow({ skill, profList, expertiseList, abilityScores, profBonus, on
   );
 }
 
-function SavingThrowRow({ ability, profList, abilityScores, profBonus, onToggle }) {
+function SavingThrowRow({ ability, profList, advantageList, disadvantageList, abilityScores, profBonus, onToggle, onAdvantageToggle, onDisadvantageToggle }) {
   const proficient = profList.includes(ability);
+  const advantage = advantageList.includes(ability);
+  const disadvantage = disadvantageList.includes(ability);
   const total = mod(abilityScores[ability] || 10) + (proficient ? profBonus : 0);
   return (
     <div className="flex items-center gap-2 py-0.5">
       <button type="button" onClick={() => onToggle(ability)} className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${proficient ? "bg-accent border-accent" : "border-border"}`}>
         {proficient && <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />}
       </button>
+      <MarkerButton active={advantage} onClick={() => onAdvantageToggle(ability)} title={`${ability} saves have advantage`} activeClass="bg-accent/20 border-accent text-accent">
+        <ChevronsUp className="w-3 h-3" />
+      </MarkerButton>
+      <MarkerButton active={disadvantage} onClick={() => onDisadvantageToggle(ability)} title={`${ability} saves have disadvantage`} activeClass="bg-destructive/20 border-destructive text-destructive">
+        <ChevronsDown className="w-3 h-3" />
+      </MarkerButton>
       <span className="text-xs flex-1 capitalize">{ability}</span>
       <span className="text-xs font-medium w-7 text-right">{fmtMod(total)}</span>
     </div>
@@ -200,7 +230,11 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
   const csv = (value) => (value || "").split(",").map((entry) => entry.trim()).filter(Boolean);
   const profSkills = csv(form.skills);
   const expertSkills = csv(form.skill_expertises);
+  const advantageSkills = csv(form.advantage_skills);
+  const disadvantageSkills = csv(form.disadvantage_skills);
   const profSaves = csv(form.saving_throws);
+  const advantageSaves = csv(form.advantage_saving_throws);
+  const disadvantageSaves = csv(form.disadvantage_saving_throws);
   const canSaveSheet = !sheet?.id || isDM || sheet.created_by === currentUser?.email || sheet.assigned_to_email === currentUser?.email;
 
   const calcPassivePerc = () => {
@@ -209,6 +243,18 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
   };
 
   const toggleCsv = (key, list, name) => set(key, (list.includes(name) ? list.filter((item) => item !== name) : [...list, name]).join(", "));
+  const toggleExclusiveCsv = (activeKey, activeList, oppositeKey, oppositeList, name) => {
+    const willRemove = activeList.includes(name);
+    set(activeKey, (willRemove ? activeList.filter((item) => item !== name) : [...activeList, name]).join(", "));
+    if (!willRemove && oppositeList.includes(name)) {
+      set(oppositeKey, oppositeList.filter((item) => item !== name).join(", "));
+    }
+  };
+  const toggleInitiativeMarker = (activeKey, oppositeKey) => {
+    const willActivate = !form[activeKey];
+    set(activeKey, willActivate);
+    if (willActivate) set(oppositeKey, false);
+  };
   const spellSlots = (() => {
     try {
       return JSON.parse(form.spell_slots || "{}");
@@ -322,6 +368,16 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                 <div key={key} className="border border-border rounded-sm bg-secondary/40 p-2 text-center">
                   <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1">{label}</div>
                   <Input type="number" className="text-center px-1 h-8 text-sm" value={form[key]} onChange={(event) => setNum(key, event.target.value)} />
+                  {key === "initiative" && (
+                    <div className="mt-1 flex items-center justify-center gap-1">
+                      <MarkerButton active={form.initiative_advantage} onClick={() => toggleInitiativeMarker("initiative_advantage", "initiative_disadvantage")} title="Initiative has advantage" activeClass="bg-accent/20 border-accent text-accent">
+                        <ChevronsUp className="w-3 h-3" />
+                      </MarkerButton>
+                      <MarkerButton active={form.initiative_disadvantage} onClick={() => toggleInitiativeMarker("initiative_disadvantage", "initiative_advantage")} title="Initiative has disadvantage" activeClass="bg-destructive/20 border-destructive text-destructive">
+                        <ChevronsDown className="w-3 h-3" />
+                      </MarkerButton>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -359,12 +415,12 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
             <div className="text-[10px] uppercase tracking-widest text-accent font-medium">Saving Throws & Skills</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="border border-border rounded-sm p-3">
-                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Saving Throws</div>
-                {ABILITY_SCORES.map((ability) => <SavingThrowRow key={ability} ability={ability} profList={profSaves} abilityScores={form} profBonus={form.proficiency_bonus || 2} onToggle={(value) => toggleCsv("saving_throws", profSaves, value)} />)}
+                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Saving Throws <span className="normal-case">(circle prof, up adv, down dis)</span></div>
+                {ABILITY_SCORES.map((ability) => <SavingThrowRow key={ability} ability={ability} profList={profSaves} advantageList={advantageSaves} disadvantageList={disadvantageSaves} abilityScores={form} profBonus={form.proficiency_bonus || 2} onToggle={(value) => toggleCsv("saving_throws", profSaves, value)} onAdvantageToggle={(value) => toggleExclusiveCsv("advantage_saving_throws", advantageSaves, "disadvantage_saving_throws", disadvantageSaves, value)} onDisadvantageToggle={(value) => toggleExclusiveCsv("disadvantage_saving_throws", disadvantageSaves, "advantage_saving_throws", advantageSaves, value)} />)}
               </div>
               <div className="border border-border rounded-sm p-3">
-                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Skills <span className="normal-case">(circle prof, square expertise)</span></div>
-                {ALL_SKILLS.map((skill) => <SkillRow key={skill.name} skill={skill} profList={profSkills} expertiseList={expertSkills} abilityScores={form} profBonus={form.proficiency_bonus || 2} onToggle={(value) => toggleCsv("skills", profSkills, value)} onExpertiseToggle={(value) => toggleCsv("skill_expertises", expertSkills, value)} />)}
+                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Skills <span className="normal-case">(circle prof, square expertise, up adv, down dis)</span></div>
+                {ALL_SKILLS.map((skill) => <SkillRow key={skill.name} skill={skill} profList={profSkills} expertiseList={expertSkills} advantageList={advantageSkills} disadvantageList={disadvantageSkills} abilityScores={form} profBonus={form.proficiency_bonus || 2} onToggle={(value) => toggleCsv("skills", profSkills, value)} onExpertiseToggle={(value) => toggleCsv("skill_expertises", expertSkills, value)} onAdvantageToggle={(value) => toggleExclusiveCsv("advantage_skills", advantageSkills, "disadvantage_skills", disadvantageSkills, value)} onDisadvantageToggle={(value) => toggleExclusiveCsv("disadvantage_skills", disadvantageSkills, "advantage_skills", advantageSkills, value)} />)}
               </div>
             </div>
           </section>
