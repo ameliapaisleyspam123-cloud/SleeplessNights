@@ -153,8 +153,12 @@ function LayoutInner() {
     onCampaignSettings: () => setCampaignModalOpen(true),
     onThemeSettings: () => setThemeModalOpen(true),
   };
-  const floatingControlsPosition = "top-24 right-6 lg:top-28 lg:right-10";
-  const dicePanelPosition = "top-40 right-6 lg:top-44 lg:right-10";
+  const floatingControlsPosition = splitOpen
+    ? "top-24 right-6 lg:top-28 lg:right-[calc(400px+2.5rem)]"
+    : "top-24 right-6 lg:top-28 lg:right-10";
+  const dicePanelPosition = splitOpen
+    ? "top-40 right-6 lg:top-44 lg:right-[calc(400px+2.5rem)]"
+    : "top-40 right-6 lg:top-44 lg:right-10";
 
   return (
     <div className="h-screen overflow-hidden parchment flex">

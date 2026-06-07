@@ -116,6 +116,8 @@ export default function Characters() {
 
   useEffect(() => {
     load();
+    const unsub = appClient.entities.CharacterSheet.subscribe(() => load());
+    return () => unsub();
   }, []);
 
   const duplicateSheet = async (sheet) => {

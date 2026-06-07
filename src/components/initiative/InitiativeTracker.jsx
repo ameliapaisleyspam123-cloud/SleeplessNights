@@ -37,6 +37,22 @@ const SPELL_DURATIONS = [
   { label: "Concentration (up to 1 hr)", rounds: 600 },
 ];
 
+const DAMAGE_TYPES = [
+  "Acid",
+  "Bludgeoning",
+  "Cold",
+  "Fire",
+  "Force",
+  "Lightning",
+  "Necrotic",
+  "Piercing",
+  "Poison",
+  "Psychic",
+  "Radiant",
+  "Slashing",
+  "Thunder",
+];
+
 function rollD20WithMode(advantage, disadvantage) {
   if (!advantage && !disadvantage) {
     const roll = Math.floor(Math.random() * 20) + 1;
@@ -61,6 +77,23 @@ function formatRoundsLeft(rounds, turnSecs) {
   if (secs < 60) return `${secs}s`;
   if (secs < 3600) return `${Math.round(secs / 60)}min`;
   return `${(secs / 3600).toFixed(1)}hr`;
+}
+
+function syncCombatEntriesWithSheets(combat, sheets) {
+  if (!combat?.entries?.length) return combat;
+  const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
+  const entries = combat.entries.map((entry) => {
+    const sheet = sheetsById.get(entry.characterId || entry.id);
+    if (!sheet) return entry;
+    return {
+      ...entry,
+      hpCurrent: sheet.hp_current ?? sheet.hp_max ?? entry.hpCurrent,
+      hpMax: sheet.hp_max ?? entry.hpMax,
+      ac: sheet.ac ?? entry.ac,
+      ownerEmail: sheet.assigned_to_email || entry.ownerEmail || "",
+    };
+  });
+  return { ...combat, entries };
 }
 
 function Modal({ open, onClose, title, children }) {
@@ -100,9 +133,10 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
       appClient.entities.Initiative.filter({ campaign_id: campaignId }, "-updated_date", 1),
       appClient.entities.CharacterSheet.filter({ campaign_id: campaignId }, "name", 300),
     ]);
-    setCharacters(sheets.filter((sheet) => sheet.visibility !== "archived"));
-    if (active[0]) setCombat(active[0]);
-    else if (latest[0]) setCombat(latest[0]);
+    const visibleSheets = sheets.filter((sheet) => sheet.visibility !== "archived");
+    setCharacters(visibleSheets);
+    if (active[0]) setCombat(syncCombatEntriesWithSheets(active[0], visibleSheets));
+    else if (latest[0]) setCombat(syncCombatEntriesWithSheets(latest[0], visibleSheets));
     else setCombat(null);
     setLoading(false);
   }, [campaignId]);
@@ -113,7 +147,11 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
 
   useEffect(() => {
     const unsub = appClient.entities.Initiative.subscribe(() => loadCombat());
-    return () => unsub();
+    const unsubCharacters = appClient.entities.CharacterSheet.subscribe(() => loadCombat());
+    return () => {
+      unsub();
+      unsubCharacters();
+    };
   }, [loadCombat]);
 
   const save = async (patch) => {
@@ -257,6 +295,7 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
     const isDamage = effectForm.kind === "damage";
     const nextHp = Math.max(0, Math.min(target.hpMax || Number.MAX_SAFE_INTEGER, (Number(target.hpCurrent) || 0) + (isDamage ? -amount : amount)));
     const nextEntries = entries.map((entry) => (entry.id === target.id ? { ...entry, hpCurrent: nextHp } : entry));
+    setCombat((current) => (current ? { ...current, entries: nextEntries } : current));
     const event = {
       id: `event_${Date.now()}`,
       type: effectForm.kind,
@@ -270,7 +309,10 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
       createdAt: new Date().toISOString(),
     };
     if (target.characterId || target.type === "character") {
-      await appClient.entities.CharacterSheet.update(target.characterId || target.id, { hp_current: nextHp }).catch(() => {});
+      const updatedSheet = await appClient.entities.CharacterSheet.update(target.characterId || target.id, { hp_current: nextHp }).catch(() => null);
+      if (updatedSheet) {
+        setCharacters((current) => current.map((character) => (character.id === updatedSheet.id ? updatedSheet : character)));
+      }
     }
     await save({ entries: nextEntries, events: [...events, event] });
     setEffectForm((form) => ({ ...form, amount: "", damageType: "" }));
@@ -509,7 +551,12 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
               </select>
               <div className="grid grid-cols-2 gap-2">
                 <Input type="number" min={1} value={effectForm.amount} onChange={(event) => setEffectForm((form) => ({ ...form, amount: event.target.value }))} placeholder="Amount" className="h-9 text-xs" />
-                <Input value={effectForm.damageType} onChange={(event) => setEffectForm((form) => ({ ...form, damageType: event.target.value }))} placeholder="Type" className="h-9 text-xs" disabled={effectForm.kind !== "damage"} />
+                <div>
+                  <Input list="damage-types" value={effectForm.damageType} onChange={(event) => setEffectForm((form) => ({ ...form, damageType: event.target.value }))} placeholder="Type" className="h-9 text-xs" disabled={effectForm.kind !== "damage"} />
+                  <datalist id="damage-types">
+                    {DAMAGE_TYPES.map((type) => <option key={type} value={type} />)}
+                  </datalist>
+                </div>
               </div>
               <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs" onClick={addEffect} disabled={!effectForm.targetId || !effectForm.amount}>
                 {effectForm.kind === "damage" ? <Skull className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
