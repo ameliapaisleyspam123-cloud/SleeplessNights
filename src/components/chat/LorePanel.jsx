@@ -451,26 +451,7 @@ function CharacterCard({ sheet, onSheetUpdated }) {
           />
           {(sheet.spells_known || sheet.spell_slots || hasClassResources) && (
             <div className="border-t border-border pt-2 space-y-2">
-              {spells.length > 0 && (
-                <div>
-                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Spells</div>
-                  <div className="space-y-1">
-                    {spells.slice(0, 5).map((spell, index) => (
-                      <div key={`${spell.name}-${index}`} className="text-[10px] text-foreground/80 leading-relaxed border border-border/60 rounded-sm px-2 py-1">
-                        <div className="font-medium text-foreground">
-                          <span className="text-muted-foreground">{spell.level || "Cantrip"}</span> - {spell.name || "-"}
-                        </div>
-                        {(spell.castingTime || spell.rangeArea || spell.hit || spell.damage || spell.components || spell.duration) && (
-                          <div className="text-muted-foreground">
-                            {[spell.castingTime, spell.rangeArea, spell.hit && `Hit ${spell.hit}`, spell.damage && `Damage ${spell.damage}`, spell.components, spell.duration].filter(Boolean).join(" | ")}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {spells.length > 5 && <div className="text-[10px] text-muted-foreground">+{spells.length - 5} more</div>}
-                  </div>
-                </div>
-              )}
+              {spells.length > 0 && <SpellList spells={spells} />}
               {(sheet.spell_slots || hasClassResources) && (
                 <div>
                   <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Spell Slots</div>
@@ -482,6 +463,35 @@ function CharacterCard({ sheet, onSheetUpdated }) {
               )}
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SpellList({ spells }) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen((value) => !value)} className="w-full flex items-center justify-between text-left mb-1">
+        <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Spells</span>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="space-y-1">
+          {spells.map((spell, index) => (
+            <div key={`${spell.name}-${index}`} className="text-[10px] text-foreground/80 leading-relaxed border border-border/60 rounded-sm px-2 py-1">
+              <div className="font-medium text-foreground">
+                <span className="text-muted-foreground">{spell.level || "Cantrip"}</span> - {spell.name || "-"}
+              </div>
+              {(spell.castingTime || spell.rangeArea || spell.hit || spell.damage || spell.components || spell.duration) && (
+                <div className="text-muted-foreground">
+                  {[spell.castingTime, spell.rangeArea, spell.hit && `Hit ${spell.hit}`, spell.damage && `Damage ${spell.damage}`, spell.components, spell.duration].filter(Boolean).join(" | ")}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -593,8 +603,8 @@ export default function LorePanel({ onClose }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1 min-w-0">
+      <div className="relative px-4 py-3 pr-12 border-b border-border flex items-center gap-2">
+        <div className="flex flex-wrap gap-1 min-w-0 pr-2">
           <button onClick={() => setMainTab("lore")} className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm transition-colors whitespace-nowrap ${mainTab === "lore" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
             <ScrollText className="w-3.5 h-3.5" /> Lore & Maps
           </button>
@@ -605,7 +615,7 @@ export default function LorePanel({ onClose }) {
             <NotebookPen className="w-3.5 h-3.5" /> Grimoire
           </button>
         </div>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors mr-2 shrink-0">
+        <button onClick={onClose} className="absolute right-6 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
           <X className="w-4 h-4" />
         </button>
       </div>
