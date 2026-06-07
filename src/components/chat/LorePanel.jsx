@@ -282,8 +282,7 @@ function ClassResourcesEditor({ sheet, onSheetUpdated }) {
   );
 }
 
-function CharacterCard({ sheet, onSheetUpdated }) {
-  const [expanded, setExpanded] = useState(true);
+function CharacterCard({ sheet, expanded, onToggleExpanded, onSheetUpdated }) {
   const [hp, setHp] = useState(sheet.hp_current ?? sheet.hp_max ?? 0);
   const [savingHp, setSavingHp] = useState(false);
   const hpSaveTimerRef = useRef(null);
@@ -368,7 +367,7 @@ function CharacterCard({ sheet, onSheetUpdated }) {
 
   return (
     <div className="border border-border rounded-sm bg-muted/30 overflow-hidden">
-      <button className="w-full flex items-start gap-3 p-3 text-left hover:bg-secondary/50 transition-colors" onClick={() => setExpanded((e) => !e)}>
+      <button className="w-full flex items-start gap-3 p-3 text-left hover:bg-secondary/50 transition-colors" onClick={onToggleExpanded}>
         {sheet.image_url ? (
           <img src={sheet.image_url} alt={sheet.name} className="w-10 h-10 rounded-sm object-cover shrink-0" />
         ) : (
@@ -561,6 +560,7 @@ export default function LorePanel({ onClose }) {
   const [tag, setTag] = useState("all");
   const [showTags, setShowTags] = useState(false);
   const [mainTab, setMainTab] = useState("lore");
+  const [expandedCharacterIds, setExpandedCharacterIds] = useState(() => new Set());
   const { user } = useCampaign();
 
   useEffect(() => {
@@ -599,6 +599,17 @@ export default function LorePanel({ onClose }) {
   const syncUpdatedCharacter = (updated) => {
     if (!updated?.id) return;
     setCharacters((current) => current.map((character) => (character.id === updated.id ? updated : character)));
+  };
+  const toggleCharacterExpanded = (characterId) => {
+    setExpandedCharacterIds((current) => {
+      const next = new Set(current);
+      if (next.has(characterId)) {
+        next.delete(characterId);
+      } else {
+        next.add(characterId);
+      }
+      return next;
+    });
   };
 
   return (
@@ -713,7 +724,15 @@ export default function LorePanel({ onClose }) {
                     No characters found.
                   </div>
                 )}
-                {filteredChars.map((c) => <CharacterCard key={c.id} sheet={c} onSheetUpdated={syncUpdatedCharacter} />)}
+                {filteredChars.map((c) => (
+                  <CharacterCard
+                    key={c.id}
+                    sheet={c}
+                    expanded={expandedCharacterIds.has(c.id)}
+                    onToggleExpanded={() => toggleCharacterExpanded(c.id)}
+                    onSheetUpdated={syncUpdatedCharacter}
+                  />
+                ))}
               </>
             )}
           </div>
