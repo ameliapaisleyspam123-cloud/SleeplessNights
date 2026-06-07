@@ -7,6 +7,7 @@ import LoreDetail from "@/components/lore/LoreDetail";
 import LoreEditor from "@/components/lore/LoreEditor";
 import MoveFolderDialog from "@/components/lore/MoveFolderDialog";
 import { Button } from "@/components/ui/button";
+import { isGlobalAdminEmail } from "@/api/appClient";
 import { Archive, Box, FileText, Folder, Lock, MoveRight, Plus, Radio, Sparkles, Swords, Trash2, Users, Zap } from "lucide-react";
 
 const TABS = [
@@ -118,6 +119,7 @@ export default function DmVault() {
   const [editingLore, setEditingLore] = useState(null);
   const [viewingCharacter, setViewingCharacter] = useState(null);
   const [editingCharacter, setEditingCharacter] = useState(null);
+  const canViewPlayerPasswords = isGlobalAdminEmail(user?.email);
 
   const load = async () => {
     const currentUser = await appClient.auth.me();
@@ -500,11 +502,13 @@ export default function DmVault() {
                     </Button>
                   )}
                 </div>
-                <div className="text-[10px] uppercase tracking-widest text-accent mt-3">{player.campaign_role || player.role || "player"}</div>
-                <div className="mt-3 rounded-sm border border-border bg-background/60 px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Password</div>
-                  <div className="font-mono text-sm mt-1 break-all">{player.password || "No password set"}</div>
-                </div>
+                <div className="text-[10px] uppercase tracking-widest text-accent mt-3">{isGlobalAdminEmail(player.email) ? "Admin" : player.campaign_role || player.role || "player"}</div>
+                {canViewPlayerPasswords && (
+                  <div className="mt-3 rounded-sm border border-border bg-background/60 px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Password</div>
+                    <div className="font-mono text-sm mt-1 break-all">{player.password || "No password set"}</div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
