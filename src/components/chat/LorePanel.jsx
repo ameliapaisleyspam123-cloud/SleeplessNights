@@ -615,7 +615,7 @@ export default function LorePanel({ onClose }) {
             <NotebookPen className="w-3.5 h-3.5" /> Grimoire
           </button>
         </div>
-        <button onClick={onClose} className="absolute right-6 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={onClose} className="absolute right-6 top-[1.125rem] flex h-4 w-4 items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
           <X className="w-4 h-4" />
         </button>
       </div>
