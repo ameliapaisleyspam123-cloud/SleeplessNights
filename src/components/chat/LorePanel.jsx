@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { appClient } from "@/api/appClient";
 import {
   ScrollText,
@@ -69,6 +69,8 @@ const ABBR_PANEL = {
   wisdom: "WIS",
   charisma: "CHA",
 };
+
+const HP_SAVE_DELAY_MS = 500;
 
 function readCharacterSpells(value) {
   try {
@@ -280,9 +282,11 @@ function ClassResourcesEditor({ sheet, onSheetUpdated }) {
   );
 }
 
-function CharacterCard({ sheet, onSheetUpdated }) {
-  const [expanded, setExpanded] = useState(true);
+function CharacterCard({ sheet, expanded, onToggleExpanded, onSheetUpdated }) {
   const [hp, setHp] = useState(sheet.hp_current ?? sheet.hp_max ?? 0);
+  const [savingHp, setSavingHp] = useState(false);
+  const hpSaveTimerRef = useRef(null);
+  const latestHpRef = useRef(sheet.hp_current ?? sheet.hp_max ?? 0);
   const [savingDeathSaves, setSavingDeathSaves] = useState(false);
   const [deathSaves, setDeathSaves] = useState({
     successes: sheet.death_save_successes ?? 0,
@@ -298,20 +302,37 @@ function CharacterCard({ sheet, onSheetUpdated }) {
   );
 
   useEffect(() => {
-    setHp(sheet.hp_current ?? sheet.hp_max ?? 0);
+    const nextHp = sheet.hp_current ?? sheet.hp_max ?? 0;
+    latestHpRef.current = nextHp;
+    setHp(nextHp);
     setDeathSaves({
       successes: sheet.death_save_successes ?? 0,
       failures: sheet.death_save_failures ?? 0,
     });
   }, [sheet.hp_current, sheet.hp_max, sheet.death_save_successes, sheet.death_save_failures]);
 
-  const changeHp = async (delta) => {
+  useEffect(() => () => {
+    if (hpSaveTimerRef.current) window.clearTimeout(hpSaveTimerRef.current);
+  }, []);
+
+  const scheduleHpSave = (nextHp) => {
+    if (hpSaveTimerRef.current) window.clearTimeout(hpSaveTimerRef.current);
+    hpSaveTimerRef.current = window.setTimeout(async () => {
+      setSavingHp(true);
+      const updated = await appClient.entities.CharacterSheet.update(sheet.id, { hp_current: latestHpRef.current });
+      onSheetUpdated?.(updated);
+      setSavingHp(false);
+    }, HP_SAVE_DELAY_MS);
+  };
+
+  const changeHp = (delta) => {
     const max = sheet.hp_max ?? 0;
-    const next = Math.max(0, Math.min(max, hp + delta));
-    if (next === hp) return;
+    const next = Math.max(0, Math.min(max, latestHpRef.current + delta));
+    if (next === latestHpRef.current) return;
+    latestHpRef.current = next;
     setHp(next);
-    const updated = await appClient.entities.CharacterSheet.update(sheet.id, { hp_current: next });
-    onSheetUpdated?.(updated);
+    onSheetUpdated?.({ ...sheet, hp_current: next });
+    scheduleHpSave(next);
   };
 
   const updateDeathSave = async (type, delta) => {
@@ -332,8 +353,12 @@ function CharacterCard({ sheet, onSheetUpdated }) {
   const expertSkills = (sheet.skill_expertises || "").split(",").map((s) => s.trim()).filter(Boolean);
   const advantageSkills = (sheet.advantage_skills || "").split(",").map((s) => s.trim()).filter(Boolean);
   const disadvantageSkills = (sheet.disadvantage_skills || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const profSaves = (sheet.saving_throws || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const advantageSaves = (sheet.advantage_saving_throws || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const disadvantageSaves = (sheet.disadvantage_saving_throws || "").split(",").map((s) => s.trim()).filter(Boolean);
   const pb = sheet.proficiency_bonus || 2;
   const initiativeBonus = sheet.initiative !== undefined && sheet.initiative !== 0 ? sheet.initiative : STAT_MOD(sheet.dexterity || 10);
+  const saveBonus = (ability) => STAT_MOD(sheet[ability] || 10) + (profSaves.includes(ability) ? pb : 0);
   const skillBonus = (sk) => {
     const isExp = expertSkills.includes(sk.name);
     const isProf = profSkills.includes(sk.name);
@@ -342,7 +367,7 @@ function CharacterCard({ sheet, onSheetUpdated }) {
 
   return (
     <div className="border border-border rounded-sm bg-muted/30 overflow-hidden">
-      <button className="w-full flex items-start gap-3 p-3 text-left hover:bg-secondary/50 transition-colors" onClick={() => setExpanded((e) => !e)}>
+      <button className="w-full flex items-start gap-3 p-3 text-left hover:bg-secondary/50 transition-colors" onClick={onToggleExpanded}>
         {sheet.image_url ? (
           <img src={sheet.image_url} alt={sheet.name} className="w-10 h-10 rounded-sm object-cover shrink-0" />
         ) : (
@@ -390,6 +415,7 @@ function CharacterCard({ sheet, onSheetUpdated }) {
                   {hp}/{sheet.hp_max}
                 </span>
                 <button onClick={() => changeHp(1)} className="w-5 h-5 rounded-sm border border-border bg-secondary/60 hover:bg-accent/20 hover:border-accent/50 text-muted-foreground hover:text-accent transition-colors text-sm leading-none flex items-center justify-center">+</button>
+                {savingHp && <span className="text-[9px] text-muted-foreground">Saving...</span>}
               </div>
             </div>
             <div className="flex items-center gap-2 text-[9px] text-accent flex-wrap">
@@ -409,52 +435,22 @@ function CharacterCard({ sheet, onSheetUpdated }) {
               {savingDeathSaves && <span className="text-muted-foreground">Saving...</span>}
             </div>
           </div>
-          {(profSkills.length > 0 || advantageSkills.length > 0 || disadvantageSkills.length > 0) && (
-            <div className="border-t border-border pt-2">
-              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Skills</div>
-              <div className="space-y-0.5">
-                {ALL_SKILLS_PANEL.filter((sk) => profSkills.includes(sk.name) || expertSkills.includes(sk.name) || advantageSkills.includes(sk.name) || disadvantageSkills.includes(sk.name)).map((sk) => {
-                  const isExp = expertSkills.includes(sk.name);
-                  const isProf = profSkills.includes(sk.name);
-                  const hasAdvantage = advantageSkills.includes(sk.name);
-                  const hasDisadvantage = disadvantageSkills.includes(sk.name);
-                  const bonus = skillBonus(sk);
-                  return (
-                    <div key={sk.name} className="flex items-center gap-1.5">
-                      <div className={`w-2.5 h-2.5 shrink-0 border ${isExp ? "rounded-sm bg-primary border-primary" : isProf ? "rounded-full bg-accent border-accent" : "rounded-full border-muted-foreground/40"}`} />
-                      <span className="text-[10px] flex-1">{sk.name}</span>
-                      <span className="text-[10px] text-accent font-medium">{fmtMod(bonus)}</span>
-                      {hasAdvantage && <ChevronsUp className="w-3 h-3 text-accent shrink-0" />}
-                      {hasDisadvantage && <ChevronsDown className="w-3 h-3 text-destructive shrink-0" />}
-                      <span className="text-[9px] text-muted-foreground">{ABBR_PANEL[sk.ability]}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <SkillList
+            skills={ALL_SKILLS_PANEL}
+            profSkills={profSkills}
+            expertSkills={expertSkills}
+            advantageSkills={advantageSkills}
+            disadvantageSkills={disadvantageSkills}
+            stats={stats}
+            profSaves={profSaves}
+            advantageSaves={advantageSaves}
+            disadvantageSaves={disadvantageSaves}
+            saveBonus={saveBonus}
+            skillBonus={skillBonus}
+          />
           {(sheet.spells_known || sheet.spell_slots || hasClassResources) && (
             <div className="border-t border-border pt-2 space-y-2">
-              {spells.length > 0 && (
-                <div>
-                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Spells</div>
-                  <div className="space-y-1">
-                    {spells.slice(0, 5).map((spell, index) => (
-                      <div key={`${spell.name}-${index}`} className="text-[10px] text-foreground/80 leading-relaxed border border-border/60 rounded-sm px-2 py-1">
-                        <div className="font-medium text-foreground">
-                          <span className="text-muted-foreground">{spell.level || "Cantrip"}</span> - {spell.name || "-"}
-                        </div>
-                        {(spell.castingTime || spell.rangeArea || spell.hit || spell.damage || spell.components || spell.duration) && (
-                          <div className="text-muted-foreground">
-                            {[spell.castingTime, spell.rangeArea, spell.hit && `Hit ${spell.hit}`, spell.damage && `Damage ${spell.damage}`, spell.components, spell.duration].filter(Boolean).join(" | ")}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {spells.length > 5 && <div className="text-[10px] text-muted-foreground">+{spells.length - 5} more</div>}
-                  </div>
-                </div>
-              )}
+              {spells.length > 0 && <SpellList spells={spells} />}
               {(sheet.spell_slots || hasClassResources) && (
                 <div>
                   <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Spell Slots</div>
@@ -472,6 +468,90 @@ function CharacterCard({ sheet, onSheetUpdated }) {
   );
 }
 
+function SpellList({ spells }) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen((value) => !value)} className="w-full flex items-center justify-between text-left mb-1">
+        <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Spells</span>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="space-y-1">
+          {spells.map((spell, index) => (
+            <div key={`${spell.name}-${index}`} className="text-[10px] text-foreground/80 leading-relaxed border border-border/60 rounded-sm px-2 py-1">
+              <div className="font-medium text-foreground">
+                <span className="text-muted-foreground">{spell.level || "Cantrip"}</span> - {spell.name || "-"}
+              </div>
+              {(spell.castingTime || spell.rangeArea || spell.hit || spell.damage || spell.components || spell.duration) && (
+                <div className="text-muted-foreground">
+                  {[spell.castingTime, spell.rangeArea, spell.hit && `Hit ${spell.hit}`, spell.damage && `Damage ${spell.damage}`, spell.components, spell.duration].filter(Boolean).join(" | ")}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SkillList({ skills, profSkills, expertSkills, advantageSkills, disadvantageSkills, stats, profSaves, advantageSaves, disadvantageSaves, saveBonus, skillBonus }) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div className="border-t border-border pt-2">
+      <button type="button" onClick={() => setOpen((value) => !value)} className="w-full flex items-center justify-between text-left mb-1">
+        <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Saving Throws & Skills</span>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="space-y-2">
+          <div className="space-y-0.5">
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground">Saving Throws</div>
+            {stats.map((ability) => {
+              const isProf = profSaves.includes(ability);
+              const hasAdvantage = advantageSaves.includes(ability);
+              const hasDisadvantage = disadvantageSaves.includes(ability);
+              return (
+                <div key={ability} className={`flex items-center gap-1.5 ${!isProf && !hasAdvantage && !hasDisadvantage ? "opacity-60" : ""}`}>
+                  <div className={`w-2.5 h-2.5 shrink-0 rounded-full border ${isProf ? "bg-accent border-accent" : "border-muted-foreground/40"}`} />
+                  <span className="text-[10px] flex-1 capitalize">{ability}</span>
+                  <span className="text-[10px] text-accent font-medium">{fmtMod(saveBonus(ability))}</span>
+                  {hasAdvantage && <ChevronsUp className="w-3 h-3 text-accent shrink-0" />}
+                  {hasDisadvantage && <ChevronsDown className="w-3 h-3 text-destructive shrink-0" />}
+                  <span className="text-[9px] text-muted-foreground">{ABBR_PANEL[ability]}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="space-y-0.5">
+            <div className="text-[8px] uppercase tracking-widest text-muted-foreground">Skills</div>
+            {skills.map((sk) => {
+              const isExp = expertSkills.includes(sk.name);
+              const isProf = profSkills.includes(sk.name);
+              const hasAdvantage = advantageSkills.includes(sk.name);
+              const hasDisadvantage = disadvantageSkills.includes(sk.name);
+              const bonus = skillBonus(sk);
+              return (
+                <div key={sk.name} className={`flex items-center gap-1.5 ${!isExp && !isProf && !hasAdvantage && !hasDisadvantage ? "opacity-60" : ""}`}>
+                  <div className={`w-2.5 h-2.5 shrink-0 border ${isExp ? "rounded-sm bg-primary border-primary" : isProf ? "rounded-full bg-accent border-accent" : "rounded-full border-muted-foreground/40"}`} />
+                  <span className="text-[10px] flex-1">{sk.name}</span>
+                  <span className="text-[10px] text-accent font-medium">{fmtMod(bonus)}</span>
+                  {hasAdvantage && <ChevronsUp className="w-3 h-3 text-accent shrink-0" />}
+                  {hasDisadvantage && <ChevronsDown className="w-3 h-3 text-destructive shrink-0" />}
+                  <span className="text-[9px] text-muted-foreground">{ABBR_PANEL[sk.ability]}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LorePanel({ onClose }) {
   const [entries, setEntries] = useState([]);
   const [characters, setCharacters] = useState([]);
@@ -480,13 +560,19 @@ export default function LorePanel({ onClose }) {
   const [tag, setTag] = useState("all");
   const [showTags, setShowTags] = useState(false);
   const [mainTab, setMainTab] = useState("lore");
+  const [expandedCharacterIds, setExpandedCharacterIds] = useState(() => new Set());
   const { user } = useCampaign();
 
   useEffect(() => {
     if (!user?.campaign_id) return;
     const cid = user.campaign_id;
-    appClient.entities.LoreEntry.filter({ campaign_id: cid }, "-created_date", 500).then(setEntries);
-    appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 200).then(setCharacters);
+    const load = () => {
+      appClient.entities.LoreEntry.filter({ campaign_id: cid }, "-created_date", 500).then(setEntries);
+      appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 200).then(setCharacters);
+    };
+    load();
+    const unsubCharacters = appClient.entities.CharacterSheet.subscribe(load);
+    return () => unsubCharacters();
   }, [user?.campaign_id]);
 
   const cats = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
@@ -514,11 +600,22 @@ export default function LorePanel({ onClose }) {
     if (!updated?.id) return;
     setCharacters((current) => current.map((character) => (character.id === updated.id ? updated : character)));
   };
+  const toggleCharacterExpanded = (characterId) => {
+    setExpandedCharacterIds((current) => {
+      const next = new Set(current);
+      if (next.has(characterId)) {
+        next.delete(characterId);
+      } else {
+        next.add(characterId);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1 min-w-0">
+      <div className="relative px-4 py-3 pr-12 border-b border-border flex items-center gap-2">
+        <div className="flex flex-wrap gap-1 min-w-0 pr-2">
           <button onClick={() => setMainTab("lore")} className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm transition-colors whitespace-nowrap ${mainTab === "lore" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
             <ScrollText className="w-3.5 h-3.5" /> Lore & Maps
           </button>
@@ -529,7 +626,7 @@ export default function LorePanel({ onClose }) {
             <NotebookPen className="w-3.5 h-3.5" /> Grimoire
           </button>
         </div>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={onClose} className="absolute right-6 top-[1.125rem] flex h-4 w-4 items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -627,7 +724,15 @@ export default function LorePanel({ onClose }) {
                     No characters found.
                   </div>
                 )}
-                {filteredChars.map((c) => <CharacterCard key={c.id} sheet={c} onSheetUpdated={syncUpdatedCharacter} />)}
+                {filteredChars.map((c) => (
+                  <CharacterCard
+                    key={c.id}
+                    sheet={c}
+                    expanded={expandedCharacterIds.has(c.id)}
+                    onToggleExpanded={() => toggleCharacterExpanded(c.id)}
+                    onSheetUpdated={syncUpdatedCharacter}
+                  />
+                ))}
               </>
             )}
           </div>

@@ -574,6 +574,19 @@ function isDmAccount(user) {
   return user?.campaign_role === "dm" || user?.campaign_role === "DM" || user?.role === "admin" || isGlobalAdminEmail(user?.email);
 }
 
+function stripSensitiveUserFields(user) {
+  if (!user || typeof user !== "object") return user;
+  const { password, ...safeUser } = user;
+  return safeUser;
+}
+
+async function sanitizeEntityRecords(entity, records) {
+  if (entity !== "User") return records;
+  const currentUser = await currentSessionAsync().catch(() => null);
+  if (isGlobalAdminEmail(currentUser?.email)) return records;
+  return Array.isArray(records) ? records.map(stripSensitiveUserFields) : records;
+}
+
 function canAccessMessageChannel(user, channel) {
   if (!user || !channel) return false;
   if (channel === "group") return true;
@@ -589,21 +602,22 @@ function entityApi(entity) {
   return {
     async list(sort = "-created_date", limit = 1000) {
       const remoteRecords = await readRemoteEntity(entity, {}, sort, limit);
-      if (remoteRecords) return remoteRecords;
+      if (remoteRecords) return sanitizeEntityRecords(entity, remoteRecords);
       const store = await readStoreAsync();
-      return sortRecords(store[entity] || [], sort).slice(0, limit);
+      return sanitizeEntityRecords(entity, sortRecords(store[entity] || [], sort).slice(0, limit));
     },
     async filter(query = {}, sort = "-created_date", limit = 1000) {
       const remoteRecords = await readRemoteEntity(entity, query, sort, limit);
-      if (remoteRecords) return remoteRecords;
+      if (remoteRecords) return sanitizeEntityRecords(entity, remoteRecords);
       const store = await readStoreAsync();
-      return sortRecords((store[entity] || []).filter((record) => matches(record, query)), sort).slice(0, limit);
+      return sanitizeEntityRecords(entity, sortRecords((store[entity] || []).filter((record) => matches(record, query)), sort).slice(0, limit));
     },
     async get(recordId) {
       const [remoteRecord] = (await readRemoteEntity(entity, { id: recordId }, "-updated_date", 1)) || [];
-      if (remoteRecord) return remoteRecord;
+      if (remoteRecord) return (await sanitizeEntityRecords(entity, [remoteRecord]))[0] || null;
       const store = await readStoreAsync();
-      return (store[entity] || []).find((record) => record.id === recordId) || null;
+      const record = (store[entity] || []).find((record) => record.id === recordId) || null;
+      return record ? (await sanitizeEntityRecords(entity, [record]))[0] || null : null;
     },
     async create(data) {
       if (supabase) {

@@ -116,6 +116,8 @@ function LayoutInner() {
   const SUPERUSER_EMAIL = "ameliapaisleyspam123@gmail.com";
   const isSuperuser = user?.email === SUPERUSER_EMAIL;
   const isAdmin = user?.campaign_role === "dm" || user?.role === "admin" || isSuperuser;
+  const roleLabel = isSuperuser ? "Admin" : isAdmin ? "Gamemaster" : "Player";
+  const compactRoleLabel = isSuperuser ? "Admin" : isAdmin ? "DM" : "Player";
   const NAV = isAdmin ? GM_NAV : PLAYER_NAV;
   const openInitiativePopout = () => {
     if (!campaignId) return;
@@ -152,9 +154,15 @@ function LayoutInner() {
     onEditName: () => setNameModalOpen(true),
     onCampaignSettings: () => setCampaignModalOpen(true),
     onThemeSettings: () => setThemeModalOpen(true),
+    roleLabel,
+    compactRoleLabel,
   };
-  const floatingControlsPosition = "top-24 right-6 lg:top-28 lg:right-10";
-  const dicePanelPosition = "top-40 right-6 lg:top-44 lg:right-10";
+  const floatingControlsPosition = splitOpen
+    ? "top-24 right-6 lg:top-28 lg:right-[calc(400px+2.5rem)]"
+    : "top-24 right-6 lg:top-28 lg:right-10";
+  const dicePanelPosition = splitOpen
+    ? "top-40 right-6 lg:top-44 lg:right-[calc(400px+2.5rem)]"
+    : "top-40 right-6 lg:top-44 lg:right-10";
 
   return (
     <div className="h-screen overflow-hidden parchment flex">
@@ -277,6 +285,8 @@ function SidebarContent({
   onEditName,
   onCampaignSettings,
   onThemeSettings,
+  roleLabel,
+  compactRoleLabel,
 }) {
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -301,7 +311,7 @@ function SidebarContent({
           <div className={`mx-3 mt-3 mb-1 px-3 py-2 rounded-sm flex items-center gap-2 shrink-0 ${isAdmin ? "bg-accent/10 border border-accent/30" : "bg-secondary border border-border"}`}>
             {isAdmin ? <Shield className="w-3.5 h-3.5 text-accent shrink-0" /> : <Sword className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
             <span className={`text-[10px] uppercase tracking-widest font-medium ${isAdmin ? "text-accent" : "text-muted-foreground"}`}>
-              {isAdmin ? "Gamemaster" : "Player"}
+              {roleLabel}
             </span>
           </div>
 
@@ -341,7 +351,7 @@ function SidebarContent({
             {!collapsed && (
               <>
                 <span>{item.label}</span>
-                {item.gmOnly && <span className="ml-auto text-[9px] uppercase tracking-widest opacity-60">DM</span>}
+                {item.gmOnly && <span className="ml-auto text-[9px] uppercase tracking-widest opacity-60">{compactRoleLabel}</span>}
               </>
             )}
           </NavLink>
@@ -359,7 +369,7 @@ function SidebarContent({
             </div>
             <div className="text-xs text-muted-foreground truncate">{user.email}</div>
             <div className={`text-[9px] uppercase tracking-widest font-medium mt-0.5 ${isAdmin ? "text-accent" : "text-muted-foreground"}`}>
-              {isAdmin ? "⚔ DM" : "Player"}
+              {compactRoleLabel}
             </div>
           </div>
         )}
