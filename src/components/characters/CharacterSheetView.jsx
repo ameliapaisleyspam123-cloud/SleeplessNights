@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Lock, EyeOff, Users, Heart, Minus, Plus, Loader2, Swords, Sparkles } from "lucide-react";
+import { Pencil, Lock, EyeOff, Users, Heart, Minus, Plus, Loader2, Swords, Sparkles, ChevronsUp, ChevronsDown } from "lucide-react";
 import InventoryManager from "@/components/characters/InventoryManager";
 import AttackManager from "@/components/characters/AttackManager";
 import SpellManager from "@/components/characters/SpellManager";
@@ -57,28 +57,53 @@ function ProfDot({ filled, expertise }) {
   return <div className={`w-3 h-3 rounded-full border-2 shrink-0 ${filled ? "bg-accent border-accent" : "border-muted-foreground/40"}`} />;
 }
 
-function SkillLine({ skill, sheet, profSkills, expertSkills, pb }) {
+function RollMarker({ advantage, disadvantage }) {
+  if (advantage) return <ChevronsUp className="w-3 h-3 text-accent shrink-0" aria-label="Advantage" />;
+  if (disadvantage) return <ChevronsDown className="w-3 h-3 text-destructive shrink-0" aria-label="Disadvantage" />;
+  return null;
+}
+
+function rollD20WithMode(advantage, disadvantage) {
+  if (!advantage && !disadvantage) {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    return { roll, rolls: [roll], rollMode: "normal" };
+  }
+  const rolls = [Math.floor(Math.random() * 20) + 1, Math.floor(Math.random() * 20) + 1];
+  return {
+    roll: advantage ? Math.max(...rolls) : Math.min(...rolls),
+    rolls,
+    rollMode: advantage ? "advantage" : "disadvantage",
+  };
+}
+
+function SkillLine({ skill, sheet, profSkills, expertSkills, advantageSkills, disadvantageSkills, pb }) {
   const expertise = expertSkills.includes(skill.name);
   const proficient = profSkills.includes(skill.name);
+  const advantage = advantageSkills.includes(skill.name);
+  const disadvantage = disadvantageSkills.includes(skill.name);
   const bonus = mod(sheet[skill.ability] || 10) + (expertise ? pb * 2 : proficient ? pb : 0);
   return (
-    <div className={`flex items-center gap-1.5 py-[2px] ${!proficient && !expertise ? "opacity-40" : ""}`}>
+    <div className={`flex items-center gap-1.5 py-[2px] ${!proficient && !expertise && !advantage && !disadvantage ? "opacity-40" : ""}`}>
       <ProfDot filled={proficient || expertise} expertise={expertise} />
       <span className="text-[11px] tabular-nums text-accent w-7 text-right shrink-0">{fmt(bonus)}</span>
       <span className="text-[11px] flex-1 truncate">{skill.name}</span>
+      <RollMarker advantage={advantage} disadvantage={disadvantage} />
       <span className="text-[9px] text-muted-foreground shrink-0">{ABBR[skill.ability]}</span>
     </div>
   );
 }
 
-function SaveLine({ ability, sheet, profSaves, pb }) {
+function SaveLine({ ability, sheet, profSaves, advantageSaves, disadvantageSaves, pb }) {
   const proficient = profSaves.includes(ability);
+  const advantage = advantageSaves.includes(ability);
+  const disadvantage = disadvantageSaves.includes(ability);
   const bonus = mod(sheet[ability] || 10) + (proficient ? pb : 0);
   return (
     <div className="flex items-center gap-1.5 py-[2px]">
       <ProfDot filled={proficient} />
       <span className="text-[11px] tabular-nums text-accent w-7 text-right shrink-0">{fmt(bonus)}</span>
       <span className="text-[11px] flex-1 capitalize">{ability}</span>
+      <RollMarker advantage={advantage} disadvantage={disadvantage} />
     </div>
   );
 }
@@ -130,7 +155,7 @@ function AddToInitiativeButton({ sheet, ownerEmail }) {
   const handleAdd = async () => {
     if (!sheet.campaign_id) return;
     setState("rolling");
-    const roll = Math.floor(Math.random() * 20) + 1;
+    const { roll, rolls, rollMode } = rollD20WithMode(sheet.initiative_advantage, sheet.initiative_disadvantage);
     const total = roll + initMod;
     const [combat] = await appClient.entities.Initiative.filter({ campaign_id: sheet.campaign_id, active: true }, "-updated_date", 1);
     if (!combat) {
@@ -146,6 +171,8 @@ function AddToInitiativeButton({ sheet, ownerEmail }) {
             ? {
                 ...entry,
                 roll,
+                rolls,
+                rollMode,
                 total,
                 modifier: initMod,
                 hpCurrent: sheet.hp_current ?? sheet.hp_max ?? 0,
@@ -163,6 +190,8 @@ function AddToInitiativeButton({ sheet, ownerEmail }) {
             name: sheet.name,
             image_url: sheet.image_url || "",
             roll,
+            rolls,
+            rollMode,
             modifier: initMod,
             total,
             hpCurrent: sheet.hp_current ?? sheet.hp_max ?? 0,
@@ -549,7 +578,11 @@ export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenC
 
   const profSkills = (sheet.skills || "").split(",").map((value) => value.trim()).filter(Boolean);
   const expertSkills = (sheet.skill_expertises || "").split(",").map((value) => value.trim()).filter(Boolean);
+  const advantageSkills = (sheet.advantage_skills || "").split(",").map((value) => value.trim()).filter(Boolean);
+  const disadvantageSkills = (sheet.disadvantage_skills || "").split(",").map((value) => value.trim()).filter(Boolean);
   const profSaves = (sheet.saving_throws || "").split(",").map((value) => value.trim()).filter(Boolean);
+  const advantageSaves = (sheet.advantage_saving_throws || "").split(",").map((value) => value.trim()).filter(Boolean);
+  const disadvantageSaves = (sheet.disadvantage_saving_throws || "").split(",").map((value) => value.trim()).filter(Boolean);
   const pb = sheet.proficiency_bonus || 2;
   const passivePerc = 10 + mod(sheet.wisdom || 10) + (expertSkills.includes("Perception") ? pb * 2 : profSkills.includes("Perception") ? pb : 0);
 
@@ -618,11 +651,11 @@ export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenC
             </div>
             <div className="border border-border rounded-sm bg-card p-2">
               <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5 text-center">Saving Throws</div>
-              {STATS.map((ability) => <SaveLine key={ability} ability={ability} sheet={sheet} profSaves={profSaves} pb={pb} />)}
+              {STATS.map((ability) => <SaveLine key={ability} ability={ability} sheet={sheet} profSaves={profSaves} advantageSaves={advantageSaves} disadvantageSaves={disadvantageSaves} pb={pb} />)}
             </div>
             <div className="border border-border rounded-sm bg-secondary/10 p-2">
               <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5 text-center">Skills</div>
-              {ALL_SKILLS.map((skill) => <SkillLine key={skill.name} skill={skill} sheet={sheet} profSkills={profSkills} expertSkills={expertSkills} pb={pb} />)}
+              {ALL_SKILLS.map((skill) => <SkillLine key={skill.name} skill={skill} sheet={sheet} profSkills={profSkills} expertSkills={expertSkills} advantageSkills={advantageSkills} disadvantageSkills={disadvantageSkills} pb={pb} />)}
             </div>
           </div>
 
@@ -639,7 +672,10 @@ export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenC
                 ].map(([label, value]) => (
                   <div key={label} className="flex flex-col items-center border border-border rounded-sm bg-card p-2 text-center min-h-[56px] justify-center">
                     <div className="text-[8px] uppercase tracking-widest text-muted-foreground leading-none mb-0.5">{label}</div>
-                    <div className="font-display text-2xl leading-none">{value}</div>
+                    <div className="font-display text-2xl leading-none flex items-center gap-1">
+                      {value}
+                      {label === "Initiative" && <RollMarker advantage={sheet.initiative_advantage} disadvantage={sheet.initiative_disadvantage} />}
+                    </div>
                   </div>
                 ))}
                 <HpBlock hp={sheet.hp_current} hpMax={sheet.hp_max} hpTemp={sheet.hp_temp} onSave={saveField} />

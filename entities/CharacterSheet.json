@@ -99,6 +99,16 @@
       "type": "number",
       "default": 0
     },
+    "initiative_advantage": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether initiative is rolled with advantage"
+    },
+    "initiative_disadvantage": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether initiative is rolled with disadvantage"
+    },
     "speed": {
       "type": "number",
       "default": 30
@@ -135,6 +145,22 @@
     "skill_expertises": {
       "type": "string",
       "description": "Comma-separated expertise skills"
+    },
+    "advantage_skills": {
+      "type": "string",
+      "description": "Comma-separated skills rolled with advantage"
+    },
+    "disadvantage_skills": {
+      "type": "string",
+      "description": "Comma-separated skills rolled with disadvantage"
+    },
+    "advantage_saving_throws": {
+      "type": "string",
+      "description": "Comma-separated saving throws rolled with advantage"
+    },
+    "disadvantage_saving_throws": {
+      "type": "string",
+      "description": "Comma-separated saving throws rolled with disadvantage"
     },
     "passive_perception": {
       "type": "number",

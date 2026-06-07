@@ -74,6 +74,8 @@ export interface CharacterSheet extends AppRecord {
   hp_temp?: number;
   ac?: number;
   initiative?: number;
+  initiative_advantage?: boolean;
+  initiative_disadvantage?: boolean;
   speed?: number;
   damage_resistances?: string;
   damage_immunities?: string;
@@ -84,6 +86,10 @@ export interface CharacterSheet extends AppRecord {
   death_save_failures?: number;
   skills?: string;
   skill_expertises?: string;
+  advantage_skills?: string;
+  disadvantage_skills?: string;
+  advantage_saving_throws?: string;
+  disadvantage_saving_throws?: string;
   passive_perception?: number;
   languages?: string;
   traits?: string;

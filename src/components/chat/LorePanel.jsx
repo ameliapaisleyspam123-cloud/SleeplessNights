@@ -18,6 +18,8 @@ import {
   Minus,
   Plus,
   Tag,
+  ChevronsUp,
+  ChevronsDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useCampaign } from "@/hooks/useCampaign";
@@ -328,7 +330,10 @@ function CharacterCard({ sheet, onSheetUpdated }) {
 
   const profSkills = (sheet.skills || "").split(",").map((s) => s.trim()).filter(Boolean);
   const expertSkills = (sheet.skill_expertises || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const advantageSkills = (sheet.advantage_skills || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const disadvantageSkills = (sheet.disadvantage_skills || "").split(",").map((s) => s.trim()).filter(Boolean);
   const pb = sheet.proficiency_bonus || 2;
+  const initiativeBonus = sheet.initiative !== undefined && sheet.initiative !== 0 ? sheet.initiative : STAT_MOD(sheet.dexterity || 10);
   const skillBonus = (sk) => {
     const isExp = expertSkills.includes(sk.name);
     const isProf = profSkills.includes(sk.name);
@@ -372,6 +377,12 @@ function CharacterCard({ sheet, onSheetUpdated }) {
                 <Shield className="w-3 h-3 text-accent" />
                 AC {sheet.ac}
               </span>
+              <span className="flex items-center gap-1">
+                <Swords className="w-3 h-3 text-accent" />
+                Init {fmtMod(initiativeBonus)}
+                {sheet.initiative_advantage && <ChevronsUp className="w-3 h-3 text-accent" />}
+                {sheet.initiative_disadvantage && <ChevronsDown className="w-3 h-3 text-destructive" />}
+              </span>
               <div className="flex items-center gap-1">
                 <Zap className="w-3 h-3 text-accent" />
                 <button onClick={() => changeHp(-1)} className="w-5 h-5 rounded-sm border border-border bg-secondary/60 hover:bg-destructive/20 hover:border-destructive/50 text-muted-foreground hover:text-destructive transition-colors text-sm leading-none flex items-center justify-center">-</button>
@@ -398,18 +409,23 @@ function CharacterCard({ sheet, onSheetUpdated }) {
               {savingDeathSaves && <span className="text-muted-foreground">Saving...</span>}
             </div>
           </div>
-          {profSkills.length > 0 && (
+          {(profSkills.length > 0 || advantageSkills.length > 0 || disadvantageSkills.length > 0) && (
             <div className="border-t border-border pt-2">
               <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Skills</div>
               <div className="space-y-0.5">
-                {ALL_SKILLS_PANEL.filter((sk) => profSkills.includes(sk.name) || expertSkills.includes(sk.name)).map((sk) => {
+                {ALL_SKILLS_PANEL.filter((sk) => profSkills.includes(sk.name) || expertSkills.includes(sk.name) || advantageSkills.includes(sk.name) || disadvantageSkills.includes(sk.name)).map((sk) => {
                   const isExp = expertSkills.includes(sk.name);
+                  const isProf = profSkills.includes(sk.name);
+                  const hasAdvantage = advantageSkills.includes(sk.name);
+                  const hasDisadvantage = disadvantageSkills.includes(sk.name);
                   const bonus = skillBonus(sk);
                   return (
                     <div key={sk.name} className="flex items-center gap-1.5">
-                      <div className={`w-2.5 h-2.5 shrink-0 border ${isExp ? "rounded-sm bg-primary border-primary" : "rounded-full bg-accent border-accent"}`} />
+                      <div className={`w-2.5 h-2.5 shrink-0 border ${isExp ? "rounded-sm bg-primary border-primary" : isProf ? "rounded-full bg-accent border-accent" : "rounded-full border-muted-foreground/40"}`} />
                       <span className="text-[10px] flex-1">{sk.name}</span>
                       <span className="text-[10px] text-accent font-medium">{fmtMod(bonus)}</span>
+                      {hasAdvantage && <ChevronsUp className="w-3 h-3 text-accent shrink-0" />}
+                      {hasDisadvantage && <ChevronsDown className="w-3 h-3 text-destructive shrink-0" />}
                       <span className="text-[9px] text-muted-foreground">{ABBR_PANEL[sk.ability]}</span>
                     </div>
                   );
