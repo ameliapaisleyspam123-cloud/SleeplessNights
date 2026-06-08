@@ -288,7 +288,7 @@ export default function Timeline() {
         <div className="min-h-[18rem] border border-dashed border-border rounded-sm flex flex-col items-center justify-center text-center px-4 text-muted-foreground">
           <Lock className="w-10 h-10 mb-4" strokeWidth={1.5} />
           <div className="font-display text-2xl text-foreground">DM access required</div>
-          <div className="mt-2 max-w-md">The hourglass is hidden while the gods arrange the mortal calendar.</div>
+          <div className="mt-2 max-w-md">The hourglass is hidden while Time arranges the mortal calendar.</div>
         </div>
       </div>
     );
