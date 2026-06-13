@@ -326,9 +326,13 @@ export default function Timeline() {
     if (!campaign?.id) return;
     setSavingCalendar(true);
     const normalized = normalizeCalendar({ calendar_system: calendarDraft });
-    await appClient.entities.Campaign.update(campaign.id, { calendar_system: normalized });
+    const updated = await appClient.entities.Campaign.update(campaign.id, { calendar_system: normalized });
+    setCampaign(updated);
+    setCalendarDraft(normalizeCalendar(updated));
+    const nextDate = campaignDate(updated, normalizeCalendar(updated));
+    setDmViewDate(writeLocalTimelineViewDate(updated, nextDate, normalizeCalendar(updated), user));
+    setDateDraft(nextDate);
     setSavingCalendar(false);
-    await load({ resetView: true });
   };
 
   const saveCurrentDate = async (nextDate = dateDraft) => {
@@ -340,9 +344,8 @@ export default function Timeline() {
     await appClient.entities.Campaign.update(campaign.id, {
       timeline_current_date: normalized,
       timeline_started: true,
-    });
+    }).then(setCampaign);
     setSavingDate(false);
-    await load({ resetView: true });
   };
 
   const viewDate = (nextDate) => {
@@ -358,8 +361,8 @@ export default function Timeline() {
 
   const togglePlayerTimeline = async () => {
     if (!campaign?.id) return;
-    await appClient.entities.Campaign.update(campaign.id, { timeline_player_visible: !campaign.timeline_player_visible });
-    await load();
+    const updated = await appClient.entities.Campaign.update(campaign.id, { timeline_player_visible: !campaign.timeline_player_visible });
+    setCampaign(updated);
   };
 
   const togglePlayerDate = async (marker) => {
@@ -368,8 +371,8 @@ export default function Timeline() {
     const current = new Set(playerDateKeys);
     if (current.has(key)) current.delete(key);
     else current.add(key);
-    await appClient.entities.Campaign.update(campaign.id, { timeline_player_date_keys: [...current] });
-    await load();
+    const updated = await appClient.entities.Campaign.update(campaign.id, { timeline_player_date_keys: [...current] });
+    setCampaign(updated);
   };
 
   const chooseTimelineView = (view) => {
@@ -432,10 +435,14 @@ export default function Timeline() {
       await appClient.entities.Campaign.update(campaign.id, {
         timeline_current_date: { year: payload.year, month: payload.month, day: payload.day },
         timeline_started: true,
+      }).then((updated) => {
+        setCampaign(updated);
+        const nextDate = campaignDate(updated, calendar);
+        setDmViewDate(writeLocalTimelineViewDate(updated, nextDate, calendar, user));
+        setDateDraft(nextDate);
       });
       setSavingEntry(false);
       setEntry(null);
-      await load({ resetView: true });
       return;
     }
     if (!payload.title && payload.id) {

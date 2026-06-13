@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { useCampaign } from "@/hooks/useCampaign";
 import PlayerNotesPanel from "@/components/chat/PlayerNotesPanel";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
+import { campaignDate, hasTimelineDate, isRecordOnDate, readLocalTimelineViewDate } from "@/lib/timeline";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 
 const STAT_MOD = (v) => Math.floor((v - 10) / 2);
@@ -561,7 +562,7 @@ export default function LorePanel({ onClose }) {
   const [showTags, setShowTags] = useState(false);
   const [mainTab, setMainTab] = useState("lore");
   const [expandedCharacterIds, setExpandedCharacterIds] = useState(() => new Set());
-  const { user } = useCampaign();
+  const { user, campaign } = useCampaign();
 
   useEffect(() => {
     if (!user?.campaign_id) return;
@@ -577,20 +578,23 @@ export default function LorePanel({ onClose }) {
 
   const cats = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
   const isAdmin = isDmUser(user);
+  const activeDate = isAdmin ? readLocalTimelineViewDate(campaign, campaign?.calendar_system, user) : campaignDate(campaign, campaign?.calendar_system);
+  const isVisibleOnActiveDate = (item) => (hasTimelineDate(item) ? isRecordOnDate(item, activeDate, campaign?.calendar_system) : !campaign?.timeline_started);
+  const visibleDateEntries = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin) && isVisibleOnActiveDate(entry));
 
-  const filtered = entries.filter((e) => {
-    if (!canViewVisibleItem(e, user, isAdmin)) return false;
+  const filtered = visibleDateEntries.filter((e) => {
     const matchCat = cat === "all" || e.category === cat;
     const matchTag = tag === "all" || (e.tags || []).some((entryTag) => entryTag === tag);
     const q = query.toLowerCase();
     const matchQ = !q || e.title?.toLowerCase().includes(q) || previewHtml(e.content).toLowerCase().includes(q) || e.tags?.some((t) => t.toLowerCase().includes(q));
     return matchCat && matchTag && matchQ;
   });
-  const tags = [...new Set(entries.flatMap((entry) => entry.tags || []).map((entryTag) => String(entryTag).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const tags = [...new Set(visibleDateEntries.flatMap((entry) => entry.tags || []).map((entryTag) => String(entryTag).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
   const filteredChars = sortClaimedCharactersFirst(
     characters.filter((c) => {
       if (!canViewVisibleItem(c, user, isAdmin)) return false;
+      if (!isVisibleOnActiveDate(c)) return false;
       const q = query.toLowerCase();
       return !q || c.name?.toLowerCase().includes(q) || c.race?.toLowerCase().includes(q) || c.class?.toLowerCase().includes(q);
     }),
