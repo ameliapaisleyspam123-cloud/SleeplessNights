@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
-import { campaignDate, datedCreatePayload, hasTimelineDate, isRecordOnDate } from "@/lib/timeline";
+import { campaignDate, datedCreatePayload, hasTimelineDate, isRecordOnDate, readLocalTimelineViewDate } from "@/lib/timeline";
 import { Copy, Download, Folder, MoveRight, Plus, Trash2 } from "lucide-react";
 
 function cloneSheet(sheet, campaignId, suffix = "Copy") {
@@ -123,7 +123,7 @@ export default function Characters() {
   const duplicateSheet = async (sheet) => {
     if (!sheet || !user?.campaign_id) return;
     const created = await appClient.entities.CharacterSheet.create(
-      datedCreatePayload(cloneSheet(sheet, user.campaign_id), campaignDate(campaign, campaign?.calendar_system), campaign?.calendar_system),
+      datedCreatePayload(cloneSheet(sheet, user.campaign_id), activeDate, currentCampaign?.calendar_system),
     );
     if (!created.timeline_series_id) await appClient.entities.CharacterSheet.update(created.id, { timeline_series_id: created.id });
     setViewing(null);
@@ -134,7 +134,7 @@ export default function Characters() {
   const importSheet = async (sheet) => {
     if (!sheet || !user?.campaign_id) return;
     const created = await appClient.entities.CharacterSheet.create(
-      datedCreatePayload(cloneSheet(sheet, user.campaign_id, "Imported"), campaignDate(campaign, campaign?.calendar_system), campaign?.calendar_system),
+      datedCreatePayload(cloneSheet(sheet, user.campaign_id, "Imported"), activeDate, currentCampaign?.calendar_system),
     );
     if (!created.timeline_series_id) await appClient.entities.CharacterSheet.update(created.id, { timeline_series_id: created.id });
     setImportOpen(false);
@@ -145,7 +145,8 @@ export default function Characters() {
   const campaignName = (campaignId) => campaigns.find((campaign) => campaign.id === campaignId)?.name || "Unknown campaign";
   const isAdmin = isDmUser(user);
   const currentCampaign = campaign || campaigns.find((campaign) => campaign.id === user?.campaign_id) || null;
-  const activeDate = campaignDate(currentCampaign, currentCampaign?.calendar_system);
+  const activeDate = isAdmin ? readLocalTimelineViewDate(currentCampaign, currentCampaign?.calendar_system, user) : campaignDate(currentCampaign, currentCampaign?.calendar_system);
+  const activeCampaign = currentCampaign ? { ...currentCampaign, timeline_current_date: activeDate } : currentCampaign;
   const visibleItems = items.filter((item) => {
     if (!canViewVisibleItem(item, user, isAdmin)) return false;
     return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, currentCampaign?.calendar_system) : !currentCampaign?.timeline_started;
@@ -312,7 +313,7 @@ export default function Characters() {
                   action={
                     <CharacterClaimButton
                       sheet={sheet}
-                      campaign={currentCampaign}
+                      campaign={activeCampaign}
                       currentUserEmail={user?.email}
                       isDM={isAdmin}
                       onClaimChange={load}
@@ -334,7 +335,7 @@ export default function Characters() {
         onDelete={isAdmin && editing?.id ? () => deleteSheet(editing) : undefined}
         currentUser={user}
         isDM={isAdmin}
-        campaign={currentCampaign}
+        campaign={activeCampaign}
         onClaimChange={load}
         userCharacterCounts={userCharacterCounts}
       />

@@ -269,7 +269,7 @@ export default function Shop() {
       ) : (
         <div className="grid xl:grid-cols-[minmax(0,1fr)_24rem] gap-5">
           <section className="border border-border bg-card/50 rounded-sm overflow-hidden">
-            <div className="border-b border-border p-4 flex flex-col md:flex-row md:items-end gap-3">
+            <div className="border-b border-border p-4 flex flex-col md:flex-row md:items-start gap-3">
               <div className="flex-1 min-w-0">
                 <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Store</Label>
                 <Select value={selectedShopId} onValueChange={setSelectedShopId}>
@@ -280,6 +280,7 @@ export default function Shop() {
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="mt-1 min-h-4" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">
                 <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Character Wallet</Label>
@@ -291,10 +292,10 @@ export default function Shop() {
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedCharacter && <div className="text-[10px] text-muted-foreground mt-1">{formatWallet(selectedCharacter)}</div>}
+                <div className="mt-1 min-h-4 text-[10px] text-muted-foreground">{selectedCharacter ? formatWallet(selectedCharacter) : ""}</div>
               </div>
               {isAdmin && selectedShop && (
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 md:pt-5">
                   <Button variant="outline" onClick={() => editShop(selectedShop)}>
                     <Save className="w-4 h-4" /> Edit Store
                   </Button>
