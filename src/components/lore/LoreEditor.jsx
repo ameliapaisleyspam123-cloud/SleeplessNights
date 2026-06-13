@@ -59,7 +59,7 @@ const cloneMarks = (marks) => marks.map((mark) => ({ ...mark }));
 const quillModules = { toolbar: [["bold", "italic"], [{ list: "bullet" }, { list: "ordered" }], ["clean"]] };
 const quillClass = "[&_.ql-container]:text-sm [&_.ql-editor]:bg-card [&_.ql-editor]:text-foreground [&_.ql-editor]:min-h-[150px] [&_.ql-toolbar]:border-border [&_.ql-container]:border-border [&_.ql-toolbar]:bg-card/60 [&_.ql-stroke]:stroke-muted-foreground [&_.ql-fill]:fill-muted-foreground [&_.ql-picker]:text-muted-foreground";
 
-export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
+export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaign: activeCampaign = null, currentUser = null }) {
   const [form, setForm] = useState(() => entry || createBlankEntry());
   const [tagInput, setTagInput] = useState("");
   const [existingTags, setExistingTags] = useState([]);
@@ -348,9 +348,9 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     if (!editingMark) return;
     setCreatingLore(true);
     const user = await appClient.auth.me().catch(() => null);
-    const campaign = user?.campaign_id ? await appClient.entities.Campaign.get(user.campaign_id).catch(() => null) : null;
+    const campaign = activeCampaign || (user?.campaign_id ? await appClient.entities.Campaign.get(user.campaign_id).catch(() => null) : null);
     const created = await appClient.entities.LoreEntry.create(datedCreatePayload({
-      campaign_id: user?.campaign_id,
+      campaign_id: user?.campaign_id || currentUser?.campaign_id,
       title: editingMark.label?.trim() || "New map lore",
       category: "place",
       folder: form.folder || "",
@@ -375,7 +375,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved }) {
     if (entry?.id) {
       await appClient.entities.LoreEntry.update(entry.id, payload);
     } else {
-      const campaign = u?.campaign_id ? await appClient.entities.Campaign.get(u.campaign_id).catch(() => null) : null;
+      const campaign = activeCampaign || (u?.campaign_id ? await appClient.entities.Campaign.get(u.campaign_id).catch(() => null) : null);
       const created = await appClient.entities.LoreEntry.create(
         datedCreatePayload(payload, campaignDate(campaign, campaign?.calendar_system), campaign?.calendar_system),
       );

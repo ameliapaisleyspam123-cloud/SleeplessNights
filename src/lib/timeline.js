@@ -1,4 +1,5 @@
 const DEFAULT_DATE = { year: 1, month: 1, day: 1 };
+const LOCAL_VIEW_DATE_PREFIX = "sleepless_timeline_view_date_v1";
 
 export function normalizeDate(date = {}, calendar = {}) {
   const monthsPerYear = Math.max(1, Number(calendar.months_per_year) || 12);
@@ -18,6 +19,29 @@ export function dateKey(date = {}, calendar = {}) {
 
 export function campaignDate(campaign, calendar) {
   return normalizeDate(campaign?.timeline_current_date || DEFAULT_DATE, calendar);
+}
+
+function localViewDateKey(campaignId, userEmail = "") {
+  return `${LOCAL_VIEW_DATE_PREFIX}:${campaignId || "default"}:${userEmail || "user"}`;
+}
+
+export function readLocalTimelineViewDate(campaign, calendar = {}, user = null) {
+  const fallback = campaignDate(campaign, calendar);
+  if (typeof localStorage === "undefined" || !campaign?.id) return fallback;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(localViewDateKey(campaign.id, user?.email)) || "null");
+    return parsed ? normalizeDate(parsed, calendar) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function writeLocalTimelineViewDate(campaign, date, calendar = {}, user = null) {
+  const normalized = normalizeDate(date, calendar);
+  if (typeof localStorage !== "undefined" && campaign?.id) {
+    localStorage.setItem(localViewDateKey(campaign.id, user?.email), JSON.stringify(normalized));
+  }
+  return normalized;
 }
 
 export function shiftDate(date, delta = {}, calendar = {}) {

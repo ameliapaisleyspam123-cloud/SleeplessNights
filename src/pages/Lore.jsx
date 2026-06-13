@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
-import { campaignDate, hasTimelineDate, isRecordOnDate } from "@/lib/timeline";
+import { campaignDate, hasTimelineDate, isRecordOnDate, readLocalTimelineViewDate } from "@/lib/timeline";
 import { Folder, Grid2X2, List, MoveRight, Plus, Search, Tag, Trash2 } from "lucide-react";
 
 const CATEGORIES = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
@@ -106,7 +106,8 @@ export default function Lore() {
     load();
   }, []);
 
-  const activeDate = campaignDate(campaign, campaign?.calendar_system);
+  const activeDate = isAdmin ? readLocalTimelineViewDate(campaign, campaign?.calendar_system, currentUser) : campaignDate(campaign, campaign?.calendar_system);
+  const activeCampaign = campaign ? { ...campaign, timeline_current_date: activeDate } : campaign;
   const visibleItems = items.filter((item) => {
     if (!canViewVisibleItem(item, currentUser, isAdmin)) return false;
     return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, campaign?.calendar_system) : !campaign?.timeline_started;
@@ -354,7 +355,7 @@ export default function Lore() {
         </div>
       </div>
 
-      <LoreEditor open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)} entry={editing?.id ? editing : null} onSaved={load} />
+      <LoreEditor open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)} entry={editing?.id ? editing : null} onSaved={load} campaign={activeCampaign} currentUser={currentUser} />
       <MoveFolderDialog
         open={Boolean(moving)}
         onOpenChange={(open) => !open && setMoving(null)}
