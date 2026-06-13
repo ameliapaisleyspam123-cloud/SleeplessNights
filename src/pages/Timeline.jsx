@@ -189,6 +189,7 @@ export default function Timeline() {
   const [calendarDraft, setCalendarDraft] = useState(DEFAULT_CALENDAR);
   const [entry, setEntry] = useState(null);
   const [dateDraft, setDateDraft] = useState({ year: 1, month: 1, day: 1 });
+  const [dmViewDate, setDmViewDate] = useState({ year: 1, month: 1, day: 1 });
   const [carrySelection, setCarrySelection] = useState({ characters: [], lore: [] });
   const [showCalendarRules, setShowCalendarRules] = useState(false);
   const [showRecordIndex, setShowRecordIndex] = useState(false);
@@ -200,10 +201,14 @@ export default function Timeline() {
   const [loaded, setLoaded] = useState(false);
 
   const calendar = useMemo(() => normalizeCalendar(campaign), [campaign]);
-  const activeDate = useMemo(() => campaignDate(campaign, calendar), [campaign, calendar]);
   const canManage = isDmUser(user);
+  const campaignActiveDate = useMemo(() => campaignDate(campaign, calendar), [campaign, calendar]);
+  const activeDate = useMemo(() => (canManage ? campaignDate({ timeline_current_date: dmViewDate }, calendar) : campaignActiveDate), [canManage, dmViewDate, campaignActiveDate, calendar]);
+  const activeDateKey = dateKey(activeDate, calendar);
+  const campaignDateKey = dateKey(campaignActiveDate, calendar);
+  const dmViewingCampaignDate = activeDateKey === campaignDateKey;
 
-  const load = async () => {
+  const load = async ({ resetView = false } = {}) => {
     const currentUser = await appClient.auth.me();
     const [campaigns, timelineEvents, sheets, loreEntries] = await Promise.all([
       appClient.entities.Campaign.list("-created_date", 200),
@@ -216,7 +221,11 @@ export default function Timeline() {
     setUser(currentUser);
     setCampaign(currentCampaign);
     setCalendarDraft(nextCalendar);
-    setDateDraft(campaignDate(currentCampaign, nextCalendar));
+    const nextDate = campaignDate(currentCampaign, nextCalendar);
+    if (resetView || !loaded) {
+      setDateDraft(nextDate);
+      setDmViewDate(nextDate);
+    }
     setEvents(timelineEvents.sort(compareTimelineDates));
     setCharacters(sheets);
     setLore(loreEntries);
@@ -225,7 +234,7 @@ export default function Timeline() {
   };
 
   useEffect(() => {
-    load().catch(() => setLoaded(true));
+    load({ resetView: true }).catch(() => setLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -312,25 +321,32 @@ export default function Timeline() {
     const normalized = normalizeCalendar({ calendar_system: calendarDraft });
     await appClient.entities.Campaign.update(campaign.id, { calendar_system: normalized });
     setSavingCalendar(false);
-    await load();
+    await load({ resetView: true });
   };
 
   const saveCurrentDate = async (nextDate = dateDraft) => {
     if (!campaign?.id) return;
     setSavingDate(true);
     const normalized = campaignDate({ timeline_current_date: nextDate }, calendar);
+    setDmViewDate(normalized);
+    setDateDraft(normalized);
     await appClient.entities.Campaign.update(campaign.id, {
       timeline_current_date: normalized,
       timeline_started: true,
     });
     setSavingDate(false);
-    await load();
+    await load({ resetView: true });
   };
 
-  const jumpToMarker = async (marker) => {
+  const viewDate = (nextDate) => {
+    const normalized = campaignDate({ timeline_current_date: nextDate }, calendar);
+    setDmViewDate(normalized);
+    setDateDraft(normalized);
+  };
+
+  const viewMarker = (marker) => {
     const nextDate = { year: marker.year, month: marker.month, day: marker.day };
-    setDateDraft(nextDate);
-    if (canManage) await saveCurrentDate(nextDate);
+    viewDate(nextDate);
   };
 
   const togglePlayerTimeline = async () => {
@@ -402,7 +418,7 @@ export default function Timeline() {
       });
       setSavingEntry(false);
       setEntry(null);
-      await load();
+      await load({ resetView: true });
       return;
     }
     if (!payload.title && payload.id) {
@@ -447,11 +463,21 @@ export default function Timeline() {
       <section className="border border-border bg-card/50 rounded-sm overflow-hidden">
         <div className="flex items-center justify-between gap-3 flex-wrap border-b border-border p-4">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.24em] text-accent font-medium">Current Date</div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-accent font-medium">{canManage ? "DM Viewing" : "Current Date"}</div>
             <div className="font-display text-2xl mt-1">{formatTimelineDate(activeDate, calendar)}</div>
             <div className="text-sm text-muted-foreground mt-1">
               {datedCharacters.length} character{datedCharacters.length === 1 ? "" : "s"} and {datedLore.length} lore entr{datedLore.length === 1 ? "y" : "ies"} saved here.
             </div>
+            {canManage && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <span className={`rounded-sm border px-2 py-1 ${dmViewingCampaignDate ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-muted-foreground"}`}>
+                  {dmViewingCampaignDate ? "Viewing campaign date" : "Private DM view"}
+                </span>
+                {!dmViewingCampaignDate && (
+                  <span className="text-muted-foreground">Campaign date: {formatTimelineDate(campaignActiveDate, calendar)}</span>
+                )}
+              </div>
+            )}
           </div>
           {canManage && (
             <Button variant={campaign?.timeline_player_visible ? "default" : "outline"} onClick={togglePlayerTimeline}>
@@ -462,7 +488,7 @@ export default function Timeline() {
         </div>
         {canManage && (
           <div className="p-4">
-            <div className="grid sm:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
+            <div className="grid lg:grid-cols-[1fr_1fr_1fr_auto_auto] gap-3 items-end">
               <Field label={calendar.era_label || "Year"}>
                 <Input type="number" value={dateDraft.year} onChange={(event) => setDateDraft((current) => ({ ...current, year: event.target.value }))} />
               </Field>
@@ -472,8 +498,11 @@ export default function Timeline() {
               <Field label="Day">
                 <Input type="number" min="1" max={calendar.days_per_month} value={dateDraft.day} onChange={(event) => setDateDraft((current) => ({ ...current, day: event.target.value }))} />
               </Field>
+              <Button variant="outline" className="h-auto min-h-10 whitespace-normal leading-snug" onClick={() => viewDate(dateDraft)}>
+                <Eye className="w-4 h-4" /> DM View {formatTimelineDate(moveTargetDate, calendar)}
+              </Button>
               <Button className="h-auto min-h-10 whitespace-normal leading-snug" onClick={() => saveCurrentDate()} disabled={savingDate}>
-                <CalendarDays className="w-4 h-4" /> Move to {formatTimelineDate(moveTargetDate, calendar)}
+                <CalendarDays className="w-4 h-4" /> Set Campaign Date
               </Button>
             </div>
           </div>
@@ -708,12 +737,16 @@ export default function Timeline() {
           <TimelineTree
             grouped={markerTree}
             calendar={calendar}
+            activeDate={activeDate}
+            campaignActiveDate={campaignActiveDate}
             canManage={canManage}
             user={user}
             characterById={characterById}
             loreById={loreById}
             onEdit={setEntry}
             onDelete={deleteEntry}
+            onView={viewMarker}
+            onSetCampaign={saveCurrentDate}
           />
         ) : timelineMarkers.length === 0 ? (
           <div className="p-10 text-center text-muted-foreground border border-dashed border-border m-4 rounded-sm">Move to a date to place the first marker on the timeline.</div>
@@ -733,11 +766,13 @@ export default function Timeline() {
                   marker={marker}
                   index={index}
                   calendar={calendar}
-                  active={marker.key === dateKey(activeDate, calendar)}
+                  active={marker.key === activeDateKey}
+                  campaignActive={marker.key === campaignDateKey}
                   canManage={canManage}
                   onEdit={setEntry}
                   onAdd={() => setEntry({ ...emptyEvent(user?.campaign_id, calendar), year: marker.year, month: marker.month, day: marker.day })}
-                  onJump={() => jumpToMarker(marker)}
+                  onView={() => viewMarker(marker)}
+                  onSetCampaign={() => saveCurrentDate(marker)}
                 />
               ))}
             </div>
@@ -853,7 +888,7 @@ function RecordIndexList({ title, icon: Icon, items, calendar, getLabel, getMeta
   );
 }
 
-function TimelineTree({ grouped, calendar, canManage, user, characterById, loreById, onEdit, onDelete }) {
+function TimelineTree({ grouped, calendar, activeDate, campaignActiveDate, canManage, user, characterById, loreById, onEdit, onDelete, onView, onSetCampaign }) {
   if (grouped.length === 0) {
     return <div className="p-10 text-center text-muted-foreground border border-dashed border-border m-4 rounded-sm">No dated entries in tree view yet.</div>;
   }
@@ -877,31 +912,49 @@ function TimelineTree({ grouped, calendar, canManage, user, characterById, loreB
                 <div className="text-sm uppercase tracking-[0.2em] text-accent min-h-6">{calendar.month_names[monthGroup.month - 1] || `Month ${monthGroup.month}`}</div>
                 <div className="relative mt-3 space-y-3 pl-5">
                   <div className="absolute left-0 top-0 bottom-0 w-px bg-border" />
-                  {monthGroup.points.map((marker) => (
-                    <div key={marker.key} className="relative pl-5">
-                      <div className="absolute left-[-1.2rem] top-2 h-2.5 w-2.5 rounded-full border border-background bg-border" />
-                      <div className="absolute left-[-1.2rem] top-3 h-px w-7 bg-border" />
-                      <div className="text-xs text-muted-foreground">{calendar.day_names[marker.day - 1] || `Day ${marker.day}`}</div>
-                      <DayRecordSummary marker={marker} calendar={calendar} />
-                      {marker.events.length > 0 && (
-                        <div className="mt-2 grid lg:grid-cols-2 gap-3">
-                          {marker.events.map((timelineEvent) => (
-                            <TimelineCard
-                              key={timelineEvent.id}
-                              event={timelineEvent}
-                              calendar={calendar}
-                              canManage={canManage}
-                              user={user}
-                              characterById={characterById}
-                              loreById={loreById}
-                              onEdit={() => onEdit(timelineEvent)}
-                              onDelete={() => onDelete(timelineEvent)}
-                            />
-                          ))}
+                  {monthGroup.points.map((marker) => {
+                    const active = marker.key === dateKey(activeDate, calendar);
+                    const campaignActive = marker.key === dateKey(campaignActiveDate, calendar);
+                    return (
+                      <div key={marker.key} className="relative pl-5">
+                        <div className={`absolute left-[-1.2rem] top-2 h-2.5 w-2.5 rounded-full border border-background ${active ? "bg-accent" : "bg-border"}`} />
+                        <div className="absolute left-[-1.2rem] top-3 h-px w-7 bg-border" />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-xs text-muted-foreground">{calendar.day_names[marker.day - 1] || `Day ${marker.day}`}</div>
+                          {active && <span className="rounded-sm border border-accent/50 bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-accent">DM View</span>}
+                          {campaignActive && <span className="rounded-sm border border-primary/50 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-primary">Campaign Date</span>}
+                          {canManage && !active && (
+                            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onView(marker)}>
+                              <Eye className="w-3.5 h-3.5" /> View Here
+                            </Button>
+                          )}
+                          {canManage && !campaignActive && (
+                            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onSetCampaign(marker)}>
+                              <CalendarDays className="w-3.5 h-3.5" /> Set Campaign
+                            </Button>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        <DayRecordSummary marker={marker} calendar={calendar} />
+                        {marker.events.length > 0 && (
+                          <div className="mt-2 grid lg:grid-cols-2 gap-3">
+                            {marker.events.map((timelineEvent) => (
+                              <TimelineCard
+                                key={timelineEvent.id}
+                                event={timelineEvent}
+                                calendar={calendar}
+                                canManage={canManage}
+                                user={user}
+                                characterById={characterById}
+                                loreById={loreById}
+                                onEdit={() => onEdit(timelineEvent)}
+                                onDelete={() => onDelete(timelineEvent)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -970,7 +1023,7 @@ function RecordNameGroup({ title, items, getLabel }) {
   );
 }
 
-function TimelineMarker({ marker, index, calendar, active, canManage, onEdit, onAdd, onJump }) {
+function TimelineMarker({ marker, index, calendar, active, campaignActive, canManage, onEdit, onAdd, onView, onSetCampaign }) {
   const above = index % 2 === 0;
   const monthName = calendar.month_names[marker.month - 1] || `Month ${marker.month}`;
   const dayName = calendar.day_names[marker.day - 1] || `Day ${marker.day}`;
@@ -984,8 +1037,8 @@ function TimelineMarker({ marker, index, calendar, active, canManage, onEdit, on
     <div className="relative min-h-[34rem]">
       <button
         type="button"
-        onClick={onJump}
-        title={canManage ? `Move to ${formatTimelineDate(marker, calendar)}` : formatTimelineDate(marker, calendar)}
+        onClick={canManage ? onView : undefined}
+        title={canManage ? `View ${formatTimelineDate(marker, calendar)}` : formatTimelineDate(marker, calendar)}
         className={`absolute left-1/2 top-1/2 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 bg-background text-center shadow-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background ${
           active ? "border-accent text-accent" : "border-primary text-primary"
         }`}
@@ -1001,7 +1054,10 @@ function TimelineMarker({ marker, index, calendar, active, canManage, onEdit, on
           <div className="text-[10px] uppercase tracking-[0.2em] text-accent">{monthName} / {dayName}</div>
           <div className="font-display text-lg leading-tight mt-1 break-words">{formatTimelineDate(marker, calendar)}</div>
           <div className="text-xs text-muted-foreground mt-1">{countLabel || "Standalone timepoint"}</div>
-          {active && <div className="mt-2 inline-flex rounded-sm border border-accent/50 bg-accent/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-accent">Current</div>}
+          <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+            {active && <div className="inline-flex rounded-sm border border-accent/50 bg-accent/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-accent">DM View</div>}
+            {campaignActive && <div className="inline-flex rounded-sm border border-primary/50 bg-primary/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-primary">Campaign Date</div>}
+          </div>
           <DayRecordSummary marker={marker} calendar={calendar} />
           {marker.events.length > 0 && canManage && (
             <div className="mt-3 flex flex-wrap justify-center gap-1.5">
@@ -1013,9 +1069,21 @@ function TimelineMarker({ marker, index, calendar, active, canManage, onEdit, on
             </div>
           )}
           {canManage && (
-            <Button type="button" size="sm" variant="outline" className="mt-3" onClick={onAdd}>
-              <Plus className="w-3.5 h-3.5" /> Add Event
-            </Button>
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+              {!active && (
+                <Button type="button" size="sm" variant="ghost" onClick={onView}>
+                  <Eye className="w-3.5 h-3.5" /> View Here
+                </Button>
+              )}
+              {!campaignActive && (
+                <Button type="button" size="sm" variant="outline" onClick={onSetCampaign}>
+                  <CalendarDays className="w-3.5 h-3.5" /> Set Campaign
+                </Button>
+              )}
+              <Button type="button" size="sm" variant="outline" onClick={onAdd}>
+                <Plus className="w-3.5 h-3.5" /> Add Event
+              </Button>
+            </div>
           )}
         </div>
       </div>

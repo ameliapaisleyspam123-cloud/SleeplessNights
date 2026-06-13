@@ -614,19 +614,19 @@ export default function LorePanel({ onClose }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="relative px-4 py-3 pr-12 border-b border-border flex items-center gap-2">
-        <div className="flex flex-wrap gap-1 min-w-0 pr-2">
-          <button onClick={() => setMainTab("lore")} className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm transition-colors whitespace-nowrap ${mainTab === "lore" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+      <div className="relative px-4 py-3 pr-12 border-b border-border">
+        <div className="grid grid-cols-3 gap-1 min-w-0">
+          <button onClick={() => setMainTab("lore")} className={`flex h-9 items-center justify-center gap-1.5 rounded-sm px-2 text-xs transition-colors whitespace-nowrap ${mainTab === "lore" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
             <ScrollText className="w-3.5 h-3.5" /> Lore & Maps
           </button>
-          <button onClick={() => setMainTab("characters")} className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm transition-colors whitespace-nowrap ${mainTab === "characters" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+          <button onClick={() => setMainTab("characters")} className={`flex h-9 items-center justify-center gap-1.5 rounded-sm px-2 text-xs transition-colors whitespace-nowrap ${mainTab === "characters" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
             <User className="w-3.5 h-3.5" /> Characters
           </button>
-          <button onClick={() => setMainTab("notes")} className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm transition-colors whitespace-nowrap ${mainTab === "notes" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+          <button onClick={() => setMainTab("notes")} className={`flex h-9 items-center justify-center gap-1.5 rounded-sm px-2 text-xs transition-colors whitespace-nowrap ${mainTab === "notes" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
             <NotebookPen className="w-3.5 h-3.5" /> Grimoire
           </button>
         </div>
-        <button onClick={onClose} className="absolute right-6 top-[1.125rem] flex h-4 w-4 items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={onClose} className="absolute right-6 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
           <X className="w-4 h-4" />
         </button>
       </div>
