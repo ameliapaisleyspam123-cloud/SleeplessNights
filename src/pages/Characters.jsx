@@ -101,24 +101,36 @@ export default function Characters() {
 
   const load = async () => {
     const currentUser = await appClient.auth.me();
-    const [currentSheets, everyCampaign, everySheet] = await Promise.all([
+    const [currentSheets, currentCampaign] = await Promise.all([
       appClient.entities.CharacterSheet.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 500),
-      appClient.entities.Campaign.list("-created_date", 200),
-      appClient.entities.CharacterSheet.list("-updated_date", 500),
+      currentUser.campaign_id ? appClient.entities.Campaign.get(currentUser.campaign_id) : null,
     ]);
     setUser(currentUser);
     setEmptyFolders(readEmptyFolders(currentUser.campaign_id));
     setItems(currentSheets);
-    setCampaigns(everyCampaign);
-    setCampaign(everyCampaign.find((item) => item.id === currentUser.campaign_id) || null);
-    setAllSheets(everySheet);
+    setCampaign(currentCampaign);
   };
 
   useEffect(() => {
     load();
-    const unsub = appClient.entities.CharacterSheet.subscribe(() => load());
-    return () => unsub();
+    const unsubCampaign = appClient.entities.Campaign.subscribe(() => load());
+    const unsubSheets = appClient.entities.CharacterSheet.subscribe(() => load());
+    return () => {
+      unsubCampaign();
+      unsubSheets();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!importOpen) return;
+    Promise.all([
+      appClient.entities.Campaign.list("-created_date", 200),
+      appClient.entities.CharacterSheet.list("-updated_date", 500),
+    ]).then(([everyCampaign, everySheet]) => {
+      setCampaigns(everyCampaign);
+      setAllSheets(everySheet);
+    });
+  }, [importOpen]);
 
   const duplicateSheet = async (sheet) => {
     if (!sheet || !user?.campaign_id) return;
@@ -144,7 +156,7 @@ export default function Characters() {
   const importableSheets = allSheets.filter((sheet) => sheet.campaign_id && sheet.campaign_id !== user?.campaign_id);
   const campaignName = (campaignId) => campaigns.find((campaign) => campaign.id === campaignId)?.name || "Unknown campaign";
   const isAdmin = isDmUser(user);
-  const currentCampaign = campaign || campaigns.find((campaign) => campaign.id === user?.campaign_id) || null;
+  const currentCampaign = campaign || null;
   const activeDate = isAdmin ? readLocalTimelineViewDate(currentCampaign, currentCampaign?.calendar_system, user) : campaignDate(currentCampaign, currentCampaign?.calendar_system);
   const activeCampaign = currentCampaign ? { ...currentCampaign, timeline_current_date: activeDate } : currentCampaign;
   const visibleItems = items.filter((item) => {

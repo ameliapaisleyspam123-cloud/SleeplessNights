@@ -104,6 +104,12 @@ export default function Lore() {
 
   useEffect(() => {
     load();
+    const unsubCampaign = appClient.entities.Campaign.subscribe(() => load());
+    const unsubLore = appClient.entities.LoreEntry.subscribe(() => load());
+    return () => {
+      unsubCampaign();
+      unsubLore();
+    };
   }, []);
 
   const activeDate = isAdmin ? readLocalTimelineViewDate(campaign, campaign?.calendar_system, currentUser) : campaignDate(campaign, campaign?.calendar_system);

@@ -556,30 +556,47 @@ function SkillList({ skills, profSkills, expertSkills, advantageSkills, disadvan
 export default function LorePanel({ onClose }) {
   const [entries, setEntries] = useState([]);
   const [characters, setCharacters] = useState([]);
+  const [panelCampaign, setPanelCampaign] = useState(null);
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("all");
   const [tag, setTag] = useState("all");
   const [showTags, setShowTags] = useState(false);
   const [mainTab, setMainTab] = useState("lore");
   const [expandedCharacterIds, setExpandedCharacterIds] = useState(() => new Set());
-  const { user, campaign } = useCampaign();
+  const { user } = useCampaign();
 
   useEffect(() => {
     if (!user?.campaign_id) return;
     const cid = user.campaign_id;
     const load = () => {
-      appClient.entities.LoreEntry.filter({ campaign_id: cid }, "-created_date", 500).then(setEntries);
-      appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 200).then(setCharacters);
+      Promise.all([
+        appClient.entities.Campaign.get(cid),
+        appClient.entities.LoreEntry.filter({ campaign_id: cid }, "-created_date", 500),
+        appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 200),
+      ]).then(([campaignRecord, loreEntries, characterSheets]) => {
+        setPanelCampaign(campaignRecord);
+        setEntries(loreEntries);
+        setCharacters(characterSheets);
+      });
     };
     load();
+    const unsubCampaign = appClient.entities.Campaign.subscribe(load);
+    const unsubLore = appClient.entities.LoreEntry.subscribe(load);
     const unsubCharacters = appClient.entities.CharacterSheet.subscribe(load);
-    return () => unsubCharacters();
+    return () => {
+      unsubCampaign();
+      unsubLore();
+      unsubCharacters();
+    };
   }, [user?.campaign_id]);
 
   const cats = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
   const isAdmin = isDmUser(user);
-  const activeDate = isAdmin ? readLocalTimelineViewDate(campaign, campaign?.calendar_system, user) : campaignDate(campaign, campaign?.calendar_system);
-  const isVisibleOnActiveDate = (item) => (hasTimelineDate(item) ? isRecordOnDate(item, activeDate, campaign?.calendar_system) : !campaign?.timeline_started);
+  const activeDate = isAdmin ? readLocalTimelineViewDate(panelCampaign, panelCampaign?.calendar_system, user) : campaignDate(panelCampaign, panelCampaign?.calendar_system);
+  const isVisibleOnActiveDate = (item) => {
+    if (!panelCampaign) return false;
+    return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, panelCampaign?.calendar_system) : !panelCampaign?.timeline_started;
+  };
   const visibleDateEntries = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin) && isVisibleOnActiveDate(entry));
 
   const filtered = visibleDateEntries.filter((e) => {

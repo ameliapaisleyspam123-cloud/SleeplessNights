@@ -21,8 +21,7 @@ async function fetchData() {
   const u = await appClient.auth.me();
   cachedUser = u;
   if (u?.campaign_id) {
-    const camps = await appClient.entities.Campaign.list("-created_date", 50);
-    cachedCampaign = camps.find((c) => c.id === u.campaign_id) || null;
+    cachedCampaign = await appClient.entities.Campaign.get(u.campaign_id);
   } else {
     cachedCampaign = null;
   }
@@ -43,6 +42,9 @@ export function useCampaign() {
   useEffect(() => {
     const listener = (data) => setState({ ...data });
     listeners.push(listener);
+    const unsubscribeCampaign = appClient.entities.Campaign.subscribe(() => {
+      fetchData();
+    });
 
     if (cachedUser !== null) {
       setState({ user: cachedUser, campaign: cachedCampaign });
@@ -51,6 +53,7 @@ export function useCampaign() {
     }
 
     return () => {
+      unsubscribeCampaign();
       listeners = listeners.filter((l) => l !== listener);
     };
   }, []);

@@ -213,13 +213,12 @@ export default function Timeline() {
 
   const load = async ({ resetView = false } = {}) => {
     const currentUser = await appClient.auth.me();
-    const [campaigns, timelineEvents, sheets, loreEntries] = await Promise.all([
-      appClient.entities.Campaign.list("-created_date", 200),
+    const [currentCampaign, timelineEvents, sheets, loreEntries] = await Promise.all([
+      currentUser.campaign_id ? appClient.entities.Campaign.get(currentUser.campaign_id) : null,
       appClient.entities.TimelineEvent.filter({ campaign_id: currentUser.campaign_id }, "year", 500),
       appClient.entities.CharacterSheet.filter({ campaign_id: currentUser.campaign_id }, "name", 500),
       appClient.entities.LoreEntry.filter({ campaign_id: currentUser.campaign_id }, "title", 500),
     ]);
-    const currentCampaign = campaigns.find((item) => item.id === currentUser.campaign_id) || null;
     const nextCalendar = normalizeCalendar(currentCampaign);
     setUser(currentUser);
     setCampaign(currentCampaign);
