@@ -505,7 +505,7 @@ export default function Timeline() {
           {canManage && (
             <Button variant={campaign?.timeline_player_visible ? "default" : "outline"} onClick={togglePlayerTimeline}>
               {campaign?.timeline_player_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              Players {campaign?.timeline_player_visible ? "Can View" : "Cannot View"}
+              Players {campaign?.timeline_player_visible ? "can see timeline" : "cannot see timeline"}
             </Button>
           )}
         </div>
@@ -1005,7 +1005,7 @@ function formatYear(year, calendar) {
   return `${Math.abs(year)} ${label}`;
 }
 
-function DayRecordSummary({ marker, calendar, events = [] }) {
+function DayRecordSummary({ marker, calendar, events = [], compact = false }) {
   const eventItems = events.length > 0 ? events : marker.events || [];
   const characters = marker.characters || [];
   const lore = marker.lore || [];
@@ -1014,11 +1014,11 @@ function DayRecordSummary({ marker, calendar, events = [] }) {
   if (total === 0) return null;
 
   return (
-    <details className="mt-3 rounded-sm border border-border bg-background/70 text-left">
-      <summary className="cursor-pointer list-none px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
-        <span className="font-medium text-foreground">{total}</span> item{total === 1 ? "" : "s"} on {formatTimelineDate(marker, calendar)}
+    <details className={`mt-3 rounded-sm border border-border bg-background/70 text-left ${compact ? "mx-auto w-full max-w-56 overflow-hidden" : ""}`}>
+      <summary className="cursor-pointer list-none px-3 py-2 text-xs text-muted-foreground hover:text-foreground break-words">
+        <span className="font-medium text-foreground">{total}</span> item{total === 1 ? "" : "s"}{compact ? "" : ` on ${formatTimelineDate(marker, calendar)}`}
       </summary>
-      <div className="border-t border-border p-3 space-y-3">
+      <div className={`border-t border-border p-3 space-y-3 ${compact ? "max-h-44 overflow-y-auto thin-scroll" : ""}`}>
         {eventItems.length > 0 && (
           <RecordNameGroup
             title="Events"
@@ -1094,7 +1094,7 @@ function TimelineMarker({ marker, index, calendar, active, campaignActive, playe
             {campaignActive && <div className="inline-flex rounded-sm border border-primary/50 bg-primary/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-primary">Campaign Date</div>}
             {playerVisible && <div className="inline-flex rounded-sm border border-border bg-secondary/70 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Player Visible</div>}
           </div>
-          <DayRecordSummary marker={marker} calendar={calendar} />
+          <DayRecordSummary marker={marker} calendar={calendar} compact />
           {marker.events.length > 0 && canManage && (
             <div className="mt-3 flex flex-wrap justify-center gap-1.5">
               {marker.events.map((event) => (
