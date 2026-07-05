@@ -97,12 +97,12 @@ export function formatTimelineDate(date, calendar = {}) {
 }
 
 export function hasTimelineDate(record) {
-  return Boolean(record?.timeline_date_key);
+  return Boolean(record?.timeline_date_key || record?.timeline_date);
 }
 
 export function isRecordOnDate(record, date, calendar = {}) {
   if (!hasTimelineDate(record)) return false;
-  return record.timeline_date_key === dateKey(date, calendar);
+  return dateKey(recordTimelineDate(record), calendar) === dateKey(date, calendar);
 }
 
 export function timelineSeriesId(record) {
