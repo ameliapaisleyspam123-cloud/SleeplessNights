@@ -12,10 +12,10 @@ export const defaultReputation = {
     yMaxLabel: "Honorable",
   },
   opinions: [
-    { id: "crown", name: "Crown", value: 0, minLabel: "Hostile", maxLabel: "Favored" },
-    { id: "people", name: "People", value: 0, minLabel: "Hostile", maxLabel: "Favored" },
-    { id: "foreigners", name: "Foreigners", value: 0, minLabel: "Hostile", maxLabel: "Favored" },
-    { id: "rival", name: "Rival", value: 0, minLabel: "Hostile", maxLabel: "Favored" },
+    { id: "crown", name: "Crown", value: 0, minLabel: "-3", maxLabel: "+3" },
+    { id: "people", name: "People", value: 0, minLabel: "-3", maxLabel: "+3" },
+    { id: "foreigners", name: "Foreigners", value: 0, minLabel: "-3", maxLabel: "+3" },
+    { id: "rival", name: "Rival", value: 0, minLabel: "-3", maxLabel: "+3" },
   ],
 };
 
@@ -42,8 +42,8 @@ export function normalizeReputation(reputation) {
       id: opinion.id || `opinion-${index + 1}`,
       name: opinion.name || `Opinion ${index + 1}`,
       value: clampReputationValue(opinion.value),
-      minLabel: opinion.minLabel || "Hostile",
-      maxLabel: opinion.maxLabel || "Favored",
+      minLabel: opinion.minLabel || "-3",
+      maxLabel: opinion.maxLabel || "+3",
     })),
   };
 }

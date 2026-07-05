@@ -30,10 +30,10 @@ export const campaignDefaults: Partial<Campaign> = {
       yMaxLabel: "Honorable",
     },
     opinions: [
-      { id: "crown", name: "Crown", value: 0, minLabel: "Hostile", maxLabel: "Favored" },
-      { id: "people", name: "People", value: 0, minLabel: "Hostile", maxLabel: "Favored" },
-      { id: "foreigners", name: "Foreigners", value: 0, minLabel: "Hostile", maxLabel: "Favored" },
-      { id: "rival", name: "Rival", value: 0, minLabel: "Hostile", maxLabel: "Favored" },
+      { id: "crown", name: "Crown", value: 0, minLabel: "-3", maxLabel: "+3" },
+      { id: "people", name: "People", value: 0, minLabel: "-3", maxLabel: "+3" },
+      { id: "foreigners", name: "Foreigners", value: 0, minLabel: "-3", maxLabel: "+3" },
+      { id: "rival", name: "Rival", value: 0, minLabel: "-3", maxLabel: "+3" },
     ],
   },
 };
