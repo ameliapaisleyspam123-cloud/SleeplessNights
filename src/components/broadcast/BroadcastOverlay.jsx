@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { appClient } from "@/api/appClient";
+import { isDmUser } from "@/lib/visibility";
 import { Radio } from "lucide-react";
 
 function videoSource(url = "") {
@@ -53,7 +54,7 @@ export default function BroadcastOverlay({ user }) {
 
   if (!broadcast || dismissed) return null;
 
-  const isAdmin = user?.role === "admin" || user?.campaign_role === "dm";
+  const isAdmin = isDmUser(user);
   if (!isAdmin && broadcast.target_emails?.length > 0 && !broadcast.target_emails.includes(user?.email)) {
     return null;
   }

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { canViewVisibleItem } from "@/lib/visibility";
 import { isDmUser } from "@/lib/visibility";
-import { campaignDate, dateKey, formatTimelineDate, hasTimelineDate, isRecordOnDate, makeDatedRecord, readLocalTimelineViewDate, timelineSeriesId, writeLocalTimelineViewDate } from "@/lib/timeline";
+import { campaignDate, dateKey, formatTimelineDate, hasTimelineDate, latestRecordsForDate, makeDatedRecord, readLocalTimelineViewDate, timelineSeriesId, writeLocalTimelineViewDate } from "@/lib/timeline";
 import { BookOpen, CalendarDays, ChevronDown, ChevronUp, Eye, EyeOff, GitBranch, Link2, ListTree, Lock, Plus, Save, Sparkles, Trash2, Users } from "lucide-react";
 
 const DEFAULT_CALENDAR = {
@@ -259,11 +259,11 @@ export default function Timeline() {
   const characterById = useMemo(() => new Map(characters.map((character) => [character.id, character])), [characters]);
   const loreById = useMemo(() => new Map(lore.map((item) => [item.id, item])), [lore]);
   const datedCharacters = useMemo(
-    () => visibleCharacters.filter((item) => isRecordOnDate(item, activeDate, calendar)),
+    () => latestRecordsForDate(visibleCharacters, activeDate, calendar),
     [visibleCharacters, activeDate, calendar],
   );
   const datedLore = useMemo(
-    () => visibleLore.filter((item) => isRecordOnDate(item, activeDate, calendar)),
+    () => latestRecordsForDate(visibleLore, activeDate, calendar),
     [visibleLore, activeDate, calendar],
   );
   const carryableCharacters = useMemo(
@@ -492,10 +492,10 @@ export default function Timeline() {
       <section className="border border-border bg-card/50 rounded-sm overflow-hidden">
         <div className="flex items-center justify-between gap-3 flex-wrap border-b border-border p-4">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.24em] text-accent font-medium">{canManage ? "DM Viewing" : "Current Date"}</div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-accent font-medium">{canManage ? "DM Viewing" : "Viewing"}</div>
             <div className="font-display text-2xl mt-1">{formatTimelineDate(activeDate, calendar)}</div>
             <div className="text-sm text-muted-foreground mt-1">
-              {datedCharacters.length} character{datedCharacters.length === 1 ? "" : "s"} and {datedLore.length} lore entr{datedLore.length === 1 ? "y" : "ies"} saved here.
+              {datedCharacters.length} character{datedCharacters.length === 1 ? "" : "s"} and {datedLore.length} lore entr{datedLore.length === 1 ? "y" : "ies"} available on this date.
             </div>
             {canManage && (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
@@ -788,10 +788,9 @@ export default function Timeline() {
         ) : timelineMarkers.length === 0 ? (
           <div className="p-10 text-center text-muted-foreground border border-dashed border-border m-4 rounded-sm">Move to a date to place the first marker on the timeline.</div>
         ) : (
-          <div className="overflow-x-auto thin-scroll p-4 pb-6">
+          <div className="overflow-hidden md:overflow-x-auto thin-scroll p-4 pb-6">
             <div
-              className="relative grid w-max min-w-full gap-6 py-12"
-              style={{ gridTemplateColumns: `repeat(${Math.max(timelineMarkers.length, 1)}, minmax(17rem, 17rem))` }}
+              className="relative grid min-w-0 grid-cols-1 gap-6 py-12 md:w-max md:min-w-full md:auto-cols-[17rem] md:grid-flow-col md:grid-cols-none"
             >
               <div
                 className="absolute left-6 right-6 top-1/2 h-2 -translate-y-1/2 rounded-full shadow-sm"
@@ -964,7 +963,7 @@ function TimelineTree({ grouped, calendar, activeDate, campaignActiveDate, canMa
                           {active && <span className="rounded-sm border border-accent/50 bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-accent">{canManage ? "DM View" : "Viewing"}</span>}
                           {campaignActive && <span className="rounded-sm border border-primary/50 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-primary">Campaign Date</span>}
                           {playerVisible && <span className="rounded-sm border border-border bg-secondary/70 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Player Visible</span>}
-                          {canManage && !active && (
+                          {!active && (
                             <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onView(marker)}>
                               <Eye className="w-3.5 h-3.5" /> View Here
                             </Button>
@@ -1116,19 +1115,19 @@ function TimelineMarker({ marker, index, calendar, active, campaignActive, playe
               ))}
             </div>
           )}
-          {canManage && (
+          {(!active || canManage) && (
             <div className="mt-3 flex flex-wrap justify-center gap-1.5">
               {!active && (
                 <Button type="button" size="sm" variant="ghost" onClick={onView}>
                   <Eye className="w-3.5 h-3.5" /> View Here
                 </Button>
               )}
-              {!campaignActive && (
+              {canManage && !campaignActive && (
                 <Button type="button" size="sm" variant="outline" onClick={onSetCampaign}>
                   <CalendarDays className="w-3.5 h-3.5" /> Set Campaign
                 </Button>
               )}
-              {!campaignActive && (
+              {canManage && !campaignActive && (
                 <Button type="button" size="sm" variant={playerVisible ? "default" : "outline"} onClick={onTogglePlayerDate}>
                   {playerVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   {playerVisible ? "Hide from Players" : "Show to Players"}

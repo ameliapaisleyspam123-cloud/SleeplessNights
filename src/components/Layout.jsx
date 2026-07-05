@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Outlet, NavLink, useLocation, Navigate, Link } from "react-router-dom";
+import { Outlet, NavLink, useLocation, Navigate, Link, useNavigate } from "react-router-dom";
 import { appClient } from "@/api/appClient";
 import {
   ScrollText,
@@ -26,9 +26,9 @@ import {
   ExternalLink,
   GitBranch,
   Eye,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import BroadcastOverlay from "./broadcast/BroadcastOverlay";
 import CombatTurnIndicator from "./initiative/CombatTurnIndicator";
 import InitiativeTracker from "./initiative/InitiativeTracker";
@@ -37,6 +37,7 @@ import ProfileNameModal from "./ProfileNameModal";
 import CampaignSettingsModal from "./CampaignSettingsModal";
 import ThemeSettingsModal from "./ThemeSettingsModal";
 import { InitiativeProvider, useInitiative } from "@/lib/InitiativeContext";
+import { isPlayerViewMode, setPlayerViewMode as savePlayerViewMode } from "@/lib/visibility";
 
 const PLAYER_NAV = [
   { to: "/", label: "Hearth", icon: Home },
@@ -76,10 +77,11 @@ function LayoutInner() {
   const [nameModalOpen, setNameModalOpen] = useState(false);
   const [campaignModalOpen, setCampaignModalOpen] = useState(false);
   const [themeModalOpen, setThemeModalOpen] = useState(false);
-  const [playerViewOpen, setPlayerViewOpen] = useState(false);
+  const [playerViewMode, setPlayerViewModeActive] = useState(false);
   const [diceOpen, setDiceOpen] = useState(false);
   const [userLoaded, setUserLoaded] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { splitOpen, setSplitOpen, setCampaignId, campaignId } = useInitiative();
 
   const loadUser = () =>
@@ -119,9 +121,36 @@ function LayoutInner() {
   const SUPERUSER_EMAIL = "ameliapaisleyspam123@gmail.com";
   const isSuperuser = user?.email === SUPERUSER_EMAIL;
   const isAdmin = user?.campaign_role === "dm" || user?.role === "admin" || isSuperuser;
-  const roleLabel = isSuperuser ? "Admin" : isAdmin ? "Gamemaster" : "Player";
-  const compactRoleLabel = isSuperuser ? "Admin" : isAdmin ? "DM" : "Player";
-  const NAV = isAdmin ? GM_NAV : PLAYER_NAV;
+  const isPlayerView = isAdmin && playerViewMode;
+  const effectiveIsAdmin = isAdmin && !isPlayerView;
+  const roleLabel = isPlayerView ? "Player View" : isSuperuser ? "Admin" : isAdmin ? "Gamemaster" : "Player";
+  const compactRoleLabel = isPlayerView ? "Player" : isSuperuser ? "Admin" : isAdmin ? "DM" : "Player";
+  const NAV = effectiveIsAdmin ? GM_NAV : PLAYER_NAV;
+
+  useEffect(() => {
+    if (!user?.campaign_id || !isAdmin) {
+      setPlayerViewModeActive(false);
+      return;
+    }
+    setPlayerViewModeActive(isPlayerViewMode(user));
+  }, [user?.campaign_id, user?.email, isAdmin]);
+
+  useEffect(() => {
+    if (!isPlayerView) return;
+    const gmOnlyPaths = ["/broadcast", "/vault"];
+    if (gmOnlyPaths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`))) {
+      navigate("/", { replace: true });
+    }
+  }, [isPlayerView, location.pathname, navigate]);
+
+  const setPlayerView = (active) => {
+    if (!isAdmin) return;
+    savePlayerViewMode(user, active);
+    setPlayerViewModeActive(active);
+    if (active && (location.pathname === "/broadcast" || location.pathname.startsWith("/broadcast/") || location.pathname === "/vault" || location.pathname.startsWith("/vault/"))) {
+      navigate("/", { replace: true });
+    }
+  };
   const openInitiativePopout = () => {
     if (!campaignId) return;
     window.open(
@@ -148,7 +177,7 @@ function LayoutInner() {
   };
 
   const sidebarProps = {
-    isAdmin,
+    isAdmin: effectiveIsAdmin,
     user,
     campaign,
     nav: NAV,
@@ -157,7 +186,7 @@ function LayoutInner() {
     onEditName: () => setNameModalOpen(true),
     onCampaignSettings: () => setCampaignModalOpen(true),
     onThemeSettings: () => setThemeModalOpen(true),
-    onPlayerView: () => setPlayerViewOpen(true),
+    onPlayerView: () => setPlayerView(true),
     roleLabel,
     compactRoleLabel,
   };
@@ -194,7 +223,7 @@ function LayoutInner() {
                 <span className="font-display text-base truncate">{campaign?.name || "The Grimoire"}</span>
               </div>
               <div className="flex items-center gap-1">
-                {isAdmin && (
+                {effectiveIsAdmin && (
                   <Button variant="ghost" size="icon" onClick={() => setCampaignModalOpen(true)} title="Campaign Settings">
                     <Settings className="w-4 h-4" />
                   </Button>
@@ -203,8 +232,8 @@ function LayoutInner() {
                   <Palette className="w-4 h-4" />
                 </Button>
                 {isAdmin && (
-                  <Button variant="ghost" size="icon" onClick={() => setPlayerViewOpen(true)} title="Player View">
-                    <Eye className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" onClick={() => setPlayerView(!isPlayerView)} title={isPlayerView ? "Return to DM View" : "Player View"}>
+                    {isPlayerView ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </Button>
                 )}
                 <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
@@ -220,10 +249,10 @@ function LayoutInner() {
       )}
 
       <main className="flex-1 min-w-0 pt-14 lg:pt-0 overflow-x-hidden overflow-y-auto">
-        <Outlet />
+        <Outlet key={isPlayerView ? "player-view" : "dm-view"} />
       </main>
 
-      {isAdmin && splitOpen && campaignId && (
+      {effectiveIsAdmin && splitOpen && campaignId && (
         <aside className="hidden lg:flex flex-col w-[400px] shrink-0 border-l border-border bg-card/40 backdrop-blur-sm sticky top-0 h-screen overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/60 shrink-0">
             <span className="text-sm font-medium text-accent flex items-center gap-2">
@@ -246,8 +275,17 @@ function LayoutInner() {
 
       <BroadcastOverlay user={user} />
       <CombatTurnIndicator currentUser={user} sidebarCollapsed={collapsed} />
+      {isPlayerView && (
+        <div className="fixed top-16 right-4 lg:top-4 lg:right-6 z-[90] flex items-center gap-3 rounded-sm border border-accent/50 bg-background/95 px-3 py-2 text-sm shadow-2xl">
+          <Eye className="w-4 h-4 text-accent" />
+          <span className="font-medium">Player View</span>
+          <button type="button" onClick={() => setPlayerView(false)} className="text-accent hover:text-foreground transition-colors">
+            Return to DM View
+          </button>
+        </div>
+      )}
       <div className={`fixed ${floatingControlsPosition} z-50 flex items-center gap-2`}>
-        {isAdmin && (
+        {effectiveIsAdmin && (
           <button
             type="button"
             onClick={() => setSplitOpen((open) => !open)}
@@ -278,9 +316,8 @@ function LayoutInner() {
         </div>
       )}
       <ProfileNameModal open={nameModalOpen} onOpenChange={setNameModalOpen} currentUser={user} onSaved={loadUser} />
-      {isAdmin && <CampaignSettingsModal open={campaignModalOpen} onOpenChange={setCampaignModalOpen} campaign={campaign} onSaved={handleCampaignSaved} />}
+      {effectiveIsAdmin && <CampaignSettingsModal open={campaignModalOpen} onOpenChange={setCampaignModalOpen} campaign={campaign} onSaved={handleCampaignSaved} />}
       <ThemeSettingsModal open={themeModalOpen} onOpenChange={setThemeModalOpen} />
-      {isAdmin && <PlayerViewModal open={playerViewOpen} onOpenChange={setPlayerViewOpen} campaign={campaign} />}
     </div>
   );
 }
@@ -400,45 +437,5 @@ function SidebarContent({
         </Button>
       </div>
     </div>
-  );
-}
-
-function PlayerViewModal({ open, onOpenChange, campaign }) {
-  const playerCount = campaign?.player_emails?.length || 0;
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <div className="space-y-5">
-          <div>
-            <h2 className="font-display text-2xl">Player View</h2>
-            <p className="text-sm text-muted-foreground mt-1">Quick access to the sections and access details your players use.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {PLAYER_NAV.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => onOpenChange(false)}
-                className="flex items-center gap-2 rounded-sm border border-border bg-card/60 px-3 py-2 text-sm text-muted-foreground hover:border-accent/60 hover:text-foreground"
-              >
-                <item.icon className="w-4 h-4 text-accent" />
-                {item.label}
-              </Link>
-            ))}
-          </div>
-          <div className="rounded-sm border border-border bg-secondary/25 p-3">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Player Capacity</div>
-            <div className="mt-1 font-display text-2xl text-foreground">{playerCount}/18</div>
-            <div className="text-xs text-muted-foreground mt-1">New player-code joins are blocked once the campaign reaches 18 players.</div>
-          </div>
-          {campaign?.player_code && (
-            <div className="rounded-sm border border-accent/30 bg-accent/5 p-3">
-              <div className="text-[10px] uppercase tracking-widest text-accent">Player Code</div>
-              <div className="mt-1 font-mono text-lg font-bold tracking-[0.18em]">{campaign.player_code}</div>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }

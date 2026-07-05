@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
-import { campaignDate, datedCreatePayload, hasTimelineDate, isRecordOnDate, readLocalTimelineViewDate } from "@/lib/timeline";
+import { campaignDate, datedCreatePayload, hasTimelineDate, latestRecordsForDate, readLocalTimelineViewDate } from "@/lib/timeline";
 import { Copy, Download, Folder, MoveRight, Plus, Trash2 } from "lucide-react";
 
 function cloneSheet(sheet, campaignId, suffix = "Copy") {
@@ -159,10 +159,10 @@ export default function Characters() {
   const currentCampaign = campaign || null;
   const activeDate = isAdmin ? readLocalTimelineViewDate(currentCampaign, currentCampaign?.calendar_system, user) : campaignDate(currentCampaign, currentCampaign?.calendar_system);
   const activeCampaign = currentCampaign ? { ...currentCampaign, timeline_current_date: activeDate } : currentCampaign;
-  const visibleItems = items.filter((item) => {
-    if (!canViewVisibleItem(item, user, isAdmin)) return false;
-    return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, currentCampaign?.calendar_system) : !currentCampaign?.timeline_started;
-  });
+  const visibleByPermission = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
+  const visibleItems = currentCampaign?.timeline_started
+    ? latestRecordsForDate(visibleByPermission, activeDate, currentCampaign?.calendar_system)
+    : visibleByPermission.filter((item) => !hasTimelineDate(item));
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
   const folderOptions = visibleFolderPaths(folders, folder);
   const filteredItems = sortClaimedCharactersFirst(

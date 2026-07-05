@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
-import { campaignDate, hasTimelineDate, isRecordOnDate, readLocalTimelineViewDate } from "@/lib/timeline";
+import { campaignDate, hasTimelineDate, latestRecordsForDate, readLocalTimelineViewDate } from "@/lib/timeline";
 import { Folder, Grid2X2, List, MoveRight, Plus, Search, Tag, Trash2 } from "lucide-react";
 
 const CATEGORIES = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
@@ -114,11 +114,10 @@ export default function Lore() {
 
   const activeDate = isAdmin ? readLocalTimelineViewDate(campaign, campaign?.calendar_system, currentUser) : campaignDate(campaign, campaign?.calendar_system);
   const activeCampaign = campaign ? { ...campaign, timeline_current_date: activeDate } : campaign;
-  const visibleItems = items.filter((item) => {
-    if (!canViewVisibleItem(item, currentUser, isAdmin)) return false;
-    if (!isAdmin) return true;
-    return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, campaign?.calendar_system) : !campaign?.timeline_started;
-  });
+  const visibleByPermission = items.filter((item) => canViewVisibleItem(item, currentUser, isAdmin));
+  const visibleItems = campaign?.timeline_started
+    ? latestRecordsForDate(visibleByPermission, activeDate, campaign?.calendar_system)
+    : visibleByPermission.filter((item) => !hasTimelineDate(item));
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
   const folderOptions = visibleFolderPaths(folders, folder);
   const tags = [...new Set(visibleItems.flatMap((item) => item.tags || []).map((itemTag) => String(itemTag).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
