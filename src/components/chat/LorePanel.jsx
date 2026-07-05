@@ -597,7 +597,7 @@ export default function LorePanel({ onClose }) {
     if (!panelCampaign) return false;
     return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, panelCampaign?.calendar_system) : !panelCampaign?.timeline_started;
   };
-  const visibleDateEntries = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin) && isVisibleOnActiveDate(entry));
+  const visibleDateEntries = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin) && (!isAdmin || isVisibleOnActiveDate(entry)));
 
   const filtered = visibleDateEntries.filter((e) => {
     const matchCat = cat === "all" || e.category === cat;

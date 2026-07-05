@@ -116,6 +116,7 @@ export default function Lore() {
   const activeCampaign = campaign ? { ...campaign, timeline_current_date: activeDate } : campaign;
   const visibleItems = items.filter((item) => {
     if (!canViewVisibleItem(item, currentUser, isAdmin)) return false;
+    if (!isAdmin) return true;
     return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, campaign?.calendar_system) : !campaign?.timeline_started;
   });
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
