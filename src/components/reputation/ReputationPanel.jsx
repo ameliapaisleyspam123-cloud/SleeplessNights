@@ -46,11 +46,11 @@ function ReputationGrid({ grid, editing, onGridChange }) {
   ];
 
   return (
-    <section className="border border-border bg-card/70 rounded-sm p-3 md:p-4 min-w-0 h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+    <section className="border border-border bg-card/70 rounded-sm p-3 min-w-0 h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
         <div>
-          <h2 className="font-display text-2xl text-foreground">Party Reputation</h2>
-          <p className="text-sm text-muted-foreground mt-1">Current standing: x {grid.x > 0 ? `+${grid.x}` : grid.x}, y {grid.y > 0 ? `+${grid.y}` : grid.y}</p>
+          <h2 className="font-display text-xl text-foreground">Party Reputation</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">x {grid.x > 0 ? `+${grid.x}` : grid.x}, y {grid.y > 0 ? `+${grid.y}` : grid.y}</p>
         </div>
         {editing && (
           <div className="flex gap-2 shrink-0">
@@ -60,8 +60,8 @@ function ReputationGrid({ grid, editing, onGridChange }) {
         )}
       </div>
 
-      <div className="relative mx-auto aspect-square w-full max-w-[24rem] rounded-sm border border-accent/40 bg-background/60 overflow-hidden">
-        <div className="absolute inset-x-11 top-12 bottom-10">
+      <div className="relative mx-auto aspect-square w-full max-w-[20rem] rounded-sm border border-accent/40 bg-background/60 overflow-hidden">
+        <div className="absolute inset-x-10 top-10 bottom-9">
           <div className="absolute inset-0 grid grid-cols-6 grid-rows-6 opacity-45">
             {Array.from({ length: 36 }).map((_, index) => (
               <div key={index} className="border-r border-b border-accent/20" />
@@ -126,7 +126,7 @@ function OpinionTrack({ opinion, editing, onChange, onRemove }) {
   const percent = ((opinion.value + 3) / 6) * 100;
 
   return (
-    <div className="border border-border bg-card/70 rounded-sm p-3 min-h-[7rem] lg:min-h-0 lg:h-full lg:flex lg:flex-col lg:justify-center">
+    <div className="border border-border bg-card/70 rounded-sm p-3 min-h-[6.25rem] lg:min-h-0 lg:h-full lg:flex lg:flex-col lg:justify-center">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
         <div className="min-w-0 flex-1">
           {editing ? (
@@ -134,7 +134,7 @@ function OpinionTrack({ opinion, editing, onChange, onRemove }) {
           ) : (
             <div className="font-display text-xl text-foreground truncate">{opinion.name}</div>
           )}
-          <div className="text-xs text-muted-foreground mt-1">Standing {opinion.value > 0 ? `+${opinion.value}` : opinion.value}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Standing {opinion.value > 0 ? `+${opinion.value}` : opinion.value}</div>
         </div>
         {editing && (
           <div className="flex items-center gap-2 shrink-0">
@@ -146,7 +146,7 @@ function OpinionTrack({ opinion, editing, onChange, onRemove }) {
         )}
       </div>
 
-      <div className="mt-3">
+      <div className="mt-2.5">
         <div className="relative h-2 rounded-sm bg-background border border-border overflow-visible">
           <div className="absolute top-0 bottom-0 left-1/2 w-px bg-muted-foreground/40" />
           <div className="absolute -top-1.5 w-5 h-5 -ml-2.5 rounded-full border-2 border-accent bg-primary shadow-[0_0_14px_hsl(var(--accent)/0.55)]" style={{ left: `${percent}%` }} />
@@ -215,38 +215,31 @@ export default function ReputationPanel({ user, campaign }) {
   };
 
   return (
-    <section className="mb-7 md:mb-8">
-      <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.28em] text-accent font-medium mb-2">Party Standing</div>
-          <h2 className="font-display text-3xl text-foreground leading-tight">Reputation</h2>
-          <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-relaxed">The party's public standing and the factions watching their every move.</p>
+    <section className="mb-6 md:mb-7">
+      {canEdit && (
+        <div className="flex justify-end mb-2">
+          {editing ? (
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={cancel}>Cancel</Button>
+              <Button type="button" size="sm" onClick={save} disabled={saving}>
+                <Save className="w-4 h-4" />
+                {saving ? "Saving" : "Save"}
+              </Button>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>Edit Reputation</Button>
+          )}
         </div>
-        {canEdit && (
-          <div className="flex items-center gap-2">
-            {editing ? (
-              <>
-                <Button type="button" variant="outline" onClick={cancel}>Cancel</Button>
-                <Button type="button" onClick={save} disabled={saving}>
-                  <Save className="w-4 h-4" />
-                  {saving ? "Saving" : "Save"}
-                </Button>
-              </>
-            ) : (
-              <Button type="button" variant="outline" onClick={() => setEditing(true)}>Edit</Button>
-            )}
-          </div>
-        )}
-      </div>
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(20rem,0.95fr)_minmax(20rem,1.05fr)] lg:items-stretch">
+      <div className="grid gap-3 lg:grid-cols-[minmax(18rem,0.95fr)_minmax(18rem,1.05fr)] lg:items-stretch">
         <ReputationGrid grid={draft.grid} editing={editing} onGridChange={updateGrid} />
 
         <section className="min-w-0 h-full flex flex-col">
-          <div className="flex items-center justify-between gap-4 mb-3">
+          <div className="flex items-center justify-between gap-4 mb-2">
             <div>
-              <h3 className="font-display text-2xl text-foreground">Opinions</h3>
-              <p className="text-sm text-muted-foreground mt-1">Faction feelings on a -3 to +3 scale.</p>
+              <h3 className="font-display text-xl text-foreground">Opinions</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Faction feelings, -3 to +3.</p>
             </div>
             {editing && (
               <Button type="button" variant="outline" size="sm" onClick={addOpinion}>
