@@ -594,11 +594,13 @@ export default function LorePanel({ onClose }) {
   const isAdmin = isDmUser(user);
   const activeDate = timelineViewDate(panelCampaign, panelCampaign?.calendar_system, user, isAdmin, isPlayerViewMode(user));
   const visibleEntriesByPermission = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin));
-  const visibleDateEntries = panelCampaign?.timeline_started
+  const loreTimelineStarted = Boolean(panelCampaign?.timeline_started || visibleEntriesByPermission.some(hasTimelineDate));
+  const visibleDateEntries = loreTimelineStarted
     ? timelineLibraryRecords(visibleEntriesByPermission, activeDate, panelCampaign?.calendar_system)
     : visibleEntriesByPermission.filter((entry) => !hasTimelineDate(entry));
   const visibleCharactersByPermission = characters.filter((character) => canViewVisibleItem(character, user, isAdmin));
-  const visibleDateCharacters = panelCampaign?.timeline_started
+  const characterTimelineStarted = Boolean(panelCampaign?.timeline_started || visibleCharactersByPermission.some(hasTimelineDate));
+  const visibleDateCharacters = characterTimelineStarted
     ? timelineLibraryRecords(visibleCharactersByPermission, activeDate, panelCampaign?.calendar_system)
     : visibleCharactersByPermission.filter((character) => !hasTimelineDate(character));
 

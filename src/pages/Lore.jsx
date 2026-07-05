@@ -115,7 +115,8 @@ export default function Lore() {
   const activeDate = timelineViewDate(campaign, campaign?.calendar_system, currentUser, isAdmin, isPlayerViewMode(currentUser));
   const activeCampaign = campaign ? { ...campaign, timeline_current_date: activeDate } : campaign;
   const visibleByPermission = items.filter((item) => canViewVisibleItem(item, currentUser, isAdmin));
-  const visibleItems = campaign?.timeline_started
+  const timelineStarted = Boolean(campaign?.timeline_started || visibleByPermission.some(hasTimelineDate));
+  const visibleItems = timelineStarted
     ? timelineLibraryRecords(visibleByPermission, activeDate, campaign?.calendar_system)
     : visibleByPermission.filter((item) => !hasTimelineDate(item));
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);

@@ -160,7 +160,8 @@ export default function Characters() {
   const activeDate = timelineViewDate(currentCampaign, currentCampaign?.calendar_system, user, isAdmin, isPlayerViewMode(user));
   const activeCampaign = currentCampaign ? { ...currentCampaign, timeline_current_date: activeDate } : currentCampaign;
   const visibleByPermission = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
-  const visibleItems = currentCampaign?.timeline_started
+  const timelineStarted = Boolean(currentCampaign?.timeline_started || visibleByPermission.some(hasTimelineDate));
+  const visibleItems = timelineStarted
     ? timelineLibraryRecords(visibleByPermission, activeDate, currentCampaign?.calendar_system)
     : visibleByPermission.filter((item) => !hasTimelineDate(item));
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
