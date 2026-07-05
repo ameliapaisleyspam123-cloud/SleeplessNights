@@ -161,10 +161,15 @@ export function latestRecordsForDate(records = [], date, calendar = {}) {
 }
 
 export function timelineLibraryRecords(records = [], date, calendar = {}, allowedDateKeys = null) {
-  const byId = new Map(latestRecordsForDate(records, date, calendar).map((record) => [record.id, record]));
+  const activeIndex = dateIndex(date, calendar);
+  const latestRecords = latestRecordsForDate(records, date, calendar);
+  const byId = new Map(latestRecords.map((record) => [record.id, record]));
+  const representedSeries = new Set(latestRecords.map((record) => timelineSeriesId(record)));
 
   records.forEach((record) => {
     if (!hasTimelineDate(record) || byId.has(record.id)) return;
+    if (representedSeries.has(timelineSeriesId(record))) return;
+    if (dateIndex(recordTimelineDate(record), calendar) > activeIndex) return;
     const key = dateKey(recordTimelineDate(record), calendar);
     if (allowedDateKeys && !allowedDateKeys.has(key)) return;
     byId.set(record.id, record);
