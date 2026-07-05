@@ -492,7 +492,7 @@ export default function Timeline() {
       <section className="border border-border bg-card/50 rounded-sm overflow-hidden">
         <div className="flex items-center justify-between gap-3 flex-wrap border-b border-border p-4">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.24em] text-accent font-medium">{canManage ? "DM Viewing" : "Current Date"}</div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-accent font-medium">{canManage ? "DM Viewing" : "Viewing"}</div>
             <div className="font-display text-2xl mt-1">{formatTimelineDate(activeDate, calendar)}</div>
             <div className="text-sm text-muted-foreground mt-1">
               {datedCharacters.length} character{datedCharacters.length === 1 ? "" : "s"} and {datedLore.length} lore entr{datedLore.length === 1 ? "y" : "ies"} saved here.
@@ -964,7 +964,7 @@ function TimelineTree({ grouped, calendar, activeDate, campaignActiveDate, canMa
                           {active && <span className="rounded-sm border border-accent/50 bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-accent">{canManage ? "DM View" : "Viewing"}</span>}
                           {campaignActive && <span className="rounded-sm border border-primary/50 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-primary">Campaign Date</span>}
                           {playerVisible && <span className="rounded-sm border border-border bg-secondary/70 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Player Visible</span>}
-                          {canManage && !active && (
+                          {!active && (
                             <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onView(marker)}>
                               <Eye className="w-3.5 h-3.5" /> View Here
                             </Button>
@@ -1116,19 +1116,19 @@ function TimelineMarker({ marker, index, calendar, active, campaignActive, playe
               ))}
             </div>
           )}
-          {canManage && (
+          {(!active || canManage) && (
             <div className="mt-3 flex flex-wrap justify-center gap-1.5">
               {!active && (
                 <Button type="button" size="sm" variant="ghost" onClick={onView}>
                   <Eye className="w-3.5 h-3.5" /> View Here
                 </Button>
               )}
-              {!campaignActive && (
+              {canManage && !campaignActive && (
                 <Button type="button" size="sm" variant="outline" onClick={onSetCampaign}>
                   <CalendarDays className="w-3.5 h-3.5" /> Set Campaign
                 </Button>
               )}
-              {!campaignActive && (
+              {canManage && !campaignActive && (
                 <Button type="button" size="sm" variant={playerVisible ? "default" : "outline"} onClick={onTogglePlayerDate}>
                   {playerVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   {playerVisible ? "Hide from Players" : "Show to Players"}
