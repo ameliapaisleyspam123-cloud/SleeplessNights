@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { useCampaign } from "@/hooks/useCampaign";
 import PlayerNotesPanel from "@/components/chat/PlayerNotesPanel";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
-import { hasTimelineDate, latestRecordsForDate, timelineViewDate } from "@/lib/timeline";
+import { dateKey, hasTimelineDate, timelineLibraryRecords, timelineViewDate } from "@/lib/timeline";
 import { canViewVisibleItem, isDmUser, isPlayerViewMode } from "@/lib/visibility";
 
 const STAT_MOD = (v) => Math.floor((v - 10) / 2);
@@ -593,13 +593,17 @@ export default function LorePanel({ onClose }) {
   const cats = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
   const isAdmin = isDmUser(user);
   const activeDate = timelineViewDate(panelCampaign, panelCampaign?.calendar_system, user, isAdmin, isPlayerViewMode(user));
+  const playerVisibleDateKeys = new Set([
+    dateKey(activeDate, panelCampaign?.calendar_system),
+    ...(Array.isArray(panelCampaign?.timeline_player_date_keys) ? panelCampaign.timeline_player_date_keys : []),
+  ]);
   const visibleEntriesByPermission = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin));
   const visibleDateEntries = panelCampaign?.timeline_started
-    ? latestRecordsForDate(visibleEntriesByPermission, activeDate, panelCampaign?.calendar_system)
+    ? timelineLibraryRecords(visibleEntriesByPermission, activeDate, panelCampaign?.calendar_system, isAdmin ? null : playerVisibleDateKeys)
     : visibleEntriesByPermission.filter((entry) => !hasTimelineDate(entry));
   const visibleCharactersByPermission = characters.filter((character) => canViewVisibleItem(character, user, isAdmin));
   const visibleDateCharacters = panelCampaign?.timeline_started
-    ? latestRecordsForDate(visibleCharactersByPermission, activeDate, panelCampaign?.calendar_system)
+    ? timelineLibraryRecords(visibleCharactersByPermission, activeDate, panelCampaign?.calendar_system, isAdmin ? null : playerVisibleDateKeys)
     : visibleCharactersByPermission.filter((character) => !hasTimelineDate(character));
 
   const filtered = visibleDateEntries.filter((e) => {

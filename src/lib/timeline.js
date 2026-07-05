@@ -160,6 +160,19 @@ export function latestRecordsForDate(records = [], date, calendar = {}) {
   return [...latestBySeries.values()].map((item) => item.record);
 }
 
+export function timelineLibraryRecords(records = [], date, calendar = {}, allowedDateKeys = null) {
+  const byId = new Map(latestRecordsForDate(records, date, calendar).map((record) => [record.id, record]));
+
+  records.forEach((record) => {
+    if (!hasTimelineDate(record) || byId.has(record.id)) return;
+    const key = dateKey(recordTimelineDate(record), calendar);
+    if (allowedDateKeys && !allowedDateKeys.has(key)) return;
+    byId.set(record.id, record);
+  });
+
+  return [...byId.values()];
+}
+
 export function stripRecordIdentity(record) {
   const {
     id,
