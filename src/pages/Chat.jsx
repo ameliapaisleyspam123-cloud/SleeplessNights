@@ -5,6 +5,7 @@ import ChatWindow from "@/components/chat/ChatWindow";
 import LorePanel from "@/components/chat/LorePanel";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { isDmUser } from "@/lib/visibility";
 import { ScrollText } from "lucide-react";
 
 export default function Chat() {
@@ -75,7 +76,7 @@ export default function Chat() {
     return () => window.clearTimeout(timeoutId);
   }, [users, currentUser?.email]);
 
-  const isAdmin = currentUser?.campaign_role === "dm" || currentUser?.role === "admin";
+  const isAdmin = isDmUser(currentUser);
   const openSidePanel = () => setSideOpen(true);
   const closeSidePanel = () => setSideOpen(false);
 

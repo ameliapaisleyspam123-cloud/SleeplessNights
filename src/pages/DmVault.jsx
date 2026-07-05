@@ -17,9 +17,14 @@ const TABS = [
   { id: "archived", label: "Archived", icon: Box },
   { id: "players", label: "Players", icon: Users },
 ];
+const MAX_CAMPAIGN_PLAYERS = 18;
 
 function plainText(value = "") {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function uniqueEmails(emails = []) {
+  return [...new Set(emails.map((email) => String(email || "").trim().toLowerCase()).filter(Boolean))];
 }
 
 function shortDate(value) {
@@ -162,6 +167,8 @@ export default function DmVault() {
   const documentFolderOptions = visibleFolderPaths(documentFolders, documentFolder);
   const filteredSealedDocs = sealedDocs.filter((doc) => documentFolder === "all" || doc.folder === documentFolder || doc.folder?.startsWith(`${documentFolder}/`));
   const uploadFolder = documentFolder === "all" ? "" : documentFolder;
+  const currentCampaign = campaigns.find((item) => item.id === user?.campaign_id);
+  const campaignPlayerCount = uniqueEmails(currentCampaign?.player_emails || []).length;
 
   const createDocumentFolder = () => {
     const name = window.prompt(documentFolder === "all" ? "New document folder name" : `New subfolder inside "${documentFolder}"`);
@@ -487,7 +494,21 @@ export default function DmVault() {
       )}
 
       {tab === "players" && (
-        <VaultPanel empty={players.length === 0} emptyTitle="No players yet." emptyBody="Campaign members will appear here.">
+        <VaultPanel empty={false}>
+          <div className="mb-4 rounded-sm border border-border bg-card/55 p-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Player Capacity</div>
+              <div className="mt-1 text-sm text-muted-foreground">New player-code joins are blocked once the campaign reaches {MAX_CAMPAIGN_PLAYERS} players.</div>
+            </div>
+            <div className="font-display text-3xl text-foreground">{campaignPlayerCount}/{MAX_CAMPAIGN_PLAYERS}</div>
+          </div>
+          {players.length === 0 && (
+            <div className="min-h-[14rem] border border-dashed border-border rounded-sm flex flex-col items-center justify-center text-center px-4 mb-4">
+              <Users className="w-10 h-10 text-muted-foreground/60 mb-5" strokeWidth={1.5} />
+              <div className="font-display text-2xl">No players yet.</div>
+              <div className="text-muted-foreground mt-2">Campaign members will appear here.</div>
+            </div>
+          )}
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
             {players.map((player) => (
               <div key={player.id} className="border border-border bg-card/55 rounded-sm p-4">
