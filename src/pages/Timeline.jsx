@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { appClient } from "@/api/appClient";
+import CharacterSheetView from "@/components/characters/CharacterSheetView";
+import LoreDetail from "@/components/lore/LoreDetail";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -194,6 +196,8 @@ export default function Timeline() {
   const [lore, setLore] = useState([]);
   const [calendarDraft, setCalendarDraft] = useState(DEFAULT_CALENDAR);
   const [entry, setEntry] = useState(null);
+  const [viewingCharacter, setViewingCharacter] = useState(null);
+  const [viewingLore, setViewingLore] = useState(null);
   const [dateDraft, setDateDraft] = useState({ year: 1, month: 1, day: 1 });
   const [dmViewDate, setDmViewDate] = useState({ year: 1, month: 1, day: 1 });
   const [carrySelection, setCarrySelection] = useState({ characters: [], lore: [] });
@@ -470,6 +474,18 @@ export default function Timeline() {
     await appClient.entities.TimelineEvent.delete(timelineEvent.id);
     if (entry?.id === timelineEvent.id) setEntry(null);
     await load();
+  };
+
+  const syncUpdatedCharacter = (updated) => {
+    if (!updated?.id) return;
+    setCharacters((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setViewingCharacter((current) => (current?.id === updated.id ? updated : current));
+  };
+
+  const syncUpdatedLore = (updated) => {
+    if (!updated?.id) return;
+    setLore((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setViewingLore((current) => (current?.id === updated.id ? updated : current));
   };
 
   const moveTargetDate = campaignDate({ timeline_current_date: dateDraft }, calendar);
@@ -780,6 +796,8 @@ export default function Timeline() {
             loreById={loreById}
             onEdit={setEntry}
             onDelete={deleteEntry}
+            onOpenCharacter={setViewingCharacter}
+            onOpenLore={setViewingLore}
             onView={viewMarker}
             onSetCampaign={saveCurrentDate}
             onTogglePlayerDate={togglePlayerDate}
@@ -808,6 +826,8 @@ export default function Timeline() {
                   canManage={canManage}
                   onEdit={setEntry}
                   onAdd={() => setEntry({ ...emptyEvent(user?.campaign_id, calendar), year: marker.year, month: marker.month, day: marker.day })}
+                  onOpenCharacter={setViewingCharacter}
+                  onOpenLore={setViewingLore}
                   onView={() => viewMarker(marker)}
                   onSetCampaign={() => saveCurrentDate(marker)}
                   onTogglePlayerDate={() => togglePlayerDate(marker)}
@@ -817,6 +837,24 @@ export default function Timeline() {
           </div>
         )}
       </section>
+      <LoreDetail
+        open={Boolean(viewingLore)}
+        onOpenChange={(open) => !open && setViewingLore(null)}
+        entry={viewingLore}
+        entries={datedLore}
+        onEntryUpdated={syncUpdatedLore}
+        onOpenEntry={setViewingLore}
+        isAdmin={false}
+      />
+      <CharacterSheetView
+        open={Boolean(viewingCharacter)}
+        onOpenChange={(open) => !open && setViewingCharacter(null)}
+        sheet={viewingCharacter}
+        canEdit={false}
+        currentUser={user}
+        isDM={canManage}
+        onSheetUpdated={syncUpdatedCharacter}
+      />
     </div>
   );
 }
@@ -926,7 +964,7 @@ function RecordIndexList({ title, icon: Icon, items, calendar, getLabel, getMeta
   );
 }
 
-function TimelineTree({ grouped, calendar, activeDate, campaignActiveDate, canManage, user, characterById, loreById, onEdit, onDelete, onView, onSetCampaign, onTogglePlayerDate, isDateVisibleToPlayers }) {
+function TimelineTree({ grouped, calendar, activeDate, campaignActiveDate, canManage, user, characterById, loreById, onEdit, onDelete, onOpenCharacter, onOpenLore, onView, onSetCampaign, onTogglePlayerDate, isDateVisibleToPlayers }) {
   if (grouped.length === 0) {
     return <div className="p-10 text-center text-muted-foreground border border-dashed border-border m-4 rounded-sm">No dated entries in tree view yet.</div>;
   }
@@ -980,7 +1018,7 @@ function TimelineTree({ grouped, calendar, activeDate, campaignActiveDate, canMa
                             </Button>
                           )}
                         </div>
-                        <DayRecordSummary marker={marker} calendar={calendar} />
+                        <DayRecordSummary marker={marker} calendar={calendar} onOpenCharacter={onOpenCharacter} onOpenLore={onOpenLore} />
                         {marker.events.length > 0 && (
                           <div className="mt-2 grid lg:grid-cols-2 gap-3">
                             {marker.events.map((timelineEvent) => (
@@ -1016,7 +1054,7 @@ function formatYear(year, calendar) {
   return `${Math.abs(year)} ${label}`;
 }
 
-function DayRecordSummary({ marker, calendar, events = [], compact = false }) {
+function DayRecordSummary({ marker, calendar, events = [], compact = false, onOpenCharacter, onOpenLore }) {
   const eventItems = events.length > 0 ? events : marker.events || [];
   const characters = marker.characters || [];
   const lore = marker.lore || [];
@@ -1042,6 +1080,7 @@ function DayRecordSummary({ marker, calendar, events = [], compact = false }) {
             title="Characters"
             items={characters}
             getLabel={(item) => item.name || "Unnamed"}
+            onOpen={onOpenCharacter}
           />
         )}
         {lore.length > 0 && (
@@ -1049,6 +1088,7 @@ function DayRecordSummary({ marker, calendar, events = [], compact = false }) {
             title="Lore Entries"
             items={lore}
             getLabel={(item) => item.title || "Untitled"}
+            onOpen={onOpenLore}
           />
         )}
       </div>
@@ -1056,20 +1096,28 @@ function DayRecordSummary({ marker, calendar, events = [], compact = false }) {
   );
 }
 
-function RecordNameGroup({ title, items, getLabel }) {
+function RecordNameGroup({ title, items, getLabel, onOpen }) {
   return (
     <div>
       <div className="text-[10px] uppercase tracking-[0.18em] text-accent">{title}</div>
       <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
         {items.map((item) => (
-          <li key={item.id} className="truncate">{getLabel(item)}</li>
+          <li key={item.id} className="truncate">
+            {onOpen ? (
+              <button type="button" className="truncate text-left hover:text-accent transition-colors" onClick={() => onOpen(item)}>
+                {getLabel(item)}
+              </button>
+            ) : (
+              getLabel(item)
+            )}
+          </li>
         ))}
       </ul>
     </div>
   );
 }
 
-function TimelineMarker({ marker, index, calendar, active, campaignActive, playerVisible, canManage, onEdit, onAdd, onView, onSetCampaign, onTogglePlayerDate }) {
+function TimelineMarker({ marker, index, calendar, active, campaignActive, playerVisible, canManage, onEdit, onAdd, onOpenCharacter, onOpenLore, onView, onSetCampaign, onTogglePlayerDate }) {
   const above = index % 2 === 0;
   const monthName = calendar.month_names[marker.month - 1] || `Month ${marker.month}`;
   const dayName = calendar.day_names[marker.day - 1] || `Day ${marker.day}`;
@@ -1105,7 +1153,7 @@ function TimelineMarker({ marker, index, calendar, active, campaignActive, playe
             {campaignActive && <div className="inline-flex rounded-sm border border-primary/50 bg-primary/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-primary">Campaign Date</div>}
             {playerVisible && <div className="inline-flex rounded-sm border border-border bg-secondary/70 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Player Visible</div>}
           </div>
-          <DayRecordSummary marker={marker} calendar={calendar} compact />
+          <DayRecordSummary marker={marker} calendar={calendar} compact onOpenCharacter={onOpenCharacter} onOpenLore={onOpenLore} />
           {marker.events.length > 0 && canManage && (
             <div className="mt-3 flex flex-wrap justify-center gap-1.5">
               {marker.events.map((event) => (

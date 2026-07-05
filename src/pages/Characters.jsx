@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
-import { campaignDate, datedCreatePayload, hasTimelineDate, latestRecordsForDate, readLocalTimelineViewDate } from "@/lib/timeline";
+import { datedCreatePayload, hasTimelineDate, latestRecordsForDate, timelineViewDate } from "@/lib/timeline";
 import { Copy, Download, Folder, MoveRight, Plus, Trash2 } from "lucide-react";
 
 function cloneSheet(sheet, campaignId, suffix = "Copy") {
@@ -157,7 +157,7 @@ export default function Characters() {
   const campaignName = (campaignId) => campaigns.find((campaign) => campaign.id === campaignId)?.name || "Unknown campaign";
   const isAdmin = isDmUser(user);
   const currentCampaign = campaign || null;
-  const activeDate = isAdmin ? readLocalTimelineViewDate(currentCampaign, currentCampaign?.calendar_system, user) : campaignDate(currentCampaign, currentCampaign?.calendar_system);
+  const activeDate = timelineViewDate(currentCampaign, currentCampaign?.calendar_system, user, isAdmin);
   const activeCampaign = currentCampaign ? { ...currentCampaign, timeline_current_date: activeDate } : currentCampaign;
   const visibleByPermission = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
   const visibleItems = currentCampaign?.timeline_started

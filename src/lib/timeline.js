@@ -51,6 +51,19 @@ export function writeLocalTimelineViewDate(campaign, date, calendar = {}, user =
   return normalized;
 }
 
+export function timelineViewDate(campaign, calendar = {}, user = null, canManage = false) {
+  const campaignCurrentDate = campaignDate(campaign, calendar);
+  const storedDate = readLocalTimelineViewDate(campaign, calendar, user);
+  if (canManage) return storedDate;
+
+  const storedKey = dateKey(storedDate, calendar);
+  const visibleKeys = new Set([
+    dateKey(campaignCurrentDate, calendar),
+    ...(Array.isArray(campaign?.timeline_player_date_keys) ? campaign.timeline_player_date_keys : []),
+  ]);
+  return visibleKeys.has(storedKey) ? storedDate : campaignCurrentDate;
+}
+
 export function shiftDate(date, delta = {}, calendar = {}) {
   const monthsPerYear = Math.max(1, Number(calendar.months_per_year) || 12);
   const daysPerMonth = Math.max(1, Number(calendar.days_per_month) || 30);

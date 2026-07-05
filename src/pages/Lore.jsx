@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
-import { campaignDate, hasTimelineDate, latestRecordsForDate, readLocalTimelineViewDate } from "@/lib/timeline";
+import { hasTimelineDate, latestRecordsForDate, timelineViewDate } from "@/lib/timeline";
 import { Folder, Grid2X2, List, MoveRight, Plus, Search, Tag, Trash2 } from "lucide-react";
 
 const CATEGORIES = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
@@ -112,7 +112,7 @@ export default function Lore() {
     };
   }, []);
 
-  const activeDate = isAdmin ? readLocalTimelineViewDate(campaign, campaign?.calendar_system, currentUser) : campaignDate(campaign, campaign?.calendar_system);
+  const activeDate = timelineViewDate(campaign, campaign?.calendar_system, currentUser, isAdmin);
   const activeCampaign = campaign ? { ...campaign, timeline_current_date: activeDate } : campaign;
   const visibleByPermission = items.filter((item) => canViewVisibleItem(item, currentUser, isAdmin));
   const visibleItems = campaign?.timeline_started
