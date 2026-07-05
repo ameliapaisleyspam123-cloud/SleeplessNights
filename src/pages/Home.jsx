@@ -4,6 +4,7 @@ import { appClient } from "@/api/appClient";
 import { ScrollText, MessageSquare, Radio, ArrowUpRight, User, Lock, Swords, NotebookPen, Store } from "lucide-react";
 import { useCampaign } from "@/hooks/useCampaign";
 import PageHeader from "@/components/PageHeader";
+import ReputationPanel from "@/components/reputation/ReputationPanel";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 
 export default function Home() {
@@ -82,6 +83,8 @@ export default function Home() {
           </Link>
         </div>
       )}
+
+      {campaign && <ReputationPanel user={user} campaign={campaign} />}
 
       <div className={tileGridClass}>
         {tiles.map((tile) => (

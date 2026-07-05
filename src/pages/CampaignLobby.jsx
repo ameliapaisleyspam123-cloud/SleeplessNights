@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, Check, Copy, Dices, LogIn, RefreshCw, Shield, Swords, UserPlus } from "lucide-react";
+import { defaultReputation } from "@/lib/reputation";
 
 const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const MAX_CAMPAIGN_PLAYERS = 18;
@@ -208,6 +209,7 @@ export default function CampaignLobby() {
       dm_email: login.email,
       player_emails: [],
       active: true,
+      reputation: defaultReputation,
     });
     await enterCampaign(campaign, "dm");
   };
