@@ -788,10 +788,9 @@ export default function Timeline() {
         ) : timelineMarkers.length === 0 ? (
           <div className="p-10 text-center text-muted-foreground border border-dashed border-border m-4 rounded-sm">Move to a date to place the first marker on the timeline.</div>
         ) : (
-          <div className="overflow-x-auto thin-scroll p-4 pb-6">
+          <div className="overflow-hidden md:overflow-x-auto thin-scroll p-4 pb-6">
             <div
-              className="relative grid w-max min-w-full gap-6 py-12"
-              style={{ gridTemplateColumns: `repeat(${Math.max(timelineMarkers.length, 1)}, minmax(17rem, 17rem))` }}
+              className="relative grid min-w-0 grid-cols-1 gap-6 py-12 md:w-max md:min-w-full md:auto-cols-[17rem] md:grid-flow-col md:grid-cols-none"
             >
               <div
                 className="absolute left-6 right-6 top-1/2 h-2 -translate-y-1/2 rounded-full shadow-sm"
