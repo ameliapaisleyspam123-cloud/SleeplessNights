@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { useCampaign } from "@/hooks/useCampaign";
 import PlayerNotesPanel from "@/components/chat/PlayerNotesPanel";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
+import { campaignDate, hasTimelineDate, isRecordOnDate, readLocalTimelineViewDate } from "@/lib/timeline";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 
 const STAT_MOD = (v) => Math.floor((v - 10) / 2);
@@ -555,6 +556,7 @@ function SkillList({ skills, profSkills, expertSkills, advantageSkills, disadvan
 export default function LorePanel({ onClose }) {
   const [entries, setEntries] = useState([]);
   const [characters, setCharacters] = useState([]);
+  const [panelCampaign, setPanelCampaign] = useState(null);
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("all");
   const [tag, setTag] = useState("all");
@@ -567,30 +569,49 @@ export default function LorePanel({ onClose }) {
     if (!user?.campaign_id) return;
     const cid = user.campaign_id;
     const load = () => {
-      appClient.entities.LoreEntry.filter({ campaign_id: cid }, "-created_date", 500).then(setEntries);
-      appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 200).then(setCharacters);
+      Promise.all([
+        appClient.entities.Campaign.get(cid),
+        appClient.entities.LoreEntry.filter({ campaign_id: cid }, "-created_date", 500),
+        appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 200),
+      ]).then(([campaignRecord, loreEntries, characterSheets]) => {
+        setPanelCampaign(campaignRecord);
+        setEntries(loreEntries);
+        setCharacters(characterSheets);
+      });
     };
     load();
+    const unsubCampaign = appClient.entities.Campaign.subscribe(load);
+    const unsubLore = appClient.entities.LoreEntry.subscribe(load);
     const unsubCharacters = appClient.entities.CharacterSheet.subscribe(load);
-    return () => unsubCharacters();
+    return () => {
+      unsubCampaign();
+      unsubLore();
+      unsubCharacters();
+    };
   }, [user?.campaign_id]);
 
   const cats = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
   const isAdmin = isDmUser(user);
+  const activeDate = isAdmin ? readLocalTimelineViewDate(panelCampaign, panelCampaign?.calendar_system, user) : campaignDate(panelCampaign, panelCampaign?.calendar_system);
+  const isVisibleOnActiveDate = (item) => {
+    if (!panelCampaign) return false;
+    return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, panelCampaign?.calendar_system) : !panelCampaign?.timeline_started;
+  };
+  const visibleDateEntries = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin) && (!isAdmin || isVisibleOnActiveDate(entry)));
 
-  const filtered = entries.filter((e) => {
-    if (!canViewVisibleItem(e, user, isAdmin)) return false;
+  const filtered = visibleDateEntries.filter((e) => {
     const matchCat = cat === "all" || e.category === cat;
     const matchTag = tag === "all" || (e.tags || []).some((entryTag) => entryTag === tag);
     const q = query.toLowerCase();
     const matchQ = !q || e.title?.toLowerCase().includes(q) || previewHtml(e.content).toLowerCase().includes(q) || e.tags?.some((t) => t.toLowerCase().includes(q));
     return matchCat && matchTag && matchQ;
   });
-  const tags = [...new Set(entries.flatMap((entry) => entry.tags || []).map((entryTag) => String(entryTag).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const tags = [...new Set(visibleDateEntries.flatMap((entry) => entry.tags || []).map((entryTag) => String(entryTag).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
   const filteredChars = sortClaimedCharactersFirst(
     characters.filter((c) => {
       if (!canViewVisibleItem(c, user, isAdmin)) return false;
+      if (!isVisibleOnActiveDate(c)) return false;
       const q = query.toLowerCase();
       return !q || c.name?.toLowerCase().includes(q) || c.race?.toLowerCase().includes(q) || c.class?.toLowerCase().includes(q);
     }),

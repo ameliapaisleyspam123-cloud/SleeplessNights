@@ -25,8 +25,10 @@ import {
   Palette,
   ExternalLink,
   GitBranch,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import BroadcastOverlay from "./broadcast/BroadcastOverlay";
 import CombatTurnIndicator from "./initiative/CombatTurnIndicator";
 import InitiativeTracker from "./initiative/InitiativeTracker";
@@ -74,6 +76,7 @@ function LayoutInner() {
   const [nameModalOpen, setNameModalOpen] = useState(false);
   const [campaignModalOpen, setCampaignModalOpen] = useState(false);
   const [themeModalOpen, setThemeModalOpen] = useState(false);
+  const [playerViewOpen, setPlayerViewOpen] = useState(false);
   const [diceOpen, setDiceOpen] = useState(false);
   const [userLoaded, setUserLoaded] = useState(false);
   const location = useLocation();
@@ -154,6 +157,7 @@ function LayoutInner() {
     onEditName: () => setNameModalOpen(true),
     onCampaignSettings: () => setCampaignModalOpen(true),
     onThemeSettings: () => setThemeModalOpen(true),
+    onPlayerView: () => setPlayerViewOpen(true),
     roleLabel,
     compactRoleLabel,
   };
@@ -198,6 +202,11 @@ function LayoutInner() {
                 <Button variant="ghost" size="icon" onClick={() => setThemeModalOpen(true)} title="Colour Scheme">
                   <Palette className="w-4 h-4" />
                 </Button>
+                {isAdmin && (
+                  <Button variant="ghost" size="icon" onClick={() => setPlayerViewOpen(true)} title="Player View">
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
                   <X className="w-5 h-5" />
                 </Button>
@@ -271,6 +280,7 @@ function LayoutInner() {
       <ProfileNameModal open={nameModalOpen} onOpenChange={setNameModalOpen} currentUser={user} onSaved={loadUser} />
       {isAdmin && <CampaignSettingsModal open={campaignModalOpen} onOpenChange={setCampaignModalOpen} campaign={campaign} onSaved={handleCampaignSaved} />}
       <ThemeSettingsModal open={themeModalOpen} onOpenChange={setThemeModalOpen} />
+      {isAdmin && <PlayerViewModal open={playerViewOpen} onOpenChange={setPlayerViewOpen} campaign={campaign} />}
     </div>
   );
 }
@@ -285,6 +295,7 @@ function SidebarContent({
   onEditName,
   onCampaignSettings,
   onThemeSettings,
+  onPlayerView,
   roleLabel,
   compactRoleLabel,
 }) {
@@ -324,6 +335,11 @@ function SidebarContent({
             <button onClick={onThemeSettings} className="text-muted-foreground hover:text-accent transition-colors" title="Colour Scheme">
               <Palette className="w-4 h-4" />
             </button>
+            {isAdmin && (
+              <button onClick={onPlayerView} className="text-muted-foreground hover:text-accent transition-colors" title="Player View">
+                <Eye className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </>
       )}
@@ -384,5 +400,45 @@ function SidebarContent({
         </Button>
       </div>
     </div>
+  );
+}
+
+function PlayerViewModal({ open, onOpenChange, campaign }) {
+  const playerCount = campaign?.player_emails?.length || 0;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <div className="space-y-5">
+          <div>
+            <h2 className="font-display text-2xl">Player View</h2>
+            <p className="text-sm text-muted-foreground mt-1">Quick access to the sections and access details your players use.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {PLAYER_NAV.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => onOpenChange(false)}
+                className="flex items-center gap-2 rounded-sm border border-border bg-card/60 px-3 py-2 text-sm text-muted-foreground hover:border-accent/60 hover:text-foreground"
+              >
+                <item.icon className="w-4 h-4 text-accent" />
+                {item.label}
+              </Link>
+            ))}
+          </div>
+          <div className="rounded-sm border border-border bg-secondary/25 p-3">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Player Capacity</div>
+            <div className="mt-1 font-display text-2xl text-foreground">{playerCount}/18</div>
+            <div className="text-xs text-muted-foreground mt-1">New player-code joins are blocked once the campaign reaches 18 players.</div>
+          </div>
+          {campaign?.player_code && (
+            <div className="rounded-sm border border-accent/30 bg-accent/5 p-3">
+              <div className="text-[10px] uppercase tracking-widest text-accent">Player Code</div>
+              <div className="mt-1 font-mono text-lg font-bold tracking-[0.18em]">{campaign.player_code}</div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

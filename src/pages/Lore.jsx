@@ -104,12 +104,19 @@ export default function Lore() {
 
   useEffect(() => {
     load();
+    const unsubCampaign = appClient.entities.Campaign.subscribe(() => load());
+    const unsubLore = appClient.entities.LoreEntry.subscribe(() => load());
+    return () => {
+      unsubCampaign();
+      unsubLore();
+    };
   }, []);
 
   const activeDate = isAdmin ? readLocalTimelineViewDate(campaign, campaign?.calendar_system, currentUser) : campaignDate(campaign, campaign?.calendar_system);
   const activeCampaign = campaign ? { ...campaign, timeline_current_date: activeDate } : campaign;
   const visibleItems = items.filter((item) => {
     if (!canViewVisibleItem(item, currentUser, isAdmin)) return false;
+    if (!isAdmin) return true;
     return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, campaign?.calendar_system) : !campaign?.timeline_started;
   });
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);

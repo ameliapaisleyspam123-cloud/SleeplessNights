@@ -165,17 +165,23 @@ function recordsToCarry(records, activeDate, calendar) {
   return [...candidatesBySeries.values()].sort((a, b) => (a.name || a.title || "").localeCompare(b.name || b.title || ""));
 }
 
-async function saveRecordForDate(api, record, activeDate, calendar) {
+async function saveRecordForDate(api, records, record, activeDate, calendar) {
+  const activeKey = dateKey(activeDate, calendar);
+  const seriesId = timelineSeriesId(record);
+  const existingForDate = records.find((item) => item.id !== record.id && item.timeline_date_key === activeKey && timelineSeriesId(item) === seriesId);
+  if (existingForDate) {
+    return api.update(existingForDate.id, makeDatedRecord(record, activeDate, calendar));
+  }
   if (!hasTimelineDate(record)) {
     return api.update(record.id, {
       timeline_date: activeDate,
-      timeline_date_key: dateKey(activeDate, calendar),
-      timeline_series_id: timelineSeriesId(record),
+      timeline_date_key: activeKey,
+      timeline_series_id: seriesId,
     });
   }
   const created = await api.create(makeDatedRecord(record, activeDate, calendar));
   if (!created.timeline_series_id) {
-    await api.update(created.id, { timeline_series_id: timelineSeriesId(record) });
+    await api.update(created.id, { timeline_series_id: seriesId });
   }
   return created;
 }
@@ -213,13 +219,12 @@ export default function Timeline() {
 
   const load = async ({ resetView = false } = {}) => {
     const currentUser = await appClient.auth.me();
-    const [campaigns, timelineEvents, sheets, loreEntries] = await Promise.all([
-      appClient.entities.Campaign.list("-created_date", 200),
+    const [currentCampaign, timelineEvents, sheets, loreEntries] = await Promise.all([
+      currentUser.campaign_id ? appClient.entities.Campaign.get(currentUser.campaign_id) : null,
       appClient.entities.TimelineEvent.filter({ campaign_id: currentUser.campaign_id }, "year", 500),
       appClient.entities.CharacterSheet.filter({ campaign_id: currentUser.campaign_id }, "name", 500),
       appClient.entities.LoreEntry.filter({ campaign_id: currentUser.campaign_id }, "title", 500),
     ]);
-    const currentCampaign = campaigns.find((item) => item.id === currentUser.campaign_id) || null;
     const nextCalendar = normalizeCalendar(currentCampaign);
     setUser(currentUser);
     setCampaign(currentCampaign);
@@ -326,9 +331,13 @@ export default function Timeline() {
     if (!campaign?.id) return;
     setSavingCalendar(true);
     const normalized = normalizeCalendar({ calendar_system: calendarDraft });
-    await appClient.entities.Campaign.update(campaign.id, { calendar_system: normalized });
+    const updated = await appClient.entities.Campaign.update(campaign.id, { calendar_system: normalized });
+    setCampaign(updated);
+    setCalendarDraft(normalizeCalendar(updated));
+    const nextDate = campaignDate(updated, normalizeCalendar(updated));
+    setDmViewDate(writeLocalTimelineViewDate(updated, nextDate, normalizeCalendar(updated), user));
+    setDateDraft(nextDate);
     setSavingCalendar(false);
-    await load({ resetView: true });
   };
 
   const saveCurrentDate = async (nextDate = dateDraft) => {
@@ -340,9 +349,8 @@ export default function Timeline() {
     await appClient.entities.Campaign.update(campaign.id, {
       timeline_current_date: normalized,
       timeline_started: true,
-    });
+    }).then(setCampaign);
     setSavingDate(false);
-    await load({ resetView: true });
   };
 
   const viewDate = (nextDate) => {
@@ -358,8 +366,8 @@ export default function Timeline() {
 
   const togglePlayerTimeline = async () => {
     if (!campaign?.id) return;
-    await appClient.entities.Campaign.update(campaign.id, { timeline_player_visible: !campaign.timeline_player_visible });
-    await load();
+    const updated = await appClient.entities.Campaign.update(campaign.id, { timeline_player_visible: !campaign.timeline_player_visible });
+    setCampaign(updated);
   };
 
   const togglePlayerDate = async (marker) => {
@@ -368,8 +376,8 @@ export default function Timeline() {
     const current = new Set(playerDateKeys);
     if (current.has(key)) current.delete(key);
     else current.add(key);
-    await appClient.entities.Campaign.update(campaign.id, { timeline_player_date_keys: [...current] });
-    await load();
+    const updated = await appClient.entities.Campaign.update(campaign.id, { timeline_player_date_keys: [...current] });
+    setCampaign(updated);
   };
 
   const chooseTimelineView = (view) => {
@@ -399,8 +407,8 @@ export default function Timeline() {
     if (selectedCharacters.length + selectedLore.length === 0) return;
     setSavingCarry(true);
     await Promise.all([
-      ...selectedCharacters.map((item) => saveRecordForDate(appClient.entities.CharacterSheet, item, activeDate, calendar)),
-      ...selectedLore.map((item) => saveRecordForDate(appClient.entities.LoreEntry, item, activeDate, calendar)),
+      ...selectedCharacters.map((item) => saveRecordForDate(appClient.entities.CharacterSheet, characters, item, activeDate, calendar)),
+      ...selectedLore.map((item) => saveRecordForDate(appClient.entities.LoreEntry, lore, item, activeDate, calendar)),
     ]);
     setSavingCarry(false);
     await load();
@@ -432,10 +440,14 @@ export default function Timeline() {
       await appClient.entities.Campaign.update(campaign.id, {
         timeline_current_date: { year: payload.year, month: payload.month, day: payload.day },
         timeline_started: true,
+      }).then((updated) => {
+        setCampaign(updated);
+        const nextDate = campaignDate(updated, calendar);
+        setDmViewDate(writeLocalTimelineViewDate(updated, nextDate, calendar, user));
+        setDateDraft(nextDate);
       });
       setSavingEntry(false);
       setEntry(null);
-      await load({ resetView: true });
       return;
     }
     if (!payload.title && payload.id) {
@@ -505,7 +517,7 @@ export default function Timeline() {
           {canManage && (
             <Button variant={campaign?.timeline_player_visible ? "default" : "outline"} onClick={togglePlayerTimeline}>
               {campaign?.timeline_player_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              Players {campaign?.timeline_player_visible ? "Can View" : "Cannot View"}
+              Players {campaign?.timeline_player_visible ? "can see timeline" : "cannot see timeline"}
             </Button>
           )}
         </div>
@@ -1005,7 +1017,7 @@ function formatYear(year, calendar) {
   return `${Math.abs(year)} ${label}`;
 }
 
-function DayRecordSummary({ marker, calendar, events = [] }) {
+function DayRecordSummary({ marker, calendar, events = [], compact = false }) {
   const eventItems = events.length > 0 ? events : marker.events || [];
   const characters = marker.characters || [];
   const lore = marker.lore || [];
@@ -1014,11 +1026,11 @@ function DayRecordSummary({ marker, calendar, events = [] }) {
   if (total === 0) return null;
 
   return (
-    <details className="mt-3 rounded-sm border border-border bg-background/70 text-left">
-      <summary className="cursor-pointer list-none px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
-        <span className="font-medium text-foreground">{total}</span> item{total === 1 ? "" : "s"} on {formatTimelineDate(marker, calendar)}
+    <details className={`mt-3 rounded-sm border border-border bg-background/70 text-left ${compact ? "mx-auto w-full max-w-56 overflow-hidden" : ""}`}>
+      <summary className="cursor-pointer list-none px-3 py-2 text-xs text-muted-foreground hover:text-foreground break-words">
+        <span className="font-medium text-foreground">{total}</span> item{total === 1 ? "" : "s"}{compact ? "" : ` on ${formatTimelineDate(marker, calendar)}`}
       </summary>
-      <div className="border-t border-border p-3 space-y-3">
+      <div className={`border-t border-border p-3 space-y-3 ${compact ? "max-h-44 overflow-y-auto thin-scroll" : ""}`}>
         {eventItems.length > 0 && (
           <RecordNameGroup
             title="Events"
@@ -1094,7 +1106,7 @@ function TimelineMarker({ marker, index, calendar, active, campaignActive, playe
             {campaignActive && <div className="inline-flex rounded-sm border border-primary/50 bg-primary/10 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-primary">Campaign Date</div>}
             {playerVisible && <div className="inline-flex rounded-sm border border-border bg-secondary/70 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Player Visible</div>}
           </div>
-          <DayRecordSummary marker={marker} calendar={calendar} />
+          <DayRecordSummary marker={marker} calendar={calendar} compact />
           {marker.events.length > 0 && canManage && (
             <div className="mt-3 flex flex-wrap justify-center gap-1.5">
               {marker.events.map((event) => (

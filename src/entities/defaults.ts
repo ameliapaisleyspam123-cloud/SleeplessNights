@@ -58,6 +58,8 @@ export const characterSheetDefaults: Partial<CharacterSheet> = {
   spell_attack_bonus: 0,
   ki_points_current: 0,
   ki_points_max: 0,
+  channel_divinity_current: 0,
+  channel_divinity_max: 0,
   sorcery_points_current: 0,
   sorcery_points_max: 0,
   visibility: "public",

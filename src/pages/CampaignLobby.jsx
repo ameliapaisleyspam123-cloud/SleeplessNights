@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, Check, Copy, Dices, LogIn, RefreshCw, Shield, Swords, UserPlus } from "lucide-react";
 
 const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const MAX_CAMPAIGN_PLAYERS = 18;
 
 function normalizeEmail(email = "") {
   return email.trim().toLowerCase();
@@ -228,6 +229,10 @@ export default function CampaignLobby() {
 
     const role = campaign.dm_code === code ? "dm" : "player";
     const playerEmails = uniqueEmails(campaign.player_emails || []);
+    if (role === "player" && !playerEmails.includes(login.email) && playerEmails.length >= MAX_CAMPAIGN_PLAYERS) {
+      setMessage(`This campaign already has the maximum of ${MAX_CAMPAIGN_PLAYERS} players.`);
+      return;
+    }
     if (role === "player" && !playerEmails.includes(login.email)) {
       await appClient.entities.Campaign.update(campaign.id, {
         player_emails: [...playerEmails, login.email],
@@ -370,6 +375,9 @@ export default function CampaignLobby() {
                     <div className="border border-border bg-card/70 rounded-sm p-4">
                       <div className="text-[10px] uppercase tracking-[0.24em] text-accent mb-1">Campaign Preview</div>
                       <div className="text-lg font-semibold text-foreground">{joinPreviewCampaign.name}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Players: {uniqueEmails(joinPreviewCampaign.player_emails || []).length}/{MAX_CAMPAIGN_PLAYERS}
+                      </div>
                       {joinPreviewCampaign.description?.trim() ? (
                         <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{joinPreviewCampaign.description}</p>
                       ) : (

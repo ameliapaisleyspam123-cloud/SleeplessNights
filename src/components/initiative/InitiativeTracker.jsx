@@ -53,6 +53,8 @@ const DAMAGE_TYPES = [
   "Thunder",
 ];
 
+const MAX_COMBAT_EVENTS = 100;
+
 function rollD20WithMode(advantage, disadvantage) {
   if (!advantage && !disadvantage) {
     const roll = Math.floor(Math.random() * 20) + 1;
@@ -96,6 +98,10 @@ function syncCombatEntriesWithSheets(combat, sheets) {
   return { ...combat, entries };
 }
 
+function compactEvents(nextEvents) {
+  return nextEvents.slice(-MAX_COMBAT_EVENTS);
+}
+
 function Modal({ open, onClose, title, children }) {
   if (!open) return null;
   return (
@@ -120,6 +126,8 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
   const [groupModal, setGroupModal] = useState(null);
   const [spellModal, setSpellModal] = useState(false);
   const [setupModal, setSetupModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [campaign, setCampaign] = useState(null);
   const [characters, setCharacters] = useState([]);
   const [addForm, setAddForm] = useState({ mode: "manual", characterId: "", name: "", roll: "", modifier: "0", hpCurrent: "", hpMax: "", ac: "", isGroup: false, groupSize: 2 });
   const [spellForm, setSpellForm] = useState({ name: "", casterName: "", duration: 10 });
@@ -128,13 +136,17 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
 
   const loadCombat = useCallback(async () => {
     if (!campaignId) return;
-    const [active, latest, sheets] = await Promise.all([
+    const [active, latest, sheets, user, currentCampaign] = await Promise.all([
       appClient.entities.Initiative.filter({ campaign_id: campaignId, active: true }, "-updated_date", 1),
       appClient.entities.Initiative.filter({ campaign_id: campaignId }, "-updated_date", 1),
       appClient.entities.CharacterSheet.filter({ campaign_id: campaignId }, "name", 300),
+      appClient.auth.me().catch(() => null),
+      appClient.entities.Campaign.get(campaignId).catch(() => null),
     ]);
     const visibleSheets = sheets.filter((sheet) => sheet.visibility !== "archived");
     setCharacters(visibleSheets);
+    setCurrentUser(user);
+    setCampaign(currentCampaign);
     if (active[0]) setCombat(syncCombatEntriesWithSheets(active[0], visibleSheets));
     else if (latest[0]) setCombat(syncCombatEntriesWithSheets(latest[0], visibleSheets));
     else setCombat(null);
@@ -193,6 +205,7 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
   const turnSecs = combat?.turn_seconds ?? 6;
   const spells = combat?.spells || [];
   const events = combat?.events || [];
+  const dmEmail = campaign?.dm_email || currentUser?.email || "";
 
   const updateEntries = (newEntries) => save({ entries: newEntries });
 
@@ -308,13 +321,15 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
       damageType: isDamage ? effectForm.damageType.trim() : "",
       createdAt: new Date().toISOString(),
     };
-    if (target.characterId || target.type === "character") {
-      const updatedSheet = await appClient.entities.CharacterSheet.update(target.characterId || target.id, { hp_current: nextHp }).catch(() => null);
+    const targetSheet = target.characterId || target.type === "character" ? characters.find((character) => character.id === (target.characterId || target.id)) : null;
+    const sheetIsDmControlled = Boolean(targetSheet) && (!targetSheet.assigned_to_email || targetSheet.assigned_to_email === dmEmail);
+    if (sheetIsDmControlled) {
+      const updatedSheet = await appClient.entities.CharacterSheet.update(targetSheet.id, { hp_current: nextHp }).catch(() => null);
       if (updatedSheet) {
         setCharacters((current) => current.map((character) => (character.id === updatedSheet.id ? updatedSheet : character)));
       }
     }
-    await save({ entries: nextEntries, events: [...events, event] });
+    await save({ entries: nextEntries, events: compactEvents([...events, event]) });
     setEffectForm((form) => ({ ...form, amount: "", damageType: "" }));
   };
 
@@ -369,7 +384,7 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
       spellName: spellForm.name,
       createdAt: new Date().toISOString(),
     };
-    save({ spells: [...spells, newSpell], events: [...events, spellEvent] });
+    save({ spells: [...spells, newSpell], events: compactEvents([...events, spellEvent]) });
     setSpellModal(false);
     setSpellForm({ name: "", casterName: "", duration: 10 });
   };
@@ -526,6 +541,9 @@ export default function InitiativeTracker({ campaignId, splitscreen = false }) {
           <div className="lg:w-64 shrink-0 space-y-3">
             <div className="text-[10px] uppercase tracking-widest text-accent font-medium">Damage & Healing</div>
             <div className="border border-border rounded-sm bg-card/60 p-3 space-y-2">
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Changes here update combat HP. Only DM-controlled sheets are updated automatically; player-claimed sheets stay unchanged and are shown here for statistics.
+              </p>
               <div className="grid grid-cols-2 gap-1">
                 {[
                   ["damage", Skull, "Damage"],

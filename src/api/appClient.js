@@ -738,8 +738,36 @@ async function uploadSharedFile(file, options = {}) {
     return { file_url: await fileToDataUrl(file), storage: "embedded" };
   }
 
+  if (options.previousPath && options.previousPath !== path) {
+    await deleteSharedFile(options.previousPath);
+  }
+
   const { data } = supabase.storage.from(SUPABASE_ASSET_BUCKET).getPublicUrl(path);
   return { file_url: data.publicUrl, storage: "supabase", path };
+}
+
+function storagePathFromUrl(value = "") {
+  const marker = `/storage/v1/object/public/${SUPABASE_ASSET_BUCKET}/`;
+  const index = String(value).indexOf(marker);
+  if (index === -1) return "";
+  return decodeURIComponent(String(value).slice(index + marker.length).split("?")[0]);
+}
+
+async function deleteSharedFile(pathOrUrl) {
+  if (!supabase || !pathOrUrl) return false;
+  const path = storagePathFromUrl(pathOrUrl) || pathOrUrl;
+  if (!path || path.startsWith("data:")) return false;
+  try {
+    const { error } = await supabase.storage.from(SUPABASE_ASSET_BUCKET).remove([path]);
+    if (error) {
+      console.warn("Supabase Storage delete failed:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("Supabase Storage delete threw error:", err);
+    return false;
+  }
 }
 
 const entities = Object.fromEntries(ENTITY_NAMES.map((name) => [name, entityApi(name)]));
@@ -920,6 +948,13 @@ export const appClient = {
       async UploadFile({ file }) {
         const user = await appClient.auth.me().catch(() => null);
         return uploadSharedFile(file, { campaign_id: user?.campaign_id });
+      },
+      async ReplaceFile({ file, previousPath, previousUrl }) {
+        const user = await appClient.auth.me().catch(() => null);
+        return uploadSharedFile(file, { campaign_id: user?.campaign_id, previousPath: previousPath || storagePathFromUrl(previousUrl) });
+      },
+      async DeleteFile({ path, url }) {
+        return deleteSharedFile(path || storagePathFromUrl(url));
       },
     },
   },
