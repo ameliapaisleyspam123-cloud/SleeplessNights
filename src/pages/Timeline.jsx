@@ -488,6 +488,22 @@ export default function Timeline() {
     setViewingLore((current) => (current?.id === updated.id ? updated : current));
   };
 
+  const viewRecordDate = (record) => {
+    if (hasTimelineDate(record)) {
+      viewDate(record.timeline_date || record);
+    }
+  };
+
+  const openCharacterRecord = (record) => {
+    viewRecordDate(record);
+    setViewingCharacter(record);
+  };
+
+  const openLoreRecord = (record) => {
+    viewRecordDate(record);
+    setViewingLore(record);
+  };
+
   const moveTargetDate = campaignDate({ timeline_current_date: dateDraft }, calendar);
 
   return (
@@ -796,8 +812,8 @@ export default function Timeline() {
             loreById={loreById}
             onEdit={setEntry}
             onDelete={deleteEntry}
-            onOpenCharacter={setViewingCharacter}
-            onOpenLore={setViewingLore}
+            onOpenCharacter={openCharacterRecord}
+            onOpenLore={openLoreRecord}
             onView={viewMarker}
             onSetCampaign={saveCurrentDate}
             onTogglePlayerDate={togglePlayerDate}
@@ -826,8 +842,8 @@ export default function Timeline() {
                   canManage={canManage}
                   onEdit={setEntry}
                   onAdd={() => setEntry({ ...emptyEvent(user?.campaign_id, calendar), year: marker.year, month: marker.month, day: marker.day })}
-                  onOpenCharacter={setViewingCharacter}
-                  onOpenLore={setViewingLore}
+                  onOpenCharacter={openCharacterRecord}
+                  onOpenLore={openLoreRecord}
                   onView={() => viewMarker(marker)}
                   onSetCampaign={() => saveCurrentDate(marker)}
                   onTogglePlayerDate={() => togglePlayerDate(marker)}
@@ -843,7 +859,7 @@ export default function Timeline() {
         entry={viewingLore}
         entries={datedLore}
         onEntryUpdated={syncUpdatedLore}
-        onOpenEntry={setViewingLore}
+        onOpenEntry={openLoreRecord}
         isAdmin={false}
       />
       <CharacterSheetView

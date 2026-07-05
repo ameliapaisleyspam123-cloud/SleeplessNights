@@ -124,13 +124,20 @@ function recordUpdatedTime(record) {
 export function latestRecordsForDate(records = [], date, calendar = {}) {
   const activeIndex = dateIndex(date, calendar);
   const latestBySeries = new Map();
+  const fallbackBySeries = new Map();
 
   records.forEach((record) => {
-    if (!hasTimelineDate(record)) return;
+    const seriesId = timelineSeriesId(record);
+    if (!hasTimelineDate(record)) {
+      const fallback = fallbackBySeries.get(seriesId);
+      if (!fallback || recordUpdatedTime(record) > recordUpdatedTime(fallback)) {
+        fallbackBySeries.set(seriesId, record);
+      }
+      return;
+    }
     const recordIndex = dateIndex(recordTimelineDate(record), calendar);
     if (recordIndex > activeIndex) return;
 
-    const seriesId = timelineSeriesId(record);
     const current = latestBySeries.get(seriesId);
     if (!current) {
       latestBySeries.set(seriesId, { record, recordIndex });
@@ -141,6 +148,12 @@ export function latestRecordsForDate(records = [], date, calendar = {}) {
     const isNewerSameDate = recordIndex === current.recordIndex && recordUpdatedTime(record) > recordUpdatedTime(current.record);
     if (isNewerDate || isNewerSameDate) {
       latestBySeries.set(seriesId, { record, recordIndex });
+    }
+  });
+
+  fallbackBySeries.forEach((record, seriesId) => {
+    if (!latestBySeries.has(seriesId)) {
+      latestBySeries.set(seriesId, { record, recordIndex: Number.NEGATIVE_INFINITY });
     }
   });
 
