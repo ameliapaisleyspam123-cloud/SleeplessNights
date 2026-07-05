@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { useCampaign } from "@/hooks/useCampaign";
 import PlayerNotesPanel from "@/components/chat/PlayerNotesPanel";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
-import { campaignDate, hasTimelineDate, isRecordOnDate, readLocalTimelineViewDate } from "@/lib/timeline";
+import { campaignDate, hasTimelineDate, isRecordOnDate, latestRecordsForDate, readLocalTimelineViewDate } from "@/lib/timeline";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 
 const STAT_MOD = (v) => Math.floor((v - 10) / 2);
@@ -597,7 +597,10 @@ export default function LorePanel({ onClose }) {
     if (!panelCampaign) return false;
     return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, panelCampaign?.calendar_system) : !panelCampaign?.timeline_started;
   };
-  const visibleDateEntries = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin) && (!isAdmin || isVisibleOnActiveDate(entry)));
+  const visibleEntriesByPermission = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin));
+  const visibleDateEntries = panelCampaign?.timeline_started
+    ? latestRecordsForDate(visibleEntriesByPermission, activeDate, panelCampaign?.calendar_system)
+    : visibleEntriesByPermission.filter((entry) => !hasTimelineDate(entry));
 
   const filtered = visibleDateEntries.filter((e) => {
     const matchCat = cat === "all" || e.category === cat;

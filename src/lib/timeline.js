@@ -17,6 +17,13 @@ export function dateKey(date = {}, calendar = {}) {
   return `${normalized.year}-${normalized.month}-${normalized.day}`;
 }
 
+export function dateIndex(date = {}, calendar = {}) {
+  const normalized = normalizeDate(date, calendar);
+  const monthsPerYear = Math.max(1, Number(calendar.months_per_year) || 12);
+  const daysPerMonth = Math.max(1, Number(calendar.days_per_month) || 30);
+  return normalized.year * monthsPerYear * daysPerMonth + (normalized.month - 1) * daysPerMonth + (normalized.day - 1);
+}
+
 export function campaignDate(campaign, calendar) {
   return normalizeDate(campaign?.timeline_current_date || DEFAULT_DATE, calendar);
 }
@@ -87,6 +94,44 @@ export function isRecordOnDate(record, date, calendar = {}) {
 
 export function timelineSeriesId(record) {
   return record?.timeline_series_id || record?.id;
+}
+
+function recordTimelineDate(record) {
+  if (record?.timeline_date) return record.timeline_date;
+  const match = String(record?.timeline_date_key || "").match(/^(-?\d+)-(\d+)-(\d+)$/);
+  if (!match) return {};
+  const [, year, month, day] = match;
+  return { year, month, day };
+}
+
+function recordUpdatedTime(record) {
+  return Date.parse(record?.updated_date || record?.created_date || "") || 0;
+}
+
+export function latestRecordsForDate(records = [], date, calendar = {}) {
+  const activeIndex = dateIndex(date, calendar);
+  const latestBySeries = new Map();
+
+  records.forEach((record) => {
+    if (!hasTimelineDate(record)) return;
+    const recordIndex = dateIndex(recordTimelineDate(record), calendar);
+    if (recordIndex > activeIndex) return;
+
+    const seriesId = timelineSeriesId(record);
+    const current = latestBySeries.get(seriesId);
+    if (!current) {
+      latestBySeries.set(seriesId, { record, recordIndex });
+      return;
+    }
+
+    const isNewerDate = recordIndex > current.recordIndex;
+    const isNewerSameDate = recordIndex === current.recordIndex && recordUpdatedTime(record) > recordUpdatedTime(current.record);
+    if (isNewerDate || isNewerSameDate) {
+      latestBySeries.set(seriesId, { record, recordIndex });
+    }
+  });
+
+  return [...latestBySeries.values()].map((item) => item.record);
 }
 
 export function stripRecordIdentity(record) {
