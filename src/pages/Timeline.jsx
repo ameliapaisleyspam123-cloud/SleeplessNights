@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { canViewVisibleItem } from "@/lib/visibility";
 import { isDmUser } from "@/lib/visibility";
-import { campaignDate, dateKey, formatTimelineDate, hasTimelineDate, isRecordOnDate, makeDatedRecord, readLocalTimelineViewDate, timelineSeriesId, writeLocalTimelineViewDate } from "@/lib/timeline";
+import { campaignDate, dateKey, formatTimelineDate, hasTimelineDate, latestRecordsForDate, makeDatedRecord, readLocalTimelineViewDate, timelineSeriesId, writeLocalTimelineViewDate } from "@/lib/timeline";
 import { BookOpen, CalendarDays, ChevronDown, ChevronUp, Eye, EyeOff, GitBranch, Link2, ListTree, Lock, Plus, Save, Sparkles, Trash2, Users } from "lucide-react";
 
 const DEFAULT_CALENDAR = {
@@ -259,11 +259,11 @@ export default function Timeline() {
   const characterById = useMemo(() => new Map(characters.map((character) => [character.id, character])), [characters]);
   const loreById = useMemo(() => new Map(lore.map((item) => [item.id, item])), [lore]);
   const datedCharacters = useMemo(
-    () => visibleCharacters.filter((item) => isRecordOnDate(item, activeDate, calendar)),
+    () => latestRecordsForDate(visibleCharacters, activeDate, calendar),
     [visibleCharacters, activeDate, calendar],
   );
   const datedLore = useMemo(
-    () => visibleLore.filter((item) => isRecordOnDate(item, activeDate, calendar)),
+    () => latestRecordsForDate(visibleLore, activeDate, calendar),
     [visibleLore, activeDate, calendar],
   );
   const carryableCharacters = useMemo(
@@ -495,7 +495,7 @@ export default function Timeline() {
             <div className="text-[10px] uppercase tracking-[0.24em] text-accent font-medium">{canManage ? "DM Viewing" : "Viewing"}</div>
             <div className="font-display text-2xl mt-1">{formatTimelineDate(activeDate, calendar)}</div>
             <div className="text-sm text-muted-foreground mt-1">
-              {datedCharacters.length} character{datedCharacters.length === 1 ? "" : "s"} and {datedLore.length} lore entr{datedLore.length === 1 ? "y" : "ies"} saved here.
+              {datedCharacters.length} character{datedCharacters.length === 1 ? "" : "s"} and {datedLore.length} lore entr{datedLore.length === 1 ? "y" : "ies"} available on this date.
             </div>
             {canManage && (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">

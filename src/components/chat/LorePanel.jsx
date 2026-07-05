@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { useCampaign } from "@/hooks/useCampaign";
 import PlayerNotesPanel from "@/components/chat/PlayerNotesPanel";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
-import { campaignDate, hasTimelineDate, isRecordOnDate, latestRecordsForDate, readLocalTimelineViewDate } from "@/lib/timeline";
+import { campaignDate, hasTimelineDate, latestRecordsForDate, readLocalTimelineViewDate } from "@/lib/timeline";
 import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
 
 const STAT_MOD = (v) => Math.floor((v - 10) / 2);
@@ -593,14 +593,14 @@ export default function LorePanel({ onClose }) {
   const cats = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
   const isAdmin = isDmUser(user);
   const activeDate = isAdmin ? readLocalTimelineViewDate(panelCampaign, panelCampaign?.calendar_system, user) : campaignDate(panelCampaign, panelCampaign?.calendar_system);
-  const isVisibleOnActiveDate = (item) => {
-    if (!panelCampaign) return false;
-    return hasTimelineDate(item) ? isRecordOnDate(item, activeDate, panelCampaign?.calendar_system) : !panelCampaign?.timeline_started;
-  };
   const visibleEntriesByPermission = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin));
   const visibleDateEntries = panelCampaign?.timeline_started
     ? latestRecordsForDate(visibleEntriesByPermission, activeDate, panelCampaign?.calendar_system)
     : visibleEntriesByPermission.filter((entry) => !hasTimelineDate(entry));
+  const visibleCharactersByPermission = characters.filter((character) => canViewVisibleItem(character, user, isAdmin));
+  const visibleDateCharacters = panelCampaign?.timeline_started
+    ? latestRecordsForDate(visibleCharactersByPermission, activeDate, panelCampaign?.calendar_system)
+    : visibleCharactersByPermission.filter((character) => !hasTimelineDate(character));
 
   const filtered = visibleDateEntries.filter((e) => {
     const matchCat = cat === "all" || e.category === cat;
@@ -612,9 +612,7 @@ export default function LorePanel({ onClose }) {
   const tags = [...new Set(visibleDateEntries.flatMap((entry) => entry.tags || []).map((entryTag) => String(entryTag).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
   const filteredChars = sortClaimedCharactersFirst(
-    characters.filter((c) => {
-      if (!canViewVisibleItem(c, user, isAdmin)) return false;
-      if (!isVisibleOnActiveDate(c)) return false;
+    visibleDateCharacters.filter((c) => {
       const q = query.toLowerCase();
       return !q || c.name?.toLowerCase().includes(q) || c.race?.toLowerCase().includes(q) || c.class?.toLowerCase().includes(q);
     }),
