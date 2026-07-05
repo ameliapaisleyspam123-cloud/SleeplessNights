@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canViewVisibleItem, isDmUser, isPlayerViewMode } from "@/lib/visibility";
-import { dateKey, hasTimelineDate, timelineLibraryRecords, timelineViewDate } from "@/lib/timeline";
+import { hasTimelineDate, timelineLibraryRecords, timelineViewDate } from "@/lib/timeline";
 import { Folder, Grid2X2, List, MoveRight, Plus, Search, Tag, Trash2 } from "lucide-react";
 
 const CATEGORIES = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
@@ -96,7 +96,7 @@ export default function Lore() {
     setEmptyFolders(readEmptyFolders(user.campaign_id));
     const [currentCampaign, entries] = await Promise.all([
       user.campaign_id ? appClient.entities.Campaign.get(user.campaign_id) : null,
-      appClient.entities.LoreEntry.filter({ campaign_id: user.campaign_id }, "-updated_date", 500),
+      appClient.entities.LoreEntry.filter({ campaign_id: user.campaign_id }, "title", 5000),
     ]);
     setCampaign(currentCampaign);
     setItems(entries);
@@ -114,13 +114,9 @@ export default function Lore() {
 
   const activeDate = timelineViewDate(campaign, campaign?.calendar_system, currentUser, isAdmin, isPlayerViewMode(currentUser));
   const activeCampaign = campaign ? { ...campaign, timeline_current_date: activeDate } : campaign;
-  const playerVisibleDateKeys = new Set([
-    dateKey(activeDate, campaign?.calendar_system),
-    ...(Array.isArray(campaign?.timeline_player_date_keys) ? campaign.timeline_player_date_keys : []),
-  ]);
   const visibleByPermission = items.filter((item) => canViewVisibleItem(item, currentUser, isAdmin));
   const visibleItems = campaign?.timeline_started
-    ? timelineLibraryRecords(visibleByPermission, activeDate, campaign?.calendar_system, isAdmin ? null : playerVisibleDateKeys)
+    ? timelineLibraryRecords(visibleByPermission, activeDate, campaign?.calendar_system)
     : visibleByPermission.filter((item) => !hasTimelineDate(item));
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
   const folderOptions = visibleFolderPaths(folders, folder);
