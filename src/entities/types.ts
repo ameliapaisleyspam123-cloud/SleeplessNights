@@ -110,6 +110,8 @@ export interface CharacterSheet extends AppRecord {
   spell_slots?: string;
   ki_points_current?: number;
   ki_points_max?: number;
+  channel_divinity_current?: number;
+  channel_divinity_max?: number;
   sorcery_points_current?: number;
   sorcery_points_max?: number;
   spells_known?: string;

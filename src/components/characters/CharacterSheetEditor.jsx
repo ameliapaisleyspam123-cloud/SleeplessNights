@@ -109,6 +109,8 @@ const defaultForm = () => ({
   spell_slots: "",
   ki_points_current: 0,
   ki_points_max: 0,
+  channel_divinity_current: 0,
+  channel_divinity_max: 0,
   sorcery_points_current: 0,
   sorcery_points_max: 0,
   spells_known: "",
@@ -271,9 +273,17 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
     const file = event.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const { file_url } = await appClient.integrations.Core.UploadFile({ file });
+    const { file_url, path } = await appClient.integrations.Core.ReplaceFile({ file, previousPath: form.image_path, previousUrl: form.image_url });
     set("image_url", file_url);
+    set("image_path", path || "");
     setUploading(false);
+  };
+
+  const removePortrait = async () => {
+    if (form.image_path || form.image_url) {
+      await appClient.integrations.Core.DeleteFile({ path: form.image_path, url: form.image_url }).catch(() => false);
+    }
+    setForm((current) => ({ ...current, image_url: "", image_path: "" }));
   };
 
   const save = async () => {
@@ -312,7 +322,7 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                 {form.image_url ? (
                   <div className="relative w-24 h-24 rounded-sm overflow-hidden border border-border">
                     <img src={form.image_url} alt="" className="w-full h-full object-cover" />
-                    <button onClick={() => set("image_url", "")} className="absolute top-1 right-1 text-[10px] bg-destructive text-white px-1 rounded">x</button>
+                    <button onClick={removePortrait} className="absolute top-1 right-1 text-[10px] bg-destructive text-white px-1 rounded">x</button>
                   </div>
                 ) : (
                   <label className="flex flex-col items-center justify-center w-24 h-24 rounded-sm border border-dashed border-border cursor-pointer hover:border-accent transition-all text-xs text-muted-foreground">
@@ -502,6 +512,8 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
               <div className="grid grid-cols-2 gap-2">
                 {[
                   ["Ki Points", "ki_points_current", "ki_points_max"],
+                  ["Channel Divinity", "channel_divinity_current", "channel_divinity_max"],
+                  ["Sorcery Points", "sorcery_points_current", "sorcery_points_max"],
                 ].map(([label, currentKey, maxKey]) => (
                   <div key={label} className="border border-border rounded-sm bg-secondary/40 p-2">
                     <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1 text-center">{label}</div>
@@ -512,14 +524,6 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
                     </div>
                   </div>
                 ))}
-                <div className="border border-border rounded-sm bg-secondary/40 p-2 text-center">
-                  <div className="text-[8px] uppercase text-muted-foreground mb-1">Sorcery</div>
-                  <div className="flex items-center gap-1 justify-center">
-                    <Input type="number" min={0} className="text-center px-0 h-6 text-xs w-8" placeholder="Current" value={form.sorcery_points_current} onChange={(event) => setNum("sorcery_points_current", event.target.value)} />
-                    <span className="text-muted-foreground text-xs">/</span>
-                    <Input type="number" min={0} className="text-center px-0 h-6 text-xs w-8" placeholder="Max" value={form.sorcery_points_max} onChange={(event) => setNum("sorcery_points_max", event.target.value)} />
-                  </div>
-                </div>
               </div>
             </div>
             <SpellManager value={form.spells_known} onChange={(value) => set("spells_known", value)} />

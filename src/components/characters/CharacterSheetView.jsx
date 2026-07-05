@@ -388,6 +388,8 @@ function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
   const [resources, setResources] = useState({
     ki_points_current: sheet.ki_points_current || 0,
     ki_points_max: sheet.ki_points_max || 0,
+    channel_divinity_current: sheet.channel_divinity_current || 0,
+    channel_divinity_max: sheet.channel_divinity_max || 0,
     sorcery_points_current: sheet.sorcery_points_current || 0,
     sorcery_points_max: sheet.sorcery_points_max || 0,
   });
@@ -401,10 +403,19 @@ function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
     setResources({
       ki_points_current: sheet.ki_points_current || 0,
       ki_points_max: sheet.ki_points_max || 0,
+      channel_divinity_current: sheet.channel_divinity_current || 0,
+      channel_divinity_max: sheet.channel_divinity_max || 0,
       sorcery_points_current: sheet.sorcery_points_current || 0,
       sorcery_points_max: sheet.sorcery_points_max || 0,
     });
-  }, [sheet.ki_points_current, sheet.ki_points_max, sheet.sorcery_points_current, sheet.sorcery_points_max]);
+  }, [
+    sheet.ki_points_current,
+    sheet.ki_points_max,
+    sheet.channel_divinity_current,
+    sheet.channel_divinity_max,
+    sheet.sorcery_points_current,
+    sheet.sorcery_points_max,
+  ]);
 
   const toggleSlot = (level, index) => {
     const slot = slots[level] || { total: 0, used: 0 };
@@ -419,6 +430,7 @@ function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
 
   const classResources = [
     ["Ki Points", "ki_points_current", "ki_points_max"],
+    ["Channel Divinity", "channel_divinity_current", "channel_divinity_max"],
     ["Sorcery Points", "sorcery_points_current", "sorcery_points_max"],
   ]
     .map(([label, currentKey, maxKey]) => {

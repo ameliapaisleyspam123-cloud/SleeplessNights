@@ -235,6 +235,14 @@
       "type": "number",
       "default": 0
     },
+    "channel_divinity_current": {
+      "type": "number",
+      "default": 0
+    },
+    "channel_divinity_max": {
+      "type": "number",
+      "default": 0
+    },
     "sorcery_points_current": {
       "type": "number",
       "default": 0

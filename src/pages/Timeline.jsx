@@ -165,17 +165,23 @@ function recordsToCarry(records, activeDate, calendar) {
   return [...candidatesBySeries.values()].sort((a, b) => (a.name || a.title || "").localeCompare(b.name || b.title || ""));
 }
 
-async function saveRecordForDate(api, record, activeDate, calendar) {
+async function saveRecordForDate(api, records, record, activeDate, calendar) {
+  const activeKey = dateKey(activeDate, calendar);
+  const seriesId = timelineSeriesId(record);
+  const existingForDate = records.find((item) => item.id !== record.id && item.timeline_date_key === activeKey && timelineSeriesId(item) === seriesId);
+  if (existingForDate) {
+    return api.update(existingForDate.id, makeDatedRecord(record, activeDate, calendar));
+  }
   if (!hasTimelineDate(record)) {
     return api.update(record.id, {
       timeline_date: activeDate,
-      timeline_date_key: dateKey(activeDate, calendar),
-      timeline_series_id: timelineSeriesId(record),
+      timeline_date_key: activeKey,
+      timeline_series_id: seriesId,
     });
   }
   const created = await api.create(makeDatedRecord(record, activeDate, calendar));
   if (!created.timeline_series_id) {
-    await api.update(created.id, { timeline_series_id: timelineSeriesId(record) });
+    await api.update(created.id, { timeline_series_id: seriesId });
   }
   return created;
 }
@@ -401,8 +407,8 @@ export default function Timeline() {
     if (selectedCharacters.length + selectedLore.length === 0) return;
     setSavingCarry(true);
     await Promise.all([
-      ...selectedCharacters.map((item) => saveRecordForDate(appClient.entities.CharacterSheet, item, activeDate, calendar)),
-      ...selectedLore.map((item) => saveRecordForDate(appClient.entities.LoreEntry, item, activeDate, calendar)),
+      ...selectedCharacters.map((item) => saveRecordForDate(appClient.entities.CharacterSheet, characters, item, activeDate, calendar)),
+      ...selectedLore.map((item) => saveRecordForDate(appClient.entities.LoreEntry, lore, item, activeDate, calendar)),
     ]);
     setSavingCarry(false);
     await load();
