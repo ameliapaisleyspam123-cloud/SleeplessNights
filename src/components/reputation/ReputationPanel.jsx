@@ -39,15 +39,15 @@ function ReputationGrid({ grid, editing, onGridChange }) {
   const markerBottom = `${((grid.y + 3) / 6) * 100}%`;
   const gridValues = REPUTATION_VALUES;
   const axisLabels = [
-    { key: "yMaxLabel", className: "top-2 left-1/2 -translate-x-1/2 text-center" },
-    { key: "xMinLabel", className: "left-2 top-1/2 -translate-y-1/2 max-w-[40%]" },
-    { key: "xMaxLabel", className: "right-2 top-1/2 -translate-y-1/2 max-w-[40%] text-right" },
-    { key: "yMinLabel", className: "bottom-2 left-1/2 -translate-x-1/2 text-center" },
+    { key: "yMaxLabel", className: "top-3 left-1/2 -translate-x-1/2 text-center" },
+    { key: "xMinLabel", className: "left-3 top-1/2 -translate-y-1/2 max-w-[34%]" },
+    { key: "xMaxLabel", className: "right-3 top-1/2 -translate-y-1/2 max-w-[34%] text-right" },
+    { key: "yMinLabel", className: "bottom-3 left-1/2 -translate-x-1/2 text-center" },
   ];
 
   return (
-    <section className="border border-border bg-card/70 rounded-sm p-4 md:p-5 min-w-0 h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+    <section className="border border-border bg-card/70 rounded-sm p-3 md:p-4 min-w-0 h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
         <div>
           <h2 className="font-display text-2xl text-foreground">Party Reputation</h2>
           <p className="text-sm text-muted-foreground mt-1">Current standing: x {grid.x > 0 ? `+${grid.x}` : grid.x}, y {grid.y > 0 ? `+${grid.y}` : grid.y}</p>
@@ -60,8 +60,8 @@ function ReputationGrid({ grid, editing, onGridChange }) {
         )}
       </div>
 
-      <div className="relative mx-auto aspect-square w-full max-w-[30rem] rounded-sm border border-accent/40 bg-background/60 overflow-hidden">
-        <div className="absolute inset-8">
+      <div className="relative mx-auto aspect-square w-full max-w-[24rem] rounded-sm border border-accent/40 bg-background/60 overflow-hidden">
+        <div className="absolute inset-x-11 top-12 bottom-10">
           <div className="absolute inset-0 grid grid-cols-6 grid-rows-6 opacity-45">
             {Array.from({ length: 36 }).map((_, index) => (
               <div key={index} className="border-r border-b border-accent/20" />
@@ -76,13 +76,13 @@ function ReputationGrid({ grid, editing, onGridChange }) {
             return (
               <React.Fragment key={value}>
                 <span
-                  className="absolute -bottom-5 -translate-x-1/2 text-[10px] tabular-nums text-muted-foreground"
+                  className="absolute bottom-1 -translate-x-1/2 rounded-sm bg-background/80 px-1 text-[10px] tabular-nums text-muted-foreground"
                   style={{ left: position }}
                 >
                   {label}
                 </span>
                 <span
-                  className="absolute -left-6 translate-y-1/2 text-[10px] tabular-nums text-muted-foreground"
+                  className="absolute left-1 translate-y-1/2 rounded-sm bg-background/80 px-1 text-[10px] tabular-nums text-muted-foreground"
                   style={{ bottom: position }}
                 >
                   {label}
@@ -97,7 +97,7 @@ function ReputationGrid({ grid, editing, onGridChange }) {
           />
         </div>
         {axisLabels.map((item) => (
-          <div key={item.key} className={`absolute text-[10px] sm:text-xs uppercase tracking-[0.18em] text-accent font-semibold leading-tight ${item.className}`}>
+          <div key={item.key} className={`absolute z-10 rounded-sm border border-border/70 bg-card/95 px-2 py-0.5 text-xs font-medium leading-tight text-foreground shadow-sm ${item.className}`}>
             {grid[item.key]}
           </div>
         ))}
@@ -126,8 +126,8 @@ function OpinionTrack({ opinion, editing, onChange, onRemove }) {
   const percent = ((opinion.value + 3) / 6) * 100;
 
   return (
-    <div className="border border-border bg-card/70 rounded-sm p-4 min-h-[8.5rem] lg:min-h-0 lg:h-full lg:flex lg:flex-col lg:justify-center">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+    <div className="border border-border bg-card/70 rounded-sm p-3 min-h-[7rem] lg:min-h-0 lg:h-full lg:flex lg:flex-col lg:justify-center">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
         <div className="min-w-0 flex-1">
           {editing ? (
             <Input value={opinion.name} onChange={(event) => onChange({ name: event.target.value })} aria-label="Opinion name" />
@@ -146,7 +146,7 @@ function OpinionTrack({ opinion, editing, onChange, onRemove }) {
         )}
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         <div className="relative h-2 rounded-sm bg-background border border-border overflow-visible">
           <div className="absolute top-0 bottom-0 left-1/2 w-px bg-muted-foreground/40" />
           <div className="absolute -top-1.5 w-5 h-5 -ml-2.5 rounded-full border-2 border-accent bg-primary shadow-[0_0_14px_hsl(var(--accent)/0.55)]" style={{ left: `${percent}%` }} />
@@ -215,8 +215,8 @@ export default function ReputationPanel({ user, campaign }) {
   };
 
   return (
-    <section className="mb-8 md:mb-10">
-      <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+    <section className="mb-7 md:mb-8">
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
         <div>
           <div className="text-[10px] uppercase tracking-[0.28em] text-accent font-medium mb-2">Party Standing</div>
           <h2 className="font-display text-3xl text-foreground leading-tight">Reputation</h2>
@@ -239,11 +239,11 @@ export default function ReputationPanel({ user, campaign }) {
         )}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(22rem,0.95fr)_minmax(20rem,1.05fr)] lg:items-stretch">
+      <div className="grid gap-4 lg:grid-cols-[minmax(20rem,0.95fr)_minmax(20rem,1.05fr)] lg:items-stretch">
         <ReputationGrid grid={draft.grid} editing={editing} onGridChange={updateGrid} />
 
         <section className="min-w-0 h-full flex flex-col">
-          <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center justify-between gap-4 mb-3">
             <div>
               <h3 className="font-display text-2xl text-foreground">Opinions</h3>
               <p className="text-sm text-muted-foreground mt-1">Faction feelings on a -3 to +3 scale.</p>
@@ -255,7 +255,7 @@ export default function ReputationPanel({ user, campaign }) {
               </Button>
             )}
           </div>
-          <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-rows-4 lg:gap-3 lg:flex-1">
+          <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-rows-4 lg:gap-2 lg:flex-1">
             {draft.opinions.map((opinion) => (
               <OpinionTrack
                 key={opinion.id}
