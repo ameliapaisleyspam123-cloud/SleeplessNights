@@ -26,7 +26,7 @@ import { useCampaign } from "@/hooks/useCampaign";
 import PlayerNotesPanel from "@/components/chat/PlayerNotesPanel";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
 import { hasTimelineDate, latestRecordsForDate, timelineViewDate } from "@/lib/timeline";
-import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
+import { canViewVisibleItem, isDmUser, isPlayerViewMode } from "@/lib/visibility";
 
 const STAT_MOD = (v) => Math.floor((v - 10) / 2);
 const fmtMod = (m) => (m >= 0 ? `+${m}` : `${m}`);
@@ -592,7 +592,7 @@ export default function LorePanel({ onClose }) {
 
   const cats = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
   const isAdmin = isDmUser(user);
-  const activeDate = timelineViewDate(panelCampaign, panelCampaign?.calendar_system, user, isAdmin);
+  const activeDate = timelineViewDate(panelCampaign, panelCampaign?.calendar_system, user, isAdmin, isPlayerViewMode(user));
   const visibleEntriesByPermission = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin));
   const visibleDateEntries = panelCampaign?.timeline_started
     ? latestRecordsForDate(visibleEntriesByPermission, activeDate, panelCampaign?.calendar_system)

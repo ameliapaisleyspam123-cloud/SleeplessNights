@@ -51,10 +51,10 @@ export function writeLocalTimelineViewDate(campaign, date, calendar = {}, user =
   return normalized;
 }
 
-export function timelineViewDate(campaign, calendar = {}, user = null, canManage = false) {
+export function timelineViewDate(campaign, calendar = {}, user = null, canManage = false, allowStoredView = false) {
   const campaignCurrentDate = campaignDate(campaign, calendar);
   const storedDate = readLocalTimelineViewDate(campaign, calendar, user);
-  if (canManage) return storedDate;
+  if (canManage || allowStoredView) return storedDate;
 
   const storedKey = dateKey(storedDate, calendar);
   const visibleKeys = new Set([

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { canViewVisibleItem } from "@/lib/visibility";
-import { isDmUser } from "@/lib/visibility";
+import { isDmUser, isPlayerViewMode } from "@/lib/visibility";
 import { campaignDate, dateKey, formatTimelineDate, hasTimelineDate, latestRecordsForDate, makeDatedRecord, readLocalTimelineViewDate, timelineSeriesId, writeLocalTimelineViewDate } from "@/lib/timeline";
 import { BookOpen, CalendarDays, ChevronDown, ChevronUp, Eye, EyeOff, GitBranch, Link2, ListTree, Lock, Plus, Save, Sparkles, Trash2, Users } from "lucide-react";
 
@@ -238,7 +238,7 @@ export default function Timeline() {
       const storedDate = readLocalTimelineViewDate(currentCampaign, nextCalendar, currentUser);
       const storedKey = dateKey(storedDate, nextCalendar);
       const unlockedKeys = new Set([dateKey(nextDate, nextCalendar), ...(currentCampaign?.timeline_player_date_keys || [])]);
-      const nextViewDate = isDmUser(currentUser) || unlockedKeys.has(storedKey) ? storedDate : nextDate;
+      const nextViewDate = isDmUser(currentUser) || isPlayerViewMode(currentUser) || unlockedKeys.has(storedKey) ? storedDate : nextDate;
       setDateDraft(nextViewDate);
       setDmViewDate(nextViewDate);
     }
