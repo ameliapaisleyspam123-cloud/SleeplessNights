@@ -1,16 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { appClient } from "@/api/appClient";
-import { ShieldCheck, Users, User } from "lucide-react";
+import { appClient, isGlobalAdminEmail } from "@/api/appClient";
+import { Users, User } from "lucide-react";
 
 function isActiveUser(user) {
   const seenAt = Date.parse(user?.last_seen_at || "");
   return Boolean(seenAt && Date.now() - seenAt < 2 * 60 * 1000);
 }
 
+function isHiddenAdmin(user) {
+  return isGlobalAdminEmail(user?.email);
+}
+
+function isPlayerUser(user) {
+  return !isHiddenAdmin(user) && user?.campaign_role !== "dm" && user?.campaign_role !== "DM";
+}
+
 export default function ChannelList({ users, currentUser, activeChannel, onSelect, isAdmin }) {
   const [unread, setUnread] = useState({});
 
-  const others = users.filter((u) => u.email !== currentUser?.email);
+  const whisperUsers = users.filter((u) => u.email !== currentUser?.email && !isHiddenAdmin(u));
 
   function channelKey(ch, me) {
     if (!me) return null;
@@ -84,19 +92,18 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
           Whispers
         </div>
 
-        {others.length === 0 && (
+        {whisperUsers.length === 0 && (
           <div className="shrink-0 px-4 py-2 text-xs text-muted-foreground">
             No other members yet.
           </div>
         )}
 
-        {others.map((u) => {
+        {whisperUsers.map((u) => {
           const ch = { type: "dm", email: u.email, name: u.display_name || u.full_name };
           const key = channelKey(ch, currentUser);
           const active = activeChannel?.type === "dm" && activeChannel.email === u.email;
           const hasUnread = unread[key];
           const userActive = isActiveUser(u);
-          const userIsAdmin = u.role === "admin" || u.campaign_role === "dm";
 
           return (
             <button
@@ -107,7 +114,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
               }`}
             >
               <div className="relative w-8 h-8 rounded-sm flex items-center justify-center bg-accent/20 text-accent-foreground">
-                {userIsAdmin ? <ShieldCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                <User className="w-4 h-4" />
                 <span
                   className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-background ${
                     userActive ? "bg-accent shadow-[0_0_10px_hsl(var(--accent)/0.7)]" : "bg-muted"
@@ -146,7 +153,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
         })}
 
         {isAdmin && (() => {
-          const players = users.filter((u) => u.role !== "admin");
+          const players = users.filter((u) => isPlayerUser(u));
           const pairs = [];
 
           for (let i = 0; i < players.length; i++) {
