@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { X, Dices, ChevronsUp, ChevronsDown } from "lucide-react";
+import { X, Dices, ChevronsUp, ChevronsDown, ExternalLink } from "lucide-react";
 
 const DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -41,7 +41,7 @@ function AnimatedResult({ sides, final, rolling }) {
   );
 }
 
-export default function DiceRoller({ onClose }) {
+export default function DiceRoller({ onClose, onPopout }) {
   const [results, setResults] = useState([]);
   const [rolling, setRolling] = useState(false);
   const [lastRolled, setLastRolled] = useState(null);
@@ -76,7 +76,7 @@ export default function DiceRoller({ onClose }) {
     };
     setRolling(true);
     setLastRolled(sides);
-    setResults((prev) => [newGroup, ...prev].slice(0, 20));
+    setResults((prev) => [newGroup, ...prev].slice(0, 100));
     setTimeout(() => setRolling(false), 700);
   };
 
@@ -90,20 +90,28 @@ export default function DiceRoller({ onClose }) {
   const previousResults = results.slice(1);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <Dices className="w-4 h-4 text-accent" />
           <span className="text-sm font-medium">Dice Roller</span>
         </div>
-        {onClose && (
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onPopout && (
+            <button onClick={onPopout} className="text-muted-foreground hover:text-accent transition-colors" title="Pop out dice roller">
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          )}
+          {onClose && (
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" title="Close dice roller">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="px-3 pt-3 pb-2 shrink-0">
+      <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
+      <div className="px-3 pt-3 pb-2">
         <div className="mb-3 space-y-2 flex flex-col items-center">
           <div className="grid grid-cols-3 gap-1.5 w-full">
             <button
@@ -179,7 +187,7 @@ export default function DiceRoller({ onClose }) {
       </div>
 
       {results.length > 0 && (
-        <div className="px-3 pb-2 shrink-0">
+        <div className="px-3 pb-2">
           <div className="bg-secondary/50 rounded-sm p-3 text-center border border-border/50">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
               {latestGroup.mode === "advantage" ? `Advantage d${latestGroup.sides}` : latestGroup.mode === "disadvantage" ? `Disadvantage d${latestGroup.sides}` : latestGroup.count > 1 ? `${latestGroup.count}d${latestGroup.sides}` : `d${latestGroup.sides}`}
@@ -202,7 +210,7 @@ export default function DiceRoller({ onClose }) {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col min-h-0">
+      <div>
           <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roll History</div>
             <button
@@ -213,7 +221,7 @@ export default function DiceRoller({ onClose }) {
               Clear History
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto thin-scroll px-3 py-2">
+          <div className="px-3 py-2">
             {previousResults.length === 0 ? (
               <div className="h-full min-h-24 flex items-center justify-center text-center text-xs text-muted-foreground">
                 Previous rolls will appear here.
@@ -231,6 +239,7 @@ export default function DiceRoller({ onClose }) {
               </div>
             )}
           </div>
+      </div>
       </div>
     </div>
   );

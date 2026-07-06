@@ -99,7 +99,7 @@ export default function Lore() {
       appClient.entities.LoreEntry.filter({ campaign_id: user.campaign_id }, "title", 5000),
     ]);
     setCampaign(currentCampaign);
-    setItems(entries);
+    setItems(entries.filter((entry) => entry.visibility !== "archived"));
   };
 
   useEffect(() => {
@@ -134,6 +134,7 @@ export default function Lore() {
   const deleteEntry = async (entry) => {
     if (!entry?.id) return;
     if (!window.confirm(`Move "${entry.title}" to the DM Vault archive?`)) return;
+    setItems((current) => current.filter((item) => item.id !== entry.id));
     await appClient.entities.LoreEntry.update(entry.id, { visibility: "archived" });
     if (viewing?.id === entry.id) setViewing(null);
     if (editing?.id === entry.id) setEditing(null);

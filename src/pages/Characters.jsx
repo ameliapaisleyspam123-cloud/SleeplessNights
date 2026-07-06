@@ -107,7 +107,7 @@ export default function Characters() {
     ]);
     setUser(currentUser);
     setEmptyFolders(readEmptyFolders(currentUser.campaign_id));
-    setItems(currentSheets);
+    setItems(currentSheets.filter((sheet) => sheet.visibility !== "archived"));
     setCampaign(currentCampaign);
   };
 
@@ -210,6 +210,7 @@ export default function Characters() {
     if (!sheet?.id) return;
     const confirmed = window.confirm(`Move ${sheet.name || "this character"} to the DM Vault archive?`);
     if (!confirmed) return;
+    setItems((current) => current.filter((item) => item.id !== sheet.id));
     await appClient.entities.CharacterSheet.update(sheet.id, { visibility: "archived" });
     setViewing(null);
     setEditing(null);

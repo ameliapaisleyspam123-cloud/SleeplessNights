@@ -243,6 +243,10 @@ export default function DmVault() {
   const deleteLore = async (entry) => {
     if (!entry?.id) return;
     if (!window.confirm(`Permanently delete "${entry.title}" from the vault? This cannot be undone.`)) return;
+    await Promise.all([
+      appClient.integrations.Core.DeleteFile({ path: entry.image_path, url: entry.image_url }).catch(() => false),
+      appClient.integrations.Core.DeleteFile({ path: entry.pdf_path, url: entry.pdf_url }).catch(() => false),
+    ]);
     await appClient.entities.LoreEntry.delete(entry.id);
     setViewingLore(null);
     setEditingLore(null);
