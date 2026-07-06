@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 
 const SPELL_LEVELS = ["Cantrip", "1", "2", "3", "4", "5", "6", "7", "8", "9", "Sorcery Points"];
 const SPELL_FILTERS = ["All", ...SPELL_LEVELS];
-const emptySpell = (level = "Cantrip") => ({ level, name: "", castingTime: "", rangeArea: "", hit: "", damage: "", components: "", duration: "", description: "" });
+const emptySpell = (level = "Cantrip") => ({ level, name: "", castingTime: "", rangeArea: "", hit: "", effect: "", components: "", duration: "", description: "" });
 
 function readSpells(value) {
   try {
@@ -18,7 +18,13 @@ function readSpells(value) {
 }
 
 function normalizeSpell(spell) {
-  return { ...spell, level: spell.level || "Cantrip" };
+  return { ...spell, level: spell.level || "Cantrip", effect: spell.effect ?? spell.damage ?? "" };
+}
+
+function normalizeSpellForSave(spell) {
+  const normalized = normalizeSpell(spell);
+  const { damage, ...nextSpell } = normalized;
+  return nextSpell;
 }
 
 function groupedSpells(spells, levelFilter) {
@@ -41,7 +47,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
   const [expanded, setExpanded] = useState(null);
   const [levelFilter, setLevelFilter] = useState("All");
   const groups = groupedSpells(spells, levelFilter);
-  const save = (next) => onChange?.(JSON.stringify(next));
+  const save = (next) => onChange?.(JSON.stringify(next.map(normalizeSpellForSave)));
 
   const update = (index, field, nextValue) => {
     save(spells.map((spell, idx) => (idx === index ? { ...spell, [field]: nextValue } : spell)));
@@ -89,7 +95,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
                     <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-28">Casting</th>
                     <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-20">Range/Area</th>
                     <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-14">Hit</th>
-                    <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-20">Damage</th>
+                    <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-20">Effect</th>
                     <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-20">Components</th>
                     <th className="text-left px-2 py-1.5 text-[9px] uppercase tracking-widest text-muted-foreground font-normal w-28">Duration</th>
                   </tr>
@@ -111,7 +117,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
                         <td className="px-2 py-1.5 text-muted-foreground">{spell.castingTime || "-"}</td>
                         <td className="px-2 py-1.5 text-muted-foreground">{spell.rangeArea || "-"}</td>
                         <td className="px-2 py-1.5 text-muted-foreground">{spell.hit || "-"}</td>
-                        <td className="px-2 py-1.5 text-muted-foreground">{spell.damage || "-"}</td>
+                        <td className="px-2 py-1.5 text-muted-foreground">{spell.effect || "-"}</td>
                         <td className="px-2 py-1.5 text-muted-foreground">{spell.components || "-"}</td>
                         <td className="px-2 py-1.5 text-muted-foreground">{spell.duration || "-"}</td>
                       </tr>
@@ -157,7 +163,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
             <div key={group.level} className="border border-border rounded-sm overflow-x-auto divide-y divide-border">
               <div className="min-w-[780px] bg-secondary/40 px-2 py-1.5 text-[9px] uppercase tracking-widest text-accent">{levelLabel(group.level)}</div>
               <div className="grid min-w-[780px] grid-cols-[96px_minmax(180px,1fr)_96px_84px_56px_72px_72px_96px_64px] gap-1 px-2 py-1 bg-secondary/20">
-                {["Level", "Spell", "Casting", "Range/Area", "Hit", "Damage", "Components", "Duration", ""].map((heading) => (
+                {["Level", "Spell", "Casting", "Range/Area", "Hit", "Effect", "Components", "Duration", ""].map((heading) => (
                   <div key={heading} className="text-[9px] uppercase tracking-widest text-muted-foreground text-center first:text-left">
                     {heading}
                   </div>
@@ -181,7 +187,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
                     <Input value={spell.castingTime} onChange={(event) => update(originalIndex, "castingTime", event.target.value)} placeholder="1 action" className="h-7 text-xs px-2" />
                     <Input value={spell.rangeArea} onChange={(event) => update(originalIndex, "rangeArea", event.target.value)} placeholder="150 ft" className="h-7 text-xs px-2" />
                     <Input value={spell.hit || ""} onChange={(event) => update(originalIndex, "hit", event.target.value)} placeholder="+7" className="h-7 text-xs px-2" />
-                    <Input value={spell.damage || ""} onChange={(event) => update(originalIndex, "damage", event.target.value)} placeholder="2d8" className="h-7 text-xs px-2" />
+                    <Input value={spell.effect || ""} onChange={(event) => update(originalIndex, "effect", event.target.value)} placeholder="Save, damage, or effect" className="h-7 text-xs px-2" />
                     <Input value={spell.components} onChange={(event) => update(originalIndex, "components", event.target.value)} placeholder="V,S,M" className="h-7 text-xs px-2" />
                     <Input value={spell.duration} onChange={(event) => update(originalIndex, "duration", event.target.value)} placeholder="Instant" className="h-7 text-xs px-2" />
                     <div className="flex gap-0.5 justify-end">
@@ -195,7 +201,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
                   </div>
                   {expanded === originalIndex && (
                     <div className="px-2 pb-2">
-                      <Input value={spell.description || ""} onChange={(event) => update(originalIndex, "description", event.target.value)} placeholder="Description, damage, save, higher levels..." className="h-7 text-xs" />
+                      <Input value={spell.description || ""} onChange={(event) => update(originalIndex, "description", event.target.value)} placeholder="Description, effect, save, higher levels..." className="h-7 text-xs" />
                     </div>
                   )}
                 </div>

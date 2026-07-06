@@ -76,7 +76,7 @@ const HP_SAVE_DELAY_MS = 500;
 function readCharacterSpells(value) {
   try {
     const parsed = JSON.parse(value || "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map((spell) => ({ ...spell, effect: spell.effect ?? spell.damage ?? "" })) : [];
   } catch {
     const legacy = String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     return legacy ? [{ level: "Cantrip", name: legacy }] : [];
@@ -485,9 +485,9 @@ function SpellList({ spells }) {
               <div className="font-medium text-foreground">
                 <span className="text-muted-foreground">{spell.level || "Cantrip"}</span> - {spell.name || "-"}
               </div>
-              {(spell.castingTime || spell.rangeArea || spell.hit || spell.damage || spell.components || spell.duration) && (
+              {(spell.castingTime || spell.rangeArea || spell.hit || spell.effect || spell.components || spell.duration) && (
                 <div className="text-muted-foreground">
-                  {[spell.castingTime, spell.rangeArea, spell.hit && `Hit ${spell.hit}`, spell.damage && `Damage ${spell.damage}`, spell.components, spell.duration].filter(Boolean).join(" | ")}
+                  {[spell.castingTime, spell.rangeArea, spell.hit && `Hit ${spell.hit}`, spell.effect && `Effect ${spell.effect}`, spell.components, spell.duration].filter(Boolean).join(" | ")}
                 </div>
               )}
             </div>
