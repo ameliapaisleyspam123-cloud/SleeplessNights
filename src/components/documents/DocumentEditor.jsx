@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload, Loader2, FileText } from "lucide-react";
 
 export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVisibility = "public", defaultFolder = "" }) {
-  const [form, setForm] = useState({ title: "", description: "", file_url: "", folder: "", visibility: "public", allowed_emails: [] });
+  const [form, setForm] = useState({ title: "", description: "", file_url: "", file_path: "", folder: "", visibility: "public", allowed_emails: [] });
   const [users, setUsers] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -17,7 +17,7 @@ export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVis
 
   useEffect(() => {
     if (open) {
-      setForm({ title: "", description: "", file_url: "", folder: defaultFolder, visibility: defaultVisibility, allowed_emails: [] });
+      setForm({ title: "", description: "", file_url: "", file_path: "", folder: defaultFolder, visibility: defaultVisibility, allowed_emails: [] });
       setFileName("");
       appClient.entities.User.list("-created_date", 200).then(setUsers).catch(() => {});
     }
@@ -28,9 +28,16 @@ export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVis
     if (!file) return;
     setFileName(file.name);
     setUploading(true);
-    const { file_url } = await appClient.integrations.Core.UploadFile({ file });
-    setForm((f) => ({ ...f, file_url, title: f.title || file.name.replace(/\.pdf$/i, "") }));
-    setUploading(false);
+    try {
+      const { file_url, path } = await appClient.integrations.Core.UploadFile({ file });
+      setForm((f) => ({ ...f, file_url, file_path: path || "", title: f.title || file.name.replace(/\.pdf$/i, "") }));
+    } catch (error) {
+      alert(error?.message || "Upload failed.");
+      setFileName("");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const toggleEmail = (email) => {
@@ -40,6 +47,13 @@ export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVis
         ? f.allowed_emails.filter((e) => e !== email)
         : [...f.allowed_emails, email],
     }));
+  };
+
+  const closeEditor = async (nextOpen) => {
+    if (!nextOpen && form.file_url) {
+      await appClient.integrations.Core.DeleteFile({ path: form.file_path, url: form.file_url }).catch(() => false);
+    }
+    onOpenChange(nextOpen);
   };
 
   const save = async () => {
@@ -53,7 +67,7 @@ export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVis
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={closeEditor}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto thin-scroll">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">New Document</DialogTitle>
@@ -68,7 +82,8 @@ export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVis
                 <span className="text-sm truncate flex-1">{fileName}</span>
                 <button
                   onClick={() => {
-                    setForm((f) => ({ ...f, file_url: "" }));
+                    appClient.integrations.Core.DeleteFile({ path: form.file_path, url: form.file_url }).catch(() => false);
+                    setForm((f) => ({ ...f, file_url: "", file_path: "" }));
                     setFileName("");
                   }}
                   className="text-xs text-muted-foreground hover:text-destructive"
@@ -143,7 +158,7 @@ export default function DocumentEditor({ open, onOpenChange, onSaved, defaultVis
         </div>
 
         <div className="flex justify-end gap-2 pt-4 border-t border-border">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" onClick={() => closeEditor(false)}>
             Cancel
           </Button>
           <Button onClick={save} disabled={saving || !form.title?.trim() || !form.file_url}>

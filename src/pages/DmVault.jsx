@@ -232,6 +232,14 @@ export default function DmVault() {
     await load();
   };
 
+  const deleteDocument = async (doc) => {
+    if (!doc?.id) return;
+    if (!window.confirm(`Permanently delete "${doc.title || "this document"}" from the vault? This cannot be undone.`)) return;
+    await appClient.integrations.Core.DeleteFile({ path: doc.file_path, url: doc.file_url }).catch(() => false);
+    await appClient.entities.Document.delete(doc.id);
+    await load();
+  };
+
   const deleteCombat = async (combat) => {
     if (!combat?.id) return;
     const label = combat.active ? "active encounter" : "saved encounter";
@@ -256,6 +264,7 @@ export default function DmVault() {
   const deleteCharacter = async (entry) => {
     if (!entry?.id) return;
     if (!window.confirm(`Permanently delete ${entry.name || "this character"} from the vault? This cannot be undone.`)) return;
+    await appClient.integrations.Core.DeleteFile({ path: entry.image_path, url: entry.image_url }).catch(() => false);
     await appClient.entities.CharacterSheet.delete(entry.id);
     setViewingCharacter(null);
     setEditingCharacter(null);
@@ -402,6 +411,9 @@ export default function DmVault() {
                           <MoveRight className="w-4 h-4" /> Move
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => archiveDocument(doc)}>Archive</Button>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => deleteDocument(doc)}>
+                          <Trash2 className="w-4 h-4" /> Delete
+                        </Button>
                       </div>
                     </div>
                   ))}

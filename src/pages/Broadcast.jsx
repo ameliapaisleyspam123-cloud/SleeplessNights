@@ -34,7 +34,7 @@ function videoPreview(url = "") {
 }
 
 export default function Broadcast() {
-  const [broadcast, setBroadcast] = useState({ title: "", message: "", image_url: "", video_url: "", active: false });
+  const [broadcast, setBroadcast] = useState({ title: "", message: "", image_url: "", image_path: "", video_url: "", video_path: "", active: false });
   const [users, setUsers] = useState([]);
   const [uploading, setUploading] = useState(false);
 
@@ -76,19 +76,31 @@ export default function Broadcast() {
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await appClient.integrations.Core.UploadFile({ file });
+      const previousPath = file.type.startsWith("video/") ? broadcast.video_path : broadcast.image_path;
+      const previousUrl = file.type.startsWith("video/") ? broadcast.video_url : broadcast.image_url;
+      const { file_url, path } = await appClient.integrations.Core.ReplaceFile({ file, previousPath, previousUrl });
       if (file.type.startsWith("video/")) {
-        setBroadcast((current) => ({ ...current, video_url: file_url, image_url: "" }));
+        await appClient.integrations.Core.DeleteFile({ path: broadcast.image_path, url: broadcast.image_url }).catch(() => false);
+        setBroadcast((current) => ({ ...current, video_url: file_url, video_path: path || "", image_url: "", image_path: "" }));
       } else {
-        setBroadcast((current) => ({ ...current, image_url: file_url, video_url: "" }));
+        await appClient.integrations.Core.DeleteFile({ path: broadcast.video_path, url: broadcast.video_url }).catch(() => false);
+        setBroadcast((current) => ({ ...current, image_url: file_url, image_path: path || "", video_url: "", video_path: "" }));
       }
+    } catch (error) {
+      alert(error?.message || "Upload failed.");
     } finally {
       setUploading(false);
       event.target.value = "";
     }
   };
 
-  const clearMedia = () => setBroadcast((current) => ({ ...current, image_url: "", video_url: "" }));
+  const clearMedia = async () => {
+    await Promise.all([
+      appClient.integrations.Core.DeleteFile({ path: broadcast.image_path, url: broadcast.image_url }).catch(() => false),
+      appClient.integrations.Core.DeleteFile({ path: broadcast.video_path, url: broadcast.video_url }).catch(() => false),
+    ]);
+    setBroadcast((current) => ({ ...current, image_url: "", image_path: "", video_url: "", video_path: "" }));
+  };
   const hasMedia = broadcast.image_url || broadcast.video_url;
   const video = videoPreview(broadcast.video_url || "");
 
