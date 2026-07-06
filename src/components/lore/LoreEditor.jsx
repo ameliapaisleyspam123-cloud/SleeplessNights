@@ -174,36 +174,42 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
     const replacingPdf = file.type === "application/pdf";
     const previousPath = replacingPdf ? form.pdf_path : form.image_path;
     const previousUrl = replacingPdf ? form.pdf_url : form.image_url;
-    const { file_url, path } = await appClient.integrations.Core.ReplaceFile({ file, previousPath, previousUrl });
-    if (file.type === "application/pdf") {
-      if (form.image_path || form.image_url) {
-        await appClient.integrations.Core.DeleteFile({ path: form.image_path, url: form.image_url }).catch(() => false);
+    try {
+      const { file_url, path } = await appClient.integrations.Core.ReplaceFile({ file, previousPath, previousUrl });
+      if (file.type === "application/pdf") {
+        if (form.image_path || form.image_url) {
+          await appClient.integrations.Core.DeleteFile({ path: form.image_path, url: form.image_url }).catch(() => false);
+        }
+        setForm((f) => ({
+          ...f,
+          campaign_id: f.campaign_id || user?.campaign_id || "",
+          pdf_url: file_url,
+          pdf_path: path || "",
+          image_url: "",
+          image_path: "",
+          pdf_rotation: 0,
+        }));
+      } else {
+        if (form.pdf_path || form.pdf_url) {
+          await appClient.integrations.Core.DeleteFile({ path: form.pdf_path, url: form.pdf_url }).catch(() => false);
+        }
+        setForm((f) => ({
+          ...f,
+          campaign_id: f.campaign_id || user?.campaign_id || "",
+          image_url: file_url,
+          image_path: path || "",
+          pdf_url: "",
+          pdf_path: "",
+          pdf_rotation: 0,
+          map_pins: [],
+        }));
       }
-      setForm((f) => ({
-        ...f,
-        campaign_id: f.campaign_id || user?.campaign_id || "",
-        pdf_url: file_url,
-        pdf_path: path || "",
-        image_url: "",
-        image_path: "",
-        pdf_rotation: 0,
-      }));
-    } else {
-      if (form.pdf_path || form.pdf_url) {
-        await appClient.integrations.Core.DeleteFile({ path: form.pdf_path, url: form.pdf_url }).catch(() => false);
-      }
-      setForm((f) => ({
-        ...f,
-        campaign_id: f.campaign_id || user?.campaign_id || "",
-        image_url: file_url,
-        image_path: path || "",
-        pdf_url: "",
-        pdf_path: "",
-        pdf_rotation: 0,
-        map_pins: [],
-      }));
+    } catch (error) {
+      alert(error?.message || "Upload failed.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
     }
-    setUploading(false);
   };
 
   const removeMedia = async (kind) => {

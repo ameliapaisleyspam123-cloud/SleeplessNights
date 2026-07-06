@@ -9,6 +9,9 @@ const SUPABASE_ASSET_BUCKET = "campaign-assets";
 const STORE_CACHE_TTL_MS = 30000;
 const ENTITY_QUERY_CACHE_TTL_MS = 15000;
 const GLOBAL_ADMIN_EMAIL = "ameliapaisleyspam123@gmail.com";
+const MAX_EMBEDDED_FILE_BYTES = 750 * 1024;
+const IMAGE_UPLOAD_MAX_DIMENSION = 1600;
+const IMAGE_UPLOAD_QUALITY = 0.82;
 
 export const ENTITY_NAMES = [
   "Broadcast",
@@ -720,24 +723,81 @@ function fileToDataUrl(file) {
   });
 }
 
+function blobToFile(blob, sourceFile, extension = "webp") {
+  const baseName = String(sourceFile.name || "upload").replace(/\.[^.]+$/, "");
+  return new File([blob], `${baseName}.${extension}`, {
+    type: blob.type || `image/${extension}`,
+    lastModified: sourceFile.lastModified || Date.now(),
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+}
+
+async function compressImageFile(file) {
+  if (!file?.type?.startsWith("image/")) return file;
+  if (file.type === "image/gif" || file.type === "image/svg+xml") return file;
+  if (typeof document === "undefined" || typeof Image === "undefined") return file;
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.decoding = "async";
+    const loaded = new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+    });
+    image.src = objectUrl;
+    await loaded;
+
+    const scale = Math.min(1, IMAGE_UPLOAD_MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
+    if (scale >= 1 && file.size <= MAX_EMBEDDED_FILE_BYTES) return file;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const webpBlob = await canvasToBlob(canvas, "image/webp", IMAGE_UPLOAD_QUALITY);
+    if (!webpBlob) return file;
+    const compressed = blobToFile(webpBlob, file, "webp");
+    return compressed.size < file.size ? compressed : file;
+  } catch {
+    return file;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function embeddedUploadResult(file, storage = "local") {
+  if (file.size > MAX_EMBEDDED_FILE_BYTES) {
+    throw new Error("This file is too large to save in browser storage. Shared storage must be connected before uploading large files.");
+  }
+  return { file_url: await fileToDataUrl(file), storage };
+}
+
 function cleanFileName(name = "upload") {
   return name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "upload";
 }
 
 async function uploadSharedFile(file, options = {}) {
-  if (!supabase) return { file_url: await fileToDataUrl(file), storage: "local" };
+  const uploadFile = await compressImageFile(file);
+  if (!supabase) return embeddedUploadResult(uploadFile, "local");
 
   const campaignSegment = cleanFileName(options.campaign_id || "shared");
-  const path = `${campaignSegment}/${new Date().toISOString().slice(0, 10)}/${id("asset")}-${cleanFileName(file.name || "upload")}`;
-  const { error } = await supabase.storage.from(SUPABASE_ASSET_BUCKET).upload(path, file, {
+  const path = `${campaignSegment}/${new Date().toISOString().slice(0, 10)}/${id("asset")}-${cleanFileName(uploadFile.name || file.name || "upload")}`;
+  const { error } = await supabase.storage.from(SUPABASE_ASSET_BUCKET).upload(path, uploadFile, {
     cacheControl: "31536000",
-    contentType: file.type || "application/octet-stream",
+    contentType: uploadFile.type || file.type || "application/octet-stream",
     upsert: false,
   });
 
   if (error) {
-    console.warn("Supabase Storage upload failed; falling back to embedded file data:", error);
-    return { file_url: await fileToDataUrl(file), storage: "embedded" };
+    console.warn("Supabase Storage upload failed; trying size-limited embedded fallback:", error);
+    return embeddedUploadResult(uploadFile, "embedded");
   }
 
   if (options.previousPath && options.previousPath !== path) {
@@ -931,14 +991,14 @@ export const appClient = {
       if (name === "sendMessages") {
         const user = await appClient.auth.me();
         if (!canAccessMessageChannel(user, payload.channel)) throw new Error("You cannot send messages to this channel");
-        const file_url = payload.file?.data ? `data:${payload.file.type};base64,${payload.file.data}` : "";
         const message = await entities.Message.create({
           campaign_id: user.campaign_id,
           content: payload.content,
           channel: payload.channel,
           recipient_email: payload.recipient_email,
-          file_url,
-          file_type: payload.file?.type?.includes("pdf") ? "pdf" : payload.file ? "image" : "",
+          file_url: payload.file_url || "",
+          file_path: payload.file_path || "",
+          file_type: payload.file_type || "",
         });
         return { data: { message } };
       }

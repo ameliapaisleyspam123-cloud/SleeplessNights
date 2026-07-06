@@ -104,6 +104,14 @@ export default function Documents() {
     await load();
   };
 
+  const deleteDocument = async (doc) => {
+    if (!doc?.id) return;
+    if (!window.confirm(`Permanently delete "${doc.title || "this document"}"? This cannot be undone.`)) return;
+    await appClient.integrations.Core.DeleteFile({ path: doc.file_path, url: doc.file_url }).catch(() => false);
+    await appClient.entities.Document.delete(doc.id);
+    await load();
+  };
+
   const deleteFolder = async (folderName) => {
     if (!folderName || !user?.campaign_id) return;
     const affected = documents.filter((doc) => doc.folder === folderName || doc.folder?.startsWith(`${folderName}/`));
@@ -199,6 +207,9 @@ export default function Documents() {
                   </a>
                   <Button size="sm" variant="ghost" className="mt-3" onClick={() => setMoving(doc)}>
                     <MoveRight className="w-4 h-4" /> Move
+                  </Button>
+                  <Button size="sm" variant="ghost" className="mt-3 text-destructive hover:text-destructive" onClick={() => deleteDocument(doc)}>
+                    <Trash2 className="w-4 h-4" /> Delete
                   </Button>
                 </div>
               ))}

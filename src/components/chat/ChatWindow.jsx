@@ -17,6 +17,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
   const [filePreview, setFilePreview] = useState(null);
   const [fileData, setFileData] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const bottomRef = useRef(null);
 
@@ -81,7 +82,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
       setFileData({
         name: file.name,
         type: file.type,
-        data: reader.result.split(",")[1],
+        file,
       });
     };
 
@@ -112,24 +113,39 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
 
   const send = async (e) => {
     e.preventDefault();
-    if ((!text.trim() && !fileData) || !currentUser) return;
+    if ((!text.trim() && !fileData) || !currentUser || sending) return;
 
-    await appClient.functions.invoke("sendMessages", {
-      content: text.trim(),
-      channel: key,
-      recipient_email: activeChannel.type === "dm" ? activeChannel.email : "",
-      file: fileData || null,
-    });
+    setSending(true);
+    try {
+      let upload = null;
+      if (fileData?.file) {
+        upload = await appClient.integrations.Core.UploadFile({ file: fileData.file });
+      }
 
-    setText("");
-    setFilePreview(null);
-    setFileData(null);
-    load();
+      await appClient.functions.invoke("sendMessages", {
+        content: text.trim(),
+        channel: key,
+        recipient_email: activeChannel.type === "dm" ? activeChannel.email : "",
+        file_url: upload?.file_url || "",
+        file_path: upload?.path || "",
+        file_type: fileData?.type?.includes("pdf") ? "pdf" : fileData ? "image" : "",
+      });
+
+      setText("");
+      setFilePreview(null);
+      setFileData(null);
+      load();
+    } catch (error) {
+      alert(error?.message || "Message could not be sent.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const deleteMessage = async (message) => {
     if (!isAdmin || !message?.id) return;
     if (!window.confirm("Delete this message from the chat?")) return;
+    await appClient.integrations.Core.DeleteFile({ path: message.file_path, url: message.file_url }).catch(() => false);
     await appClient.entities.Message.delete(message.id);
     await load();
   };
@@ -249,7 +265,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
               className="flex-1 min-w-0"
             />
 
-            <Button type="submit">
+            <Button type="submit" disabled={sending}>
               <Send className="w-4 h-4" />
             </Button>
           </div>

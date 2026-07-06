@@ -273,10 +273,16 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
     const file = event.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const { file_url, path } = await appClient.integrations.Core.ReplaceFile({ file, previousPath: form.image_path, previousUrl: form.image_url });
-    set("image_url", file_url);
-    set("image_path", path || "");
-    setUploading(false);
+    try {
+      const { file_url, path } = await appClient.integrations.Core.ReplaceFile({ file, previousPath: form.image_path, previousUrl: form.image_url });
+      set("image_url", file_url);
+      set("image_path", path || "");
+    } catch (error) {
+      alert(error?.message || "Upload failed.");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
   };
 
   const removePortrait = async () => {
