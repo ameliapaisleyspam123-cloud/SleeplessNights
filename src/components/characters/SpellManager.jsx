@@ -187,7 +187,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
                     <Input value={spell.castingTime} onChange={(event) => update(originalIndex, "castingTime", event.target.value)} placeholder="1 action" className="h-7 text-xs px-2" />
                     <Input value={spell.rangeArea} onChange={(event) => update(originalIndex, "rangeArea", event.target.value)} placeholder="150 ft" className="h-7 text-xs px-2" />
                     <Input value={spell.hit || ""} onChange={(event) => update(originalIndex, "hit", event.target.value)} placeholder="+7" className="h-7 text-xs px-2" />
-                    <Input value={spell.effect || ""} onChange={(event) => update(originalIndex, "effect", event.target.value)} placeholder="Save, damage, or effect" className="h-7 text-xs px-2" />
+                    <Input value={spell.effect || ""} onChange={(event) => update(originalIndex, "effect", event.target.value)} placeholder="2d8" className="h-7 text-xs px-2" />
                     <Input value={spell.components} onChange={(event) => update(originalIndex, "components", event.target.value)} placeholder="V,S,M" className="h-7 text-xs px-2" />
                     <Input value={spell.duration} onChange={(event) => update(originalIndex, "duration", event.target.value)} placeholder="Instant" className="h-7 text-xs px-2" />
                     <div className="flex gap-0.5 justify-end">

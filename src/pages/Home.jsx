@@ -50,11 +50,11 @@ export default function Home() {
   const role = user?.campaign_role;
 
   const baseTiles = [
-    { to: "/lore", icon: ScrollText, title: "Lore & Maps", count: counts.lore, label: "entries", desc: "Chronicle your world, maps, places, and events." },
+    { to: "/lore", icon: ScrollText, title: "Lore & Maps", count: counts.lore, label: "entries", desc: "Chronicles of your world, maps, places, and events." },
     { to: "/characters", icon: User, title: "Characters", count: counts.characters, label: "sheets", desc: "Track your party's heroes, stats, and stories." },
-    { to: "/chat", icon: MessageSquare, title: "Correspondence", count: counts.messages, label: "new", desc: "New hall messages and whispers since you last checked." },
+    { to: "/chat", icon: MessageSquare, title: "Correspondence", count: counts.messages, label: "new", desc: "Speak to the hall or whisper to one." },
     { to: "/notes", icon: NotebookPen, title: "Grimoire", count: null, label: "", desc: "Private field notes, session logs, and secrets." },
-    { to: "/shop", icon: Store, title: "Shop", count: counts.shops, label: "stores", desc: "Buy supplies, spend coin, and keep a DM receipt trail." },
+    { to: "/shop", icon: Store, title: "Shop", count: counts.shops, label: "stores", desc: "Browse shops, buy supplies, and spend coin." },
     { to: "/campaign", icon: Swords, title: "Campaign", count: null, label: "", desc: "Switch realms, join a table, or review your campaign access." },
   ];
   const dmTiles = [
