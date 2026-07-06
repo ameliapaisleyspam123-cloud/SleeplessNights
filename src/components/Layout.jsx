@@ -159,6 +159,13 @@ function LayoutInner() {
       "popup=yes,width=520,height=860,resizable=yes,scrollbars=yes",
     );
   };
+  const openDicePopout = () => {
+    window.open(
+      "/dice-popout",
+      "sleepless-dice",
+      "popup=yes,width=380,height=720,resizable=yes,scrollbars=yes",
+    );
+  };
 
   if (!userLoaded) {
     return (
@@ -194,8 +201,8 @@ function LayoutInner() {
     ? "top-24 right-6 lg:top-28 lg:right-[calc(400px+2.5rem)]"
     : "top-24 right-6 lg:top-28 lg:right-10";
   const dicePanelPosition = splitOpen
-    ? "top-40 right-6 lg:top-44 lg:right-[calc(400px+2.5rem)]"
-    : "top-40 right-6 lg:top-44 lg:right-10";
+    ? "top-20 right-4 lg:top-44 lg:right-[calc(400px+2.5rem)]"
+    : "top-20 right-4 lg:top-44 lg:right-10";
 
   return (
     <div className="h-screen overflow-hidden parchment flex">
@@ -311,8 +318,8 @@ function LayoutInner() {
         </button>
       </div>
       {diceOpen && (
-        <div className={`fixed ${dicePanelPosition} z-50 w-[min(22rem,calc(100vw-2rem))] h-[min(38rem,calc(100vh-6rem))] overflow-hidden rounded-sm border border-border bg-card shadow-2xl sculk-glow`}>
-          <DiceRoller onClose={() => setDiceOpen(false)} />
+        <div className={`fixed ${dicePanelPosition} z-50 w-[min(22rem,calc(100vw-2rem))] h-[min(38rem,calc(100vh-6rem))] max-h-[calc(100vh-2rem)] overflow-hidden rounded-sm border border-border bg-card shadow-2xl sculk-glow`}>
+          <DiceRoller onClose={() => setDiceOpen(false)} onPopout={openDicePopout} />
         </div>
       )}
       <ProfileNameModal open={nameModalOpen} onOpenChange={setNameModalOpen} currentUser={user} onSaved={loadUser} />

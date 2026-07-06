@@ -190,7 +190,7 @@ export default function CampaignLobby() {
   };
 
   const enterKnownCampaign = (campaign) => {
-    const role = isGlobalAdmin || campaign.dm_email === activeEmail || user?.campaign_role === "dm" ? "dm" : "player";
+    const role = isGlobalAdmin || campaign.dm_email === activeEmail ? "dm" : "player";
     enterCampaign(campaign, role);
   };
 

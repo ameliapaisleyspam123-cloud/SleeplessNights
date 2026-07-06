@@ -13,6 +13,7 @@ import Documents from "@/pages/Documents";
 import Timeline from "@/pages/Timeline";
 import Shop from "@/pages/Shop";
 import InitiativePopout from "@/pages/InitiativePopout";
+import DicePopout from "@/pages/DicePopout";
 import PageNotFound from "@/lib/PageNotFound";
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
     <Routes>
       <Route path="/campaign" element={<CampaignLobby />} />
       <Route path="/initiative-popout" element={<InitiativePopout />} />
+      <Route path="/dice-popout" element={<DicePopout />} />
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="characters" element={<Characters />} />
