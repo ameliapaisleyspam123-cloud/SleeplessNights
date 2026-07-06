@@ -26,6 +26,7 @@ export interface Campaign extends AppRecord {
   player_emails?: string[];
   active?: boolean;
   calendar_system?: CalendarSystem;
+  reputation?: CampaignReputation;
 }
 
 export interface CalendarSystem {
@@ -35,6 +36,28 @@ export interface CalendarSystem {
   era_label?: string;
   month_names?: string[];
   day_names?: string[];
+}
+
+export interface CampaignReputationGrid {
+  x: number;
+  y: number;
+  xMinLabel: string;
+  xMaxLabel: string;
+  yMinLabel: string;
+  yMaxLabel: string;
+}
+
+export interface CampaignOpinion {
+  id: string;
+  name: string;
+  value: number;
+  minLabel: string;
+  maxLabel: string;
+}
+
+export interface CampaignReputation {
+  grid: CampaignReputationGrid;
+  opinions: CampaignOpinion[];
 }
 
 export type CharacterAlignment =

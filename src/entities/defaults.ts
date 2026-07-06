@@ -20,6 +20,22 @@ export const broadcastDefaults: Partial<Broadcast> = {
 export const campaignDefaults: Partial<Campaign> = {
   active: true,
   player_emails: [],
+  reputation: {
+    grid: {
+      x: 0,
+      y: 0,
+      xMinLabel: "Feared",
+      xMaxLabel: "Trusted",
+      yMinLabel: "Unruly",
+      yMaxLabel: "Honorable",
+    },
+    opinions: [
+      { id: "crown", name: "Crown", value: 0, minLabel: "-3", maxLabel: "+3" },
+      { id: "people", name: "People", value: 0, minLabel: "-3", maxLabel: "+3" },
+      { id: "foreigners", name: "Foreigners", value: 0, minLabel: "-3", maxLabel: "+3" },
+      { id: "rival", name: "Rival", value: 0, minLabel: "-3", maxLabel: "+3" },
+    ],
+  },
 };
 
 export const characterSheetDefaults: Partial<CharacterSheet> = {

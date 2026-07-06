@@ -25,8 +25,8 @@ import { Input } from "@/components/ui/input";
 import { useCampaign } from "@/hooks/useCampaign";
 import PlayerNotesPanel from "@/components/chat/PlayerNotesPanel";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
-import { campaignDate, hasTimelineDate, latestRecordsForDate, readLocalTimelineViewDate } from "@/lib/timeline";
-import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
+import { hasTimelineDate, timelineLibraryRecords, timelineViewDate } from "@/lib/timeline";
+import { canViewVisibleItem, isDmUser, isPlayerViewMode } from "@/lib/visibility";
 
 const STAT_MOD = (v) => Math.floor((v - 10) / 2);
 const fmtMod = (m) => (m >= 0 ? `+${m}` : `${m}`);
@@ -76,7 +76,7 @@ const HP_SAVE_DELAY_MS = 500;
 function readCharacterSpells(value) {
   try {
     const parsed = JSON.parse(value || "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map((spell) => ({ ...spell, effect: spell.effect ?? spell.damage ?? "" })) : [];
   } catch {
     const legacy = String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     return legacy ? [{ level: "Cantrip", name: legacy }] : [];
@@ -485,9 +485,9 @@ function SpellList({ spells }) {
               <div className="font-medium text-foreground">
                 <span className="text-muted-foreground">{spell.level || "Cantrip"}</span> - {spell.name || "-"}
               </div>
-              {(spell.castingTime || spell.rangeArea || spell.hit || spell.damage || spell.components || spell.duration) && (
+              {(spell.castingTime || spell.rangeArea || spell.hit || spell.effect || spell.components || spell.duration) && (
                 <div className="text-muted-foreground">
-                  {[spell.castingTime, spell.rangeArea, spell.hit && `Hit ${spell.hit}`, spell.damage && `Damage ${spell.damage}`, spell.components, spell.duration].filter(Boolean).join(" | ")}
+                  {[spell.castingTime, spell.rangeArea, spell.hit && `Hit ${spell.hit}`, spell.effect && `Effect ${spell.effect}`, spell.components, spell.duration].filter(Boolean).join(" | ")}
                 </div>
               )}
             </div>
@@ -571,8 +571,8 @@ export default function LorePanel({ onClose }) {
     const load = () => {
       Promise.all([
         appClient.entities.Campaign.get(cid),
-        appClient.entities.LoreEntry.filter({ campaign_id: cid }, "-created_date", 500),
-        appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 200),
+        appClient.entities.LoreEntry.filter({ campaign_id: cid }, "title", 5000),
+        appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "name", 5000),
       ]).then(([campaignRecord, loreEntries, characterSheets]) => {
         setPanelCampaign(campaignRecord);
         setEntries(loreEntries);
@@ -592,14 +592,16 @@ export default function LorePanel({ onClose }) {
 
   const cats = ["all", "map", "character", "place", "event", "artifact", "religion", "other"];
   const isAdmin = isDmUser(user);
-  const activeDate = isAdmin ? readLocalTimelineViewDate(panelCampaign, panelCampaign?.calendar_system, user) : campaignDate(panelCampaign, panelCampaign?.calendar_system);
+  const activeDate = timelineViewDate(panelCampaign, panelCampaign?.calendar_system, user, isAdmin, isPlayerViewMode(user));
   const visibleEntriesByPermission = entries.filter((entry) => canViewVisibleItem(entry, user, isAdmin));
-  const visibleDateEntries = panelCampaign?.timeline_started
-    ? latestRecordsForDate(visibleEntriesByPermission, activeDate, panelCampaign?.calendar_system)
+  const loreTimelineStarted = Boolean(panelCampaign?.timeline_started || visibleEntriesByPermission.some(hasTimelineDate));
+  const visibleDateEntries = loreTimelineStarted
+    ? timelineLibraryRecords(visibleEntriesByPermission, activeDate, panelCampaign?.calendar_system)
     : visibleEntriesByPermission.filter((entry) => !hasTimelineDate(entry));
   const visibleCharactersByPermission = characters.filter((character) => canViewVisibleItem(character, user, isAdmin));
-  const visibleDateCharacters = panelCampaign?.timeline_started
-    ? latestRecordsForDate(visibleCharactersByPermission, activeDate, panelCampaign?.calendar_system)
+  const characterTimelineStarted = Boolean(panelCampaign?.timeline_started || visibleCharactersByPermission.some(hasTimelineDate));
+  const visibleDateCharacters = characterTimelineStarted
+    ? timelineLibraryRecords(visibleCharactersByPermission, activeDate, panelCampaign?.calendar_system)
     : visibleCharactersByPermission.filter((character) => !hasTimelineDate(character));
 
   const filtered = visibleDateEntries.filter((e) => {

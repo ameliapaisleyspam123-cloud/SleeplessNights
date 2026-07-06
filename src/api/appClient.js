@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigStatus } from "@/supabase";
+import { defaultReputation } from "@/lib/reputation";
 
 const STORAGE_KEY = "sleepless_nights_store_v1";
 const SESSION_KEY = "sleepless_nights_user_v1";
@@ -66,6 +67,7 @@ function defaultStore() {
         dm_email: dmEmail,
         player_emails: [],
         active: true,
+        reputation: defaultReputation,
         created_date: now(),
         updated_date: now(),
       },

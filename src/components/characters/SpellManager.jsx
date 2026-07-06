@@ -18,7 +18,13 @@ function readSpells(value) {
 }
 
 function normalizeSpell(spell) {
-  return { ...spell, level: spell.level || "Cantrip" };
+  return { ...spell, level: spell.level || "Cantrip", effect: spell.effect ?? spell.damage ?? "" };
+}
+
+function normalizeSpellForSave(spell) {
+  const normalized = normalizeSpell(spell);
+  const { damage, ...nextSpell } = normalized;
+  return nextSpell;
 }
 
 function groupedSpells(spells, levelFilter) {
@@ -41,7 +47,7 @@ export default function SpellManager({ value, onChange, readOnly = false }) {
   const [expanded, setExpanded] = useState(null);
   const [levelFilter, setLevelFilter] = useState("All");
   const groups = groupedSpells(spells, levelFilter);
-  const save = (next) => onChange?.(JSON.stringify(next));
+  const save = (next) => onChange?.(JSON.stringify(next.map(normalizeSpellForSave)));
 
   const update = (index, field, nextValue) => {
     save(spells.map((spell, idx) => (idx === index ? { ...spell, [field]: nextValue } : spell)));

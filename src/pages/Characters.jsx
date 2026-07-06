@@ -9,8 +9,8 @@ import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { sortClaimedCharactersFirst } from "@/lib/characters";
-import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
-import { campaignDate, datedCreatePayload, hasTimelineDate, latestRecordsForDate, readLocalTimelineViewDate } from "@/lib/timeline";
+import { canViewVisibleItem, isDmUser, isPlayerViewMode } from "@/lib/visibility";
+import { datedCreatePayload, hasTimelineDate, timelineLibraryRecords, timelineViewDate } from "@/lib/timeline";
 import { Copy, Download, Folder, MoveRight, Plus, Trash2 } from "lucide-react";
 
 function cloneSheet(sheet, campaignId, suffix = "Copy") {
@@ -102,7 +102,7 @@ export default function Characters() {
   const load = async () => {
     const currentUser = await appClient.auth.me();
     const [currentSheets, currentCampaign] = await Promise.all([
-      appClient.entities.CharacterSheet.filter({ campaign_id: currentUser.campaign_id }, "-updated_date", 500),
+      appClient.entities.CharacterSheet.filter({ campaign_id: currentUser.campaign_id }, "name", 5000),
       currentUser.campaign_id ? appClient.entities.Campaign.get(currentUser.campaign_id) : null,
     ]);
     setUser(currentUser);
@@ -157,11 +157,12 @@ export default function Characters() {
   const campaignName = (campaignId) => campaigns.find((campaign) => campaign.id === campaignId)?.name || "Unknown campaign";
   const isAdmin = isDmUser(user);
   const currentCampaign = campaign || null;
-  const activeDate = isAdmin ? readLocalTimelineViewDate(currentCampaign, currentCampaign?.calendar_system, user) : campaignDate(currentCampaign, currentCampaign?.calendar_system);
+  const activeDate = timelineViewDate(currentCampaign, currentCampaign?.calendar_system, user, isAdmin, isPlayerViewMode(user));
   const activeCampaign = currentCampaign ? { ...currentCampaign, timeline_current_date: activeDate } : currentCampaign;
   const visibleByPermission = items.filter((item) => canViewVisibleItem(item, user, isAdmin));
-  const visibleItems = currentCampaign?.timeline_started
-    ? latestRecordsForDate(visibleByPermission, activeDate, currentCampaign?.calendar_system)
+  const timelineStarted = Boolean(currentCampaign?.timeline_started || visibleByPermission.some(hasTimelineDate));
+  const visibleItems = timelineStarted
+    ? timelineLibraryRecords(visibleByPermission, activeDate, currentCampaign?.calendar_system)
     : visibleByPermission.filter((item) => !hasTimelineDate(item));
   const folders = expandFolderPaths([...visibleItems.map((item) => item.folder).filter(Boolean), ...emptyFolders]);
   const folderOptions = visibleFolderPaths(folders, folder);

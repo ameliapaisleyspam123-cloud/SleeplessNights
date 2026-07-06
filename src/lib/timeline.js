@@ -51,6 +51,19 @@ export function writeLocalTimelineViewDate(campaign, date, calendar = {}, user =
   return normalized;
 }
 
+export function timelineViewDate(campaign, calendar = {}, user = null, canManage = false, allowStoredView = false) {
+  const campaignCurrentDate = campaignDate(campaign, calendar);
+  const storedDate = readLocalTimelineViewDate(campaign, calendar, user);
+  if (canManage || allowStoredView) return storedDate;
+
+  const storedKey = dateKey(storedDate, calendar);
+  const visibleKeys = new Set([
+    dateKey(campaignCurrentDate, calendar),
+    ...(Array.isArray(campaign?.timeline_player_date_keys) ? campaign.timeline_player_date_keys : []),
+  ]);
+  return visibleKeys.has(storedKey) ? storedDate : campaignCurrentDate;
+}
+
 export function shiftDate(date, delta = {}, calendar = {}) {
   const monthsPerYear = Math.max(1, Number(calendar.months_per_year) || 12);
   const daysPerMonth = Math.max(1, Number(calendar.days_per_month) || 30);
@@ -84,12 +97,12 @@ export function formatTimelineDate(date, calendar = {}) {
 }
 
 export function hasTimelineDate(record) {
-  return Boolean(record?.timeline_date_key);
+  return Boolean(record?.timeline_date_key || record?.timeline_date);
 }
 
 export function isRecordOnDate(record, date, calendar = {}) {
   if (!hasTimelineDate(record)) return false;
-  return record.timeline_date_key === dateKey(date, calendar);
+  return dateKey(recordTimelineDate(record), calendar) === dateKey(date, calendar);
 }
 
 export function timelineSeriesId(record) {
@@ -111,13 +124,20 @@ function recordUpdatedTime(record) {
 export function latestRecordsForDate(records = [], date, calendar = {}) {
   const activeIndex = dateIndex(date, calendar);
   const latestBySeries = new Map();
+  const fallbackBySeries = new Map();
 
   records.forEach((record) => {
-    if (!hasTimelineDate(record)) return;
+    const seriesId = timelineSeriesId(record);
+    if (!hasTimelineDate(record)) {
+      const fallback = fallbackBySeries.get(seriesId);
+      if (!fallback || recordUpdatedTime(record) > recordUpdatedTime(fallback)) {
+        fallbackBySeries.set(seriesId, record);
+      }
+      return;
+    }
     const recordIndex = dateIndex(recordTimelineDate(record), calendar);
     if (recordIndex > activeIndex) return;
 
-    const seriesId = timelineSeriesId(record);
     const current = latestBySeries.get(seriesId);
     if (!current) {
       latestBySeries.set(seriesId, { record, recordIndex });
@@ -131,7 +151,31 @@ export function latestRecordsForDate(records = [], date, calendar = {}) {
     }
   });
 
+  fallbackBySeries.forEach((record, seriesId) => {
+    if (!latestBySeries.has(seriesId)) {
+      latestBySeries.set(seriesId, { record, recordIndex: Number.NEGATIVE_INFINITY });
+    }
+  });
+
   return [...latestBySeries.values()].map((item) => item.record);
+}
+
+export function timelineLibraryRecords(records = [], date, calendar = {}, allowedDateKeys = null) {
+  const activeIndex = dateIndex(date, calendar);
+  const latestRecords = latestRecordsForDate(records, date, calendar);
+  const byId = new Map(latestRecords.map((record) => [record.id, record]));
+  const representedSeries = new Set(latestRecords.map((record) => timelineSeriesId(record)));
+
+  records.forEach((record) => {
+    if (!hasTimelineDate(record) || byId.has(record.id)) return;
+    if (representedSeries.has(timelineSeriesId(record))) return;
+    if (dateIndex(recordTimelineDate(record), calendar) > activeIndex) return;
+    const key = dateKey(recordTimelineDate(record), calendar);
+    if (allowedDateKeys && !allowedDateKeys.has(key)) return;
+    byId.set(record.id, record);
+  });
+
+  return [...byId.values()];
 }
 
 export function stripRecordIdentity(record) {

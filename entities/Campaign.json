@@ -30,6 +30,10 @@
     "active": {
       "type": "boolean",
       "default": true
+    },
+    "reputation": {
+      "type": "object",
+      "description": "Party reputation grid and faction opinion tracks"
     }
   },
   "required": [
