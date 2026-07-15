@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { appClient } from "@/api/appClient";
+import { latestRecordsForDate } from "@/lib/timeline";
 
 /**
  * Hook for managing character assignment logic
@@ -42,7 +43,7 @@ export function useCharacterAssignment() {
    * Player claims a character (only for unassigned)
    */
   const claimCharacter = useCallback(
-    async (sheetId, playerEmail) => {
+    async (sheetId, playerEmail, campaign) => {
       if (!sheetId || !playerEmail) {
         return { success: false, error: "Missing required fields" };
       }
@@ -68,7 +69,13 @@ export function useCharacterAssignment() {
           }
         );
 
-        if (playerCharacters.length > 0) {
+        const currentPlayerCharacters = latestRecordsForDate(
+          playerCharacters,
+          campaign?.timeline_current_date,
+          campaign?.calendar_system,
+        );
+
+        if (currentPlayerCharacters.length > 0) {
           return {
             success: false,
             error: "You can only claim one character at a time",

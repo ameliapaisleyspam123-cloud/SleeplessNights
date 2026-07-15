@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { appClient } from "@/api/appClient";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Users, User, Paperclip, Trash2 } from "lucide-react";
+import { Send, Users, User, Paperclip, Trash2, X } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 function channelKey(activeChannel, me) {
   if (activeChannel.type === "group") return "group";
@@ -18,8 +19,10 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
   const [fileData, setFileData] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [sending, setSending] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
 
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const userByEmail = useMemo(() => {
     const map = {};
@@ -112,7 +115,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
   };
 
   const send = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     if ((!text.trim() && !fileData) || !currentUser || sending) return;
 
     setSending(true);
@@ -134,6 +137,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
       setText("");
       setFilePreview(null);
       setFileData(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       load();
     } catch (error) {
       alert(error?.message || "Message could not be sent.");
@@ -209,7 +213,14 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
                   <div className={`${isAdmin ? "pr-7" : ""} whitespace-pre-wrap break-words`}>{m.content}</div>
 
                   {m.file_url && m.file_type === "image" && (
-                    <img src={m.file_url} alt={m.content || "Chat attachment"} className="mt-2 max-w-full sm:max-w-xs rounded" />
+                    <button
+                      type="button"
+                      onClick={() => setFullscreenImage({ url: m.file_url, alt: m.content || "Chat attachment" })}
+                      className="mt-2 block max-w-full cursor-zoom-in rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      aria-label="View image full screen"
+                    >
+                      <img src={m.file_url} alt={m.content || "Chat attachment"} className="max-w-full sm:max-w-xs rounded" />
+                    </button>
                   )}
 
                   {m.file_url && m.file_type === "pdf" && (
@@ -248,10 +259,11 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
 
           <div className="flex gap-2 items-center min-w-0">
             <input
+              ref={fileInputRef}
               type="file"
               id="fileUpload"
               className="hidden"
-              accept="image/jpeg,image/png,application/pdf"
+              accept="image/*,application/pdf"
               onChange={(e) => processFile(e.target.files[0])}
             />
             <label htmlFor="fileUpload" className="cursor-pointer">
@@ -265,12 +277,38 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
               className="flex-1 min-w-0"
             />
 
-            <Button type="submit" disabled={sending}>
+            <Button
+              type="button"
+              onClick={send}
+              disabled={sending || (!text.trim() && !fileData)}
+              className="shrink-0 touch-manipulation"
+              aria-label={sending ? "Sending message" : "Send message"}
+            >
               <Send className="w-4 h-4" />
             </Button>
           </div>
         </form>
       )}
+
+      <Dialog open={Boolean(fullscreenImage)} onOpenChange={(open) => !open && setFullscreenImage(null)}>
+        <DialogContent className="flex h-[calc(100dvh-2rem)] max-h-none w-[calc(100vw-2rem)] max-w-none items-center justify-center border-0 bg-black/95 p-4">
+          <button
+            type="button"
+            onClick={() => setFullscreenImage(null)}
+            className="absolute right-3 top-3 z-20 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+            aria-label="Close full-screen image"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          {fullscreenImage && (
+            <img
+              src={fullscreenImage.url}
+              alt={fullscreenImage.alt}
+              className="max-h-full max-w-full object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

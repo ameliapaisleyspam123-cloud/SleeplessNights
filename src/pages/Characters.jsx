@@ -170,7 +170,10 @@ export default function Characters() {
     visibleItems.filter((item) => folder === "all" || item.folder === folder || item.folder?.startsWith(`${folder}/`)),
     user?.email,
   );
-  const userCharacterCounts = items.reduce((counts, sheet) => {
+  // Timeline snapshots are separate rows, but they still represent one visible
+  // character. Count only the current records when deciding whether a player
+  // already has a character assigned.
+  const userCharacterCounts = visibleItems.reduce((counts, sheet) => {
     if (!sheet.assigned_to_email) return counts;
     return { ...counts, [sheet.assigned_to_email]: (counts[sheet.assigned_to_email] || 0) + 1 };
   }, {});
