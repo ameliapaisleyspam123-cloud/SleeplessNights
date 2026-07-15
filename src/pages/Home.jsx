@@ -5,7 +5,8 @@ import { ScrollText, MessageSquare, Radio, ArrowUpRight, User, Lock, Swords, Not
 import { useCampaign } from "@/hooks/useCampaign";
 import PageHeader from "@/components/PageHeader";
 import ReputationPanel from "@/components/reputation/ReputationPanel";
-import { canViewVisibleItem, isDmUser } from "@/lib/visibility";
+import { canViewVisibleItem, isDmUser, isPlayerViewMode } from "@/lib/visibility";
+import { hasTimelineDate, timelineLibraryRecords, timelineViewDate } from "@/lib/timeline";
 
 export default function Home() {
   const [user, setUser] = useState(null);
@@ -24,9 +25,24 @@ export default function Home() {
           appClient.entities.Message.filter({ campaign_id: cid }, "-created_date", 500),
           appClient.entities.CharacterSheet.filter({ campaign_id: cid }, "-created_date", 500),
           appClient.entities.Shop.filter({ campaign_id: cid }, "-created_date", 500),
-        ]).then(([lore, docs, messages, characters, shops]) => {
+          appClient.entities.Campaign.get(cid),
+        ]).then(([lore, docs, messages, characters, shops, currentCampaign]) => {
           const read = JSON.parse(localStorage.getItem("chat_read") || "{}");
           const isDm = isDmUser(currentUser) || currentUser.role === "admin";
+          const visibleCharacters = characters
+            .filter((character) => character.visibility !== "archived")
+            .filter((character) => canViewVisibleItem(character, currentUser, isDm));
+          const characterTimelineStarted = Boolean(currentCampaign?.timeline_started || visibleCharacters.some(hasTimelineDate));
+          const activeDate = timelineViewDate(
+            currentCampaign,
+            currentCampaign?.calendar_system,
+            currentUser,
+            isDm,
+            isPlayerViewMode(currentUser),
+          );
+          const currentCharacters = characterTimelineStarted
+            ? timelineLibraryRecords(visibleCharacters, activeDate, currentCampaign?.calendar_system)
+            : visibleCharacters.filter((character) => !hasTimelineDate(character));
           const newMessages = messages.filter((message) => {
             if (message.created_by === currentUser.email) return false;
             const visible = isDm || message.channel === "group" || message.channel?.split("|").includes(currentUser.email);
@@ -38,7 +54,7 @@ export default function Home() {
             lore: lore.filter((entry) => canViewVisibleItem(entry, currentUser, isDm)).length,
             docs: docs.filter((doc) => doc.visibility === "public").length,
             messages: newMessages.length,
-            characters: characters.filter((character) => canViewVisibleItem(character, currentUser, isDm)).length,
+            characters: currentCharacters.length,
             shops: shops.length,
           });
         });
