@@ -34,6 +34,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
     stored[key] = Date.now();
     localStorage.setItem("chat_read", JSON.stringify(stored));
     setUnread((u) => ({ ...u, [key]: false }));
+    window.dispatchEvent(new CustomEvent("chat-read-changed", { detail: { channel: key } }));
   };
 
   const handleSelect = (channel) => {
@@ -41,6 +42,30 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
     markRead(key);
     onSelect(channel);
   };
+
+  useEffect(() => {
+    if (!currentUser?.campaign_id) return;
+    let cancelled = false;
+    appClient.entities.Message
+      .filter({ campaign_id: currentUser.campaign_id }, "-created_date", 200)
+      .then((messages) => {
+        if (cancelled) return;
+        const stored = JSON.parse(localStorage.getItem("chat_read") || "{}");
+        const nextUnread = {};
+        messages.forEach((msg) => {
+          if (!msg?.channel || msg.created_by === currentUser.email) return;
+          if (!isAdmin && msg.channel !== "group" && !msg.channel.split("|").includes(currentUser.email)) return;
+          if (new Date(msg.created_date || 0).getTime() > (stored[msg.channel] || 0)) {
+            nextUnread[msg.channel] = true;
+          }
+        });
+        setUnread(nextUnread);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.campaign_id, currentUser?.email, isAdmin]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -64,6 +89,15 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
     return () => unsubscribe();
   }, [currentUser, isAdmin]);
 
+  useEffect(() => {
+    const handleReadChange = (event) => {
+      const channel = event.detail?.channel;
+      if (channel) setUnread((current) => ({ ...current, [channel]: false }));
+    };
+    window.addEventListener("chat-read-changed", handleReadChange);
+    return () => window.removeEventListener("chat-read-changed", handleReadChange);
+  }, []);
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="hidden lg:block px-4 py-4 border-b border-border shrink-0">
@@ -77,13 +111,17 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
           onClick={() => handleSelect({ type: "group" })}
           className={`w-44 lg:w-full shrink-0 flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary transition-colors ${
             activeChannel?.type === "group" ? "bg-secondary" : ""
-          }`}
+          } ${unread.group ? "border-l-2 border-accent bg-accent/10" : ""}`}
         >
-          <div className="w-8 h-8 rounded-sm bg-primary text-primary-foreground flex items-center justify-center">
+          <div className="relative w-8 h-8 rounded-sm bg-primary text-primary-foreground flex items-center justify-center">
             <Users className="w-4 h-4" />
+            {unread.group && <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-accent border-2 border-background" />}
           </div>
-          <div>
-            <div className="text-sm font-medium">The Hall</div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <div className={`text-sm ${unread.group ? "font-semibold text-foreground" : "font-medium"}`}>The Hall</div>
+              {unread.group && <span className="ml-auto text-[9px] uppercase tracking-widest text-accent">New</span>}
+            </div>
             <div className="text-xs text-muted-foreground">Everyone</div>
           </div>
         </button>
@@ -111,7 +149,7 @@ export default function ChannelList({ users, currentUser, activeChannel, onSelec
               onClick={() => handleSelect(ch)}
               className={`w-52 lg:w-full shrink-0 flex items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary transition-colors ${
                 active ? "bg-secondary" : ""
-              }`}
+              } ${hasUnread ? "border-l-2 border-accent bg-accent/10" : ""}`}
             >
               <div className="relative w-8 h-8 rounded-sm flex items-center justify-center bg-accent/20 text-accent-foreground">
                 <User className="w-4 h-4" />

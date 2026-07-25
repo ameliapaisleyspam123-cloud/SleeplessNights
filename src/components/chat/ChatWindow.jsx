@@ -41,6 +41,7 @@ export default function ChatWindow({ activeChannel, currentUser, users, isAdmin 
     const stored = JSON.parse(localStorage.getItem("chat_read") || "{}");
     stored[key] = Date.now();
     localStorage.setItem("chat_read", JSON.stringify(stored));
+    window.dispatchEvent(new CustomEvent("chat-read-changed", { detail: { channel: key } }));
   };
 
   useEffect(() => {

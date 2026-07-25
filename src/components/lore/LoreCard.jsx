@@ -1,6 +1,5 @@
 import React from "react";
-import { ScrollText, MapIcon, User, Castle, Sparkles, Swords, Star, Lock, EyeOff, Sun, Folder, Pencil, Trash2 } from "lucide-react";
-import PdfMapCanvas from "@/components/lore/PdfMapCanvas";
+import { ScrollText, MapIcon, User, Castle, Sparkles, Swords, Star, Lock, EyeOff, Sun, Folder, Pencil, Trash2, FileText } from "lucide-react";
 
 const CATEGORY_META = {
   map: { icon: MapIcon, label: "Map" },
@@ -58,8 +57,9 @@ export default function LoreCard({ entry, onClick, onContextMenu, onEdit, onDele
           />
         </div>
       ) : entry.pdf_url ? (
-        <div className={`${isList ? "w-28 self-stretch shrink-0" : "aspect-[4/3]"} relative overflow-hidden bg-muted`}>
-          <PdfMapCanvas url={entry.pdf_url} rotation={entry.pdf_rotation || 0} className="pointer-events-none" />
+        <div className={`${isList ? "w-28 self-stretch shrink-0" : "aspect-[4/3]"} flex flex-col items-center justify-center gap-2 bg-secondary/60 text-muted-foreground`}>
+          <FileText className={`${isList ? "w-7 h-7" : "w-10 h-10"} text-accent/70`} strokeWidth={1.25} />
+          {!isList && <span className="text-[10px] uppercase tracking-[0.16em]">Open PDF map</span>}
         </div>
       ) : (
         <div className={`${isList ? "w-28 self-stretch shrink-0" : "aspect-[4/3]"} bg-secondary/60 flex items-center justify-center`}>
