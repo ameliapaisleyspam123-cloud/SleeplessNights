@@ -25,6 +25,7 @@ export const ENTITY_NAMES = [
   "Shop",
   "TimelineEvent",
   "User",
+  "WhatsNew",
 ];
 
 const subscribers = new Map();
@@ -97,6 +98,7 @@ function defaultStore() {
     PlayerNote: [],
     Shop: [],
     TimelineEvent: [],
+    WhatsNew: [],
   };
 }
 
