@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Outlet, NavLink, useLocation, Navigate, Link, useNavigate } from "react-router-dom";
-import { appClient } from "@/api/appClient";
+import { appClient, isGlobalAdminEmail } from "@/api/appClient";
 import {
   ScrollText,
   MessageSquare,
@@ -80,6 +80,8 @@ function LayoutInner() {
   const [playerViewMode, setPlayerViewModeActive] = useState(false);
   const [diceOpen, setDiceOpen] = useState(false);
   const [userLoaded, setUserLoaded] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const unreadMessagesRef = useRef(new Map());
   const location = useLocation();
   const navigate = useNavigate();
   const { splitOpen, setSplitOpen, setCampaignId, campaignId } = useInitiative();
@@ -111,6 +113,59 @@ function LayoutInner() {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!user?.campaign_id || !user?.email) return;
+    let cancelled = false;
+
+    const canSeeAllWhispers = user.campaign_role === "dm" || user.role === "admin" || isGlobalAdminEmail(user.email);
+    const isVisibleUnread = (message, read) => {
+      if (!message?.id || message.created_by === user.email) return false;
+      if (!canSeeAllWhispers && message.channel !== "group" && !message.channel?.split("|").includes(user.email)) return false;
+      return new Date(message.created_date || 0).getTime() > (read[message.channel] || 0);
+    };
+
+    const loadInitialUnreadMessages = async () => {
+      const messages = await appClient.entities.Message
+        .filter({ campaign_id: user.campaign_id }, "-created_date", 200)
+        .catch(() => []);
+      if (cancelled) return;
+      const read = JSON.parse(localStorage.getItem("chat_read") || "{}");
+      unreadMessagesRef.current = new Map(
+        messages.filter((message) => isVisibleUnread(message, read)).map((message) => [message.id, message.channel]),
+      );
+      setUnreadMessageCount(unreadMessagesRef.current.size);
+    };
+
+    const handleMessageChange = (event) => {
+      const message = event.data;
+      if (event.type === "create") {
+        const read = JSON.parse(localStorage.getItem("chat_read") || "{}");
+        if (isVisibleUnread(message, read)) unreadMessagesRef.current.set(message.id, message.channel);
+      } else if (event.type === "delete" && message?.id) {
+        unreadMessagesRef.current.delete(message.id);
+      }
+      setUnreadMessageCount(unreadMessagesRef.current.size);
+    };
+
+    const handleReadChange = (event) => {
+      const channel = event.detail?.channel;
+      if (!channel) return;
+      for (const [id, unreadChannel] of unreadMessagesRef.current) {
+        if (unreadChannel === channel) unreadMessagesRef.current.delete(id);
+      }
+      setUnreadMessageCount(unreadMessagesRef.current.size);
+    };
+
+    loadInitialUnreadMessages();
+    const unsubscribe = appClient.entities.Message.subscribe(handleMessageChange);
+    window.addEventListener("chat-read-changed", handleReadChange);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      window.removeEventListener("chat-read-changed", handleReadChange);
+    };
+  }, [user?.campaign_id, user?.email, user?.campaign_role, user?.role]);
 
   useEffect(() => {
     const toggleDice = () => setDiceOpen((open) => !open);
@@ -196,6 +251,7 @@ function LayoutInner() {
     onPlayerView: () => setPlayerView(true),
     roleLabel,
     compactRoleLabel,
+    unreadMessageCount,
   };
   const floatingControlsPosition = splitOpen
     ? "top-24 right-6 lg:top-28 lg:right-[calc(400px+2.5rem)]"
@@ -342,6 +398,7 @@ function SidebarContent({
   onPlayerView,
   roleLabel,
   compactRoleLabel,
+  unreadMessageCount,
 }) {
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -411,8 +468,16 @@ function SidebarContent({
             {!collapsed && (
               <>
                 <span>{item.label}</span>
+                {item.to === "/chat" && unreadMessageCount > 0 && (
+                  <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-accent text-accent-foreground text-[10px] font-semibold flex items-center justify-center">
+                    {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                  </span>
+                )}
                 {item.gmOnly && <span className="ml-auto text-[9px] uppercase tracking-widest opacity-60">{compactRoleLabel}</span>}
               </>
+            )}
+            {collapsed && item.to === "/chat" && unreadMessageCount > 0 && (
+              <span className="absolute mt-[-1.5rem] ml-6 w-2.5 h-2.5 rounded-full bg-accent border-2 border-card" />
             )}
           </NavLink>
         ))}

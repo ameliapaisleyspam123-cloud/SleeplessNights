@@ -349,11 +349,19 @@ function startRealtimeSync() {
         invalidateRemoteCache();
         const row = payload.new || payload.old;
         if (row?.entity && ENTITY_NAMES.includes(row.entity)) {
-          notify(row.entity, { type: payload.eventType?.toLowerCase?.() || "remote", data: row.data || { id: row.record_id } });
+          const remoteEventType = payload.eventType?.toLowerCase?.();
+          const type = remoteEventType === "insert" ? "create" : remoteEventType || "remote";
+          notify(row.entity, { type, data: row.data || { id: row.record_id } });
         }
       },
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        syncStatus = { configured: true, connected: true, message: "Shared storage connected." };
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        syncStatus = { configured: true, connected: false, message: "Live updates are reconnecting." };
+      }
+    });
 }
 
 async function writeStoreAsync(store) {
