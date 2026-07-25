@@ -27,6 +27,7 @@ import {
   GitBranch,
   Eye,
   EyeOff,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BroadcastOverlay from "./broadcast/BroadcastOverlay";
@@ -36,6 +37,7 @@ import DiceRoller from "./DiceRoller";
 import ProfileNameModal from "./ProfileNameModal";
 import CampaignSettingsModal from "./CampaignSettingsModal";
 import ThemeSettingsModal from "./ThemeSettingsModal";
+import WhatsNewModal from "./WhatsNewModal";
 import { InitiativeProvider, useInitiative } from "@/lib/InitiativeContext";
 import { isPlayerViewMode, setPlayerViewMode as savePlayerViewMode } from "@/lib/visibility";
 
@@ -77,6 +79,8 @@ function LayoutInner() {
   const [nameModalOpen, setNameModalOpen] = useState(false);
   const [campaignModalOpen, setCampaignModalOpen] = useState(false);
   const [themeModalOpen, setThemeModalOpen] = useState(false);
+  const [whatsNewModalOpen, setWhatsNewModalOpen] = useState(false);
+  const [whatsNew, setWhatsNew] = useState(null);
   const [playerViewMode, setPlayerViewModeActive] = useState(false);
   const [diceOpen, setDiceOpen] = useState(false);
   const [userLoaded, setUserLoaded] = useState(false);
@@ -108,6 +112,15 @@ function LayoutInner() {
     loadUser().then((u) => {
       if (u) loadCampaign(u);
     });
+  }, []);
+
+  useEffect(() => {
+    const loadWhatsNew = () =>
+      appClient.entities.WhatsNew.list("-published_date", 1)
+        .then(([latest]) => setWhatsNew(latest || null))
+        .catch(() => {});
+    loadWhatsNew();
+    return appClient.entities.WhatsNew.subscribe(loadWhatsNew);
   }, []);
 
   useEffect(() => {
@@ -248,6 +261,7 @@ function LayoutInner() {
     onEditName: () => setNameModalOpen(true),
     onCampaignSettings: () => setCampaignModalOpen(true),
     onThemeSettings: () => setThemeModalOpen(true),
+    onWhatsNew: () => setWhatsNewModalOpen(true),
     onPlayerView: () => setPlayerView(true),
     roleLabel,
     compactRoleLabel,
@@ -293,6 +307,9 @@ function LayoutInner() {
                 )}
                 <Button variant="ghost" size="icon" onClick={() => setThemeModalOpen(true)} title="Colour Scheme">
                   <Palette className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setWhatsNewModalOpen(true)} title="What's New">
+                  <Sparkles className="w-4 h-4" />
                 </Button>
                 {isAdmin && (
                   <Button variant="ghost" size="icon" onClick={() => setPlayerView(!isPlayerView)} title={isPlayerView ? "Return to DM View" : "Player View"}>
@@ -381,6 +398,13 @@ function LayoutInner() {
       <ProfileNameModal open={nameModalOpen} onOpenChange={setNameModalOpen} currentUser={user} onSaved={loadUser} />
       {effectiveIsAdmin && <CampaignSettingsModal open={campaignModalOpen} onOpenChange={setCampaignModalOpen} campaign={campaign} onSaved={handleCampaignSaved} />}
       <ThemeSettingsModal open={themeModalOpen} onOpenChange={setThemeModalOpen} />
+      <WhatsNewModal
+        open={whatsNewModalOpen}
+        onOpenChange={setWhatsNewModalOpen}
+        announcement={whatsNew}
+        canEdit={isSuperuser}
+        onSaved={setWhatsNew}
+      />
     </div>
   );
 }
@@ -395,6 +419,7 @@ function SidebarContent({
   onEditName,
   onCampaignSettings,
   onThemeSettings,
+  onWhatsNew,
   onPlayerView,
   roleLabel,
   compactRoleLabel,
@@ -436,6 +461,9 @@ function SidebarContent({
             <button onClick={onThemeSettings} className="text-muted-foreground hover:text-accent transition-colors" title="Colour Scheme">
               <Palette className="w-4 h-4" />
             </button>
+            <button onClick={onWhatsNew} className="text-muted-foreground hover:text-accent transition-colors" title="What's New">
+              <Sparkles className="w-4 h-4" />
+            </button>
             {isAdmin && (
               <button onClick={onPlayerView} className="text-muted-foreground hover:text-accent transition-colors" title="Player View">
                 <Eye className="w-4 h-4" />
@@ -449,6 +477,12 @@ function SidebarContent({
         <div className="flex justify-center mt-3 mb-1 shrink-0">
           <Shield className="w-4 h-4 text-accent" />
         </div>
+      )}
+
+      {collapsed && (
+        <button onClick={onWhatsNew} className="mx-auto mt-2 text-muted-foreground hover:text-accent transition-colors shrink-0" title="What's New">
+          <Sparkles className="w-4 h-4" />
+        </button>
       )}
 
       <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-3 space-y-0.5">
