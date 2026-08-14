@@ -60,6 +60,11 @@ export interface CampaignReputation {
   opinions: CampaignOpinion[];
 }
 
+export interface CampaignReputationRecord extends AppRecord {
+  campaign_id: string;
+  reputation: CampaignReputation;
+}
+
 export type CharacterAlignment =
   | "Lawful Good"
   | "Neutral Good"
@@ -279,6 +284,7 @@ export interface Shop extends AppRecord {
 export type EntityName =
   | "Broadcast"
   | "Campaign"
+  | "CampaignReputation"
   | "CharacterSheet"
   | "Document"
   | "Initiative"

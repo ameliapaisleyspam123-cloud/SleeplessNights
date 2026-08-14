@@ -16,6 +16,7 @@ const IMAGE_UPLOAD_QUALITY = 0.82;
 export const ENTITY_NAMES = [
   "Broadcast",
   "Campaign",
+  "CampaignReputation",
   "CharacterSheet",
   "Document",
   "Initiative",
@@ -76,6 +77,7 @@ function defaultStore() {
         updated_date: now(),
       },
     ],
+    CampaignReputation: [],
     User: [
       {
         id: id("user"),

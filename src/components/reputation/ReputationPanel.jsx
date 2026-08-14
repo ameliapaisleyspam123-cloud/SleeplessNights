@@ -162,14 +162,34 @@ function OpinionTrack({ opinion, editing, onChange, onRemove }) {
 
 export default function ReputationPanel({ user, campaign }) {
   const [draft, setDraft] = useState(() => normalizeReputation());
+  const [reputationRecord, setReputationRecord] = useState(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const canEdit = useMemo(() => isDmUser(user) || user?.role === "admin", [user]);
 
   useEffect(() => {
-    setDraft(normalizeReputation(campaign?.reputation));
+    if (!campaign?.id) return undefined;
+    let active = true;
+    const campaignId = campaign.id;
+    const load = async () => {
+      const [record] = await appClient.entities.CampaignReputation.filter({ campaign_id: campaignId }, "-updated_date", 1);
+      if (!active) return;
+      setReputationRecord(record || null);
+      setDraft(normalizeReputation(record?.reputation || campaign.reputation));
+    };
+
+    setReputationRecord(null);
+    setDraft(normalizeReputation(campaign.reputation));
     setEditing(false);
-  }, [campaign?.id, campaign?.reputation]);
+    load().catch(() => {});
+    const unsubscribe = appClient.entities.CampaignReputation.subscribe((event) => {
+      if (event.data?.campaign_id === campaignId) load().catch(() => {});
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [campaign?.id]);
 
   const updateGrid = (patch) => {
     setDraft((current) => normalizeReputation({ ...current, grid: { ...current.grid, ...patch } }));
@@ -204,13 +224,18 @@ export default function ReputationPanel({ user, campaign }) {
   const save = async () => {
     if (!campaign?.id) return;
     setSaving(true);
-    await appClient.entities.Campaign.update(campaign.id, { reputation: normalizeReputation(draft) });
+    const payload = { campaign_id: campaign.id, reputation: normalizeReputation(draft) };
+    const savedRecord = reputationRecord?.id
+      ? await appClient.entities.CampaignReputation.update(reputationRecord.id, payload)
+      : await appClient.entities.CampaignReputation.create({ id: `campaign_reputation_${campaign.id}`, ...payload });
+    setReputationRecord(savedRecord);
+    setDraft(normalizeReputation(savedRecord.reputation));
     setSaving(false);
     setEditing(false);
   };
 
   const cancel = () => {
-    setDraft(normalizeReputation(campaign?.reputation));
+    setDraft(normalizeReputation(reputationRecord?.reputation || campaign?.reputation));
     setEditing(false);
   };
 
