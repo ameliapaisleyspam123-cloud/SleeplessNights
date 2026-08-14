@@ -41,7 +41,7 @@ export const campaignDefaults: Partial<Campaign> = {
 export const characterSheetDefaults: Partial<CharacterSheet> = {
   level: 1,
   experience_points: 0,
-  inspiration: false,
+  inspiration: 0,
   strength: 10,
   dexterity: 10,
   constitution: 10,

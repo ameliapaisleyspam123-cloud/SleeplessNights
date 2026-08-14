@@ -84,7 +84,7 @@ export interface CharacterSheet extends AppRecord {
   background?: string;
   alignment?: CharacterAlignment;
   experience_points?: number;
-  inspiration?: boolean;
+  inspiration?: number | boolean;
   strength?: number;
   dexterity?: number;
   constitution?: number;
