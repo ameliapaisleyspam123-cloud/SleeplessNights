@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Loader2, Eye, Lock, Users, Copy, Trash2, ChevronsUp, ChevronsDown } from "lucide-react";
+import { Upload, Loader2, Eye, Lock, Users, Copy, Trash2, Minus, Plus, ChevronsUp, ChevronsDown } from "lucide-react";
 import InventoryManager from "@/components/characters/InventoryManager";
 import AttackManager from "@/components/characters/AttackManager";
 import SpellManager from "@/components/characters/SpellManager";
@@ -19,6 +19,7 @@ const ABILITY_ABBR = { strength: "STR", dexterity: "DEX", constitution: "CON", i
 const SPELL_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const mod = (value) => Math.floor(((value || 10) - 10) / 2);
 const fmtMod = (value) => (value >= 0 ? `+${value}` : `${value}`);
+const inspirationCount = (value) => value === true ? 1 : Math.max(0, Number(value) || 0);
 
 const ALL_SKILLS = [
   { name: "Acrobatics", ability: "dexterity" },
@@ -59,7 +60,7 @@ const defaultForm = () => ({
   background: "",
   alignment: "True Neutral",
   experience_points: 0,
-  inspiration: false,
+  inspiration: 0,
   hit_dice: "1d8",
   strength: 10,
   dexterity: 10,
@@ -215,7 +216,7 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
 
   useEffect(() => {
     if (open) {
-      setForm(sheet ? { ...defaultForm(), ...sheet } : defaultForm());
+      setForm(sheet ? { ...defaultForm(), ...sheet, inspiration: inspirationCount(sheet.inspiration) } : defaultForm());
       appClient.auth.me()
         .then((currentUser) => {
           if (!currentUser?.campaign_id) return;
@@ -358,9 +359,15 @@ export default function CharacterSheetEditor({ open, onOpenChange, sheet, onSave
               <Field label="XP"><Input type="number" min={0} value={form.experience_points} onChange={(event) => setNum("experience_points", event.target.value)} /></Field>
               <Field label="Hit Dice"><Input value={form.hit_dice} onChange={(event) => set("hit_dice", event.target.value)} /></Field>
               <Field label="Inspiration">
-                <button type="button" onClick={() => set("inspiration", !form.inspiration)} className={`w-full h-9 rounded-sm border text-sm font-medium transition-colors ${form.inspiration ? "bg-accent text-accent-foreground border-accent" : "border-border bg-card text-foreground hover:border-accent/60 hover:bg-accent/10"}`}>
-                  {form.inspiration ? "Inspired" : "No Inspiration"}
-                </button>
+                <div className="flex h-9 items-center overflow-hidden rounded-sm border border-border bg-card">
+                  <button type="button" aria-label="Spend inspiration" onClick={() => set("inspiration", Math.max(0, inspirationCount(form.inspiration) - 1))} disabled={inspirationCount(form.inspiration) === 0} className="h-full w-9 border-r border-border text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent disabled:cursor-not-allowed disabled:opacity-40">
+                    <Minus className="mx-auto h-3.5 w-3.5" />
+                  </button>
+                  <span className={`flex-1 text-center text-sm font-medium ${inspirationCount(form.inspiration) > 0 ? "text-accent" : "text-muted-foreground"}`}>{inspirationCount(form.inspiration)}</span>
+                  <button type="button" aria-label="Add inspiration" onClick={() => set("inspiration", inspirationCount(form.inspiration) + 1)} className="h-full w-9 border-l border-border text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent">
+                    <Plus className="mx-auto h-3.5 w-3.5" />
+                  </button>
+                </div>
               </Field>
             </div>
           </section>

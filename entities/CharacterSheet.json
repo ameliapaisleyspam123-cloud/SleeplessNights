@@ -48,8 +48,10 @@
       "default": 0
     },
     "inspiration": {
-      "type": "boolean",
-      "default": false
+      "type": "number",
+      "minimum": 0,
+      "default": 0,
+      "description": "Number of inspiration points currently held"
     },
     "strength": {
       "type": "number",

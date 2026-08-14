@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import ReactQuill from "react-quill";
 import { appClient } from "@/api/appClient";
 import { Button } from "@/components/ui/button";
-import { X, NotebookPen, Loader2, Check, BookOpen, Pencil, Plus, ScrollText, Trash2 } from "lucide-react";
+import { X, NotebookPen, Loader2, Check, BookOpen, Pencil, Plus, Save, ScrollText, Trash2 } from "lucide-react";
 
 const quillModules = { toolbar: [["bold", "italic"], [{ list: "bullet" }, { list: "ordered" }], ["clean"]] };
 const quillClass = "[&_.ql-container]:border-border [&_.ql-container]:text-sm [&_.ql-editor]:bg-background/55 [&_.ql-editor]:text-foreground [&_.ql-toolbar]:border-border [&_.ql-toolbar]:bg-card/60 [&_.ql-stroke]:stroke-muted-foreground [&_.ql-fill]:fill-muted-foreground [&_.ql-picker]:text-muted-foreground";
@@ -48,15 +48,19 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
     setNotes(playerNotes);
 
     const savedSelectedId = localStorage.getItem(selectedSessionKey(currentUser));
-    const selected = playerNotes.find((note) => note.id === (noteId || savedSelectedId)) || playerNotes[0];
+    const selected = playerNotes.find((note) => note.id === (noteIdRef.current || savedSelectedId)) || playerNotes[0];
     if (selected) {
       setContent(selected.content || "");
       draftDirtyRef.current = false;
+      contentRef.current = selected.content || "";
+      noteIdRef.current = selected.id;
       setNoteId(selected.id);
       localStorage.setItem(selectedSessionKey(currentUser), selected.id);
     } else {
       setContent("");
       draftDirtyRef.current = false;
+      contentRef.current = "";
+      noteIdRef.current = null;
       setNoteId(null);
     }
     setLoaded(true);
@@ -72,6 +76,8 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
       if (event.detail?.key !== selectedSessionKey(currentUser)) return;
       const selected = notes.find((note) => note.id === event.detail.noteId);
       if (selected) {
+        noteIdRef.current = selected.id;
+        contentRef.current = selected.content || "";
         setNoteId(selected.id);
         setContent(selected.content || "");
         draftDirtyRef.current = false;
@@ -119,6 +125,8 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
         setNotes((items) => items.map((item) => (item.id === updated.id ? updated : item)));
       } else if (notes.length === 0) {
         const created = await appClient.entities.PlayerNote.create({ campaign_id: currentUser.campaign_id, session_label: "Session 0", content: v });
+        noteIdRef.current = created.id;
+        contentRef.current = v;
         setNoteId(created.id);
         setNotes([created]);
       } else {
@@ -135,6 +143,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
 
   const autosave = (newContent) => {
     setContent(newContent);
+    contentRef.current = newContent;
     draftDirtyRef.current = true;
     setSaved(false);
     if (noteIdRef.current) {
@@ -151,6 +160,12 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
     saveTimeout.current = setTimeout(() => save(newContent), 3000);
   };
 
+  const manualSave = async () => {
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = null;
+    await save(contentRef.current);
+  };
+
   const selectNote = async (note) => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     if (draftDirtyRef.current && noteIdRef.current) {
@@ -158,6 +173,8 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
     }
     setSaved(false);
     draftDirtyRef.current = false;
+    noteIdRef.current = note.id;
+    contentRef.current = note.content || "";
     setNoteId(note.id);
     setContent(note.content || "");
     localStorage.setItem(selectedSessionKey(currentUser), note.id);
@@ -169,7 +186,7 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
     setCreatingSession(true);
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     try {
-      if (noteIdRef.current) await save(content);
+      if (noteIdRef.current) await save(contentRef.current);
       const usedSessionNumbers = notes
         .map((note) => /^Session\s+(\d+)$/i.exec(note.session_label || ""))
         .filter(Boolean)
@@ -181,6 +198,8 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
         content: "",
       });
       setNotes((items) => [...items, created]);
+      noteIdRef.current = created.id;
+      contentRef.current = "";
       setNoteId(created.id);
       localStorage.setItem(selectedSessionKey(currentUser), created.id);
       window.dispatchEvent(new CustomEvent("sleepless-note-selected", { detail: { key: selectedSessionKey(currentUser), noteId: created.id } }));
@@ -219,6 +238,8 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
     setNotes(remaining);
     if (note.id === noteId) {
       const next = remaining[0];
+      noteIdRef.current = next?.id || null;
+      contentRef.current = next?.content || "";
       setNoteId(next?.id || null);
       setContent(next?.content || "");
       draftDirtyRef.current = false;
@@ -345,6 +366,9 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
               <div className="flex items-center gap-2 h-8">
                 {saving && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />}
                 {saved && <Check className="w-4 h-4 text-accent" />}
+                <Button type="button" variant="outline" size="sm" onClick={manualSave} disabled={saving || !loaded} className="h-8">
+                  <Save className="w-3.5 h-3.5" /> Save
+                </Button>
               </div>
             </div>
 
@@ -375,6 +399,15 @@ export default function PlayerNotesPanel({ onClose, currentUser, embedded = fals
         <div className="flex items-center gap-2">
           {saving && <Loader2 className="w-3.5 h-3.5 text-muted-foreground animate-spin" />}
           {saved && <Check className="w-3.5 h-3.5 text-accent" />}
+          <button
+            type="button"
+            onClick={manualSave}
+            disabled={saving || !loaded}
+            className="inline-flex h-7 items-center gap-1 rounded-sm border border-border px-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            title="Save notes now"
+          >
+            <Save className="w-3.5 h-3.5" /> Save
+          </button>
           {onClose && (
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
               <X className="w-4 h-4" />

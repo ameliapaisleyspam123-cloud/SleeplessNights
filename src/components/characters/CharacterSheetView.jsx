@@ -12,6 +12,7 @@ const ABBR = { strength: "STR", dexterity: "DEX", constitution: "CON", intellige
 const SHEET_AUTO_SAVE_DELAY_MS = 400;
 const mod = (value) => Math.floor(((value || 10) - 10) / 2);
 const fmt = (value) => (value >= 0 ? `+${value}` : `${value}`);
+const inspirationCount = (value) => value === true ? 1 : Math.max(0, Number(value) || 0);
 
 const ALL_SKILLS = [
   { name: "Acrobatics", ability: "dexterity" },
@@ -513,7 +514,7 @@ function SpellSlotsBlock({ slotsJson, sheet, onSave }) {
 
 export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenChange, canEdit, onEdit, currentUser, isDM = false, onSheetUpdated }) {
   const [sheet, setSheet] = useState(incomingSheet);
-  const [inspired, setInspired] = useState(Boolean(incomingSheet?.inspiration));
+  const [inspiration, setInspiration] = useState(inspirationCount(incomingSheet?.inspiration));
   const [savingInspiration, setSavingInspiration] = useState(false);
   const latestSheetRef = useRef(incomingSheet);
   const autoSaveTimerRef = useRef(null);
@@ -537,7 +538,7 @@ export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenC
   }, []);
 
   useEffect(() => {
-    setInspired(Boolean(sheet?.inspiration));
+    setInspiration(inspirationCount(sheet?.inspiration));
   }, [sheet?.inspiration]);
 
   const flushPendingSave = useCallback(async () => {
@@ -598,10 +599,11 @@ export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenC
   const pb = sheet.proficiency_bonus || 2;
   const passivePerc = 10 + mod(sheet.wisdom || 10) + (expertSkills.includes("Perception") ? pb * 2 : profSkills.includes("Perception") ? pb : 0);
 
-  const toggleInspiration = async () => {
+  const changeInspiration = async (change) => {
     if (!canEdit) return;
-    const next = !inspired;
-    setInspired(next);
+    const next = Math.max(0, inspiration + change);
+    if (next === inspiration) return;
+    setInspiration(next);
     setSavingInspiration(true);
     await saveField({ inspiration: next });
     setSavingInspiration(false);
@@ -646,10 +648,14 @@ export default function CharacterSheetView({ sheet: incomingSheet, open, onOpenC
                   <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
                 </Button>
               )}
-              <button onClick={toggleInspiration} disabled={savingInspiration} className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-sm border text-xs font-medium transition-all disabled:opacity-50 ${inspired ? "bg-accent text-accent-foreground border-accent hover:bg-accent/90" : "border-border bg-card text-foreground hover:border-accent/60 hover:bg-accent/10"}`}>
-                {savingInspiration ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                {inspired ? "Inspired" : "Inspiration"}
-              </button>
+              <div className={`flex items-center overflow-hidden rounded-sm border text-xs font-medium ${inspiration > 0 ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card text-foreground"}`}>
+                {canEdit && <button type="button" aria-label="Spend inspiration" onClick={() => changeInspiration(-1)} disabled={savingInspiration || inspiration === 0} className="h-8 w-8 transition-colors hover:bg-background/15 disabled:cursor-not-allowed disabled:opacity-40"><Minus className="mx-auto h-3.5 w-3.5" /></button>}
+                <span className="flex min-w-24 items-center justify-center gap-1.5 px-2 py-1.5">
+                  {savingInspiration ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  Inspiration: {inspiration}
+                </span>
+                {canEdit && <button type="button" aria-label="Add inspiration" onClick={() => changeInspiration(1)} disabled={savingInspiration} className="h-8 w-8 transition-colors hover:bg-background/15 disabled:cursor-not-allowed disabled:opacity-40"><Plus className="mx-auto h-3.5 w-3.5" /></button>}
+              </div>
               {sheet.campaign_id && canRollInitiative && <AddToInitiativeButton sheet={sheet} ownerEmail={initiativeOwnerEmail} />}
             </div>
           </div>
