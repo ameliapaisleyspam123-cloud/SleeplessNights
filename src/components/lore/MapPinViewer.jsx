@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, MapPin, X } from "lucide-react";
-import PdfMapCanvas from "@/components/lore/PdfMapCanvas";
+import MapPage, { MapDrawingLayer } from "@/components/lore/MapPage";
 
 const unlinkedValue = "__unlinked__";
 
@@ -34,6 +34,7 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
   const [dragStart, setDragStart] = useState(null);
   const [overlayEntry, setOverlayEntry] = useState(null);
   const mapSurfaceRef = useRef(null);
+  const mapPageRef = useRef(null);
   const mapZoomRef = useRef(1);
   const mapPanRef = useRef({ x: 0, y: 0 });
   const hasPdf = Boolean(entry?.pdf_url);
@@ -145,7 +146,8 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
 
   const handleMapClick = (event) => {
     if (!isAdmin || !editMode || editingPin) return;
-    const rect = event.currentTarget.getBoundingClientRect();
+    const rect = mapPageRef.current?.getBoundingClientRect();
+    if (!rect || event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
     const nextPin = createPin(((event.clientX - rect.left) / rect.width) * 100, ((event.clientY - rect.top) / rect.height) * 100);
     startEdit(nextPin);
   };
@@ -236,14 +238,9 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
             className="absolute inset-0 origin-top-left"
             style={{ transform: `translate(${mapPan.x}px, ${mapPan.y}px) scale(${mapZoom})` }}
           >
-            {hasImage ? (
-              <img src={entry.image_url} alt="" className="absolute inset-0 w-full h-full object-contain bg-background" draggable={false} />
-            ) : pdfSrc ? (
-              <PdfMapCanvas url={pdfSrc} rotation={entry.pdf_rotation || 0} className="pointer-events-none" />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{hasPdf ? "Loading PDF..." : "No map file attached."}</div>
-            )}
-            <div className="absolute inset-0 pointer-events-none">
+            <MapPage imageUrl={entry.image_url} pdfUrl={pdfSrc} rotation={entry.pdf_rotation || 0} pageRef={mapPageRef}>
+              <MapDrawingLayer drawings={Array.isArray(entry?.map_drawings) ? entry.map_drawings : []} />
+              <div className="absolute inset-0 pointer-events-none z-10">
               {pins.map((pin) => {
                 const linked = loreById.get(pin.lore_entry_id);
                 return (
@@ -273,7 +270,8 @@ export default function MapPinViewer({ entry, entries = [], isAdmin, onEntryUpda
                   </button>
                 );
               })}
-            </div>
+              </div>
+            </MapPage>
           </div>
           {pdfSrc && showPdfHint && (
             <>

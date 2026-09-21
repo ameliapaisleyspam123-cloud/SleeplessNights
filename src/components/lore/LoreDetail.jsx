@@ -14,14 +14,14 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
       setMapOpen(false);
       return;
     }
-    if (entry?.pdf_url || (entry?.image_url && entry?.category === "map")) {
+    if (entry?.category === "map") {
       setMapOpen(true);
     }
   }, [open, entry?.id, entry?.pdf_url, entry?.image_url, entry?.category]);
 
   if (!entry) return null;
   const isMap = entry.category === "map";
-  const canOpenFullView = Boolean(entry.pdf_url || (entry.image_url && isMap));
+  const canOpenFullView = isMap;
 
   const broadcast = async () => {
     const all = await appClient.entities.Broadcast.list("-updated_date", 100);
@@ -46,6 +46,11 @@ export default function LoreDetail({ entry, open, onOpenChange, onEdit, onDelete
         {entry.image_url && isMap && (
           <button type="button" onClick={() => setMapOpen(true)} className="block w-full aspect-[16/9] overflow-hidden bg-muted text-left">
             <img src={entry.image_url} alt={entry.title} className="w-full h-full object-cover" />
+          </button>
+        )}
+        {!entry.image_url && !entry.pdf_url && isMap && (
+          <button type="button" onClick={() => setMapOpen(true)} className="flex w-full aspect-[4/3] items-center justify-center bg-muted text-sm text-muted-foreground">
+            Open blank map page
           </button>
         )}
         {entry.image_url && !isMap && (
