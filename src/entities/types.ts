@@ -196,6 +196,7 @@ export interface LoreEntry extends AppRecord {
   pdf_url?: string;
   pdf_rotation?: number;
   map_pins?: MapPin[];
+  map_drawings?: MapDrawingStroke[];
   tags?: string[];
   visibility?: SharedVisibility;
   allowed_emails?: string[];
@@ -209,6 +210,13 @@ export interface MapPin {
   y: number;
   size?: number;
   lore_entry_id?: string;
+}
+
+export interface MapDrawingStroke {
+  id: string;
+  color?: string;
+  width?: number;
+  points: Array<{ x: number; y: number }>;
 }
 
 export interface Message extends AppRecord {

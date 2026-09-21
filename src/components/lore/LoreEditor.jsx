@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { campaignDate, datedCreatePayload } from "@/lib/timeline";
-import { Upload, Loader2, FileText, Eye, Lock, Users, MapPin, Tag, Trash2, Link2, X, Undo2, Redo2 } from "lucide-react";
+import { Upload, Loader2, FileText, Eye, Lock, Users, MapPin, Tag, Trash2, Link2, X, Undo2, Redo2, PenLine, Eraser, FilePlus2 } from "lucide-react";
 import PdfMapCanvas from "@/components/lore/PdfMapCanvas";
+import MapPage, { MapDrawingLayer } from "@/components/lore/MapPage";
 
 const VISIBILITY_OPTIONS = [
   { value: "public", label: "Public - all players can see", icon: Eye },
@@ -37,6 +38,7 @@ const createBlankEntry = () => ({
   pdf_url: "",
   pdf_rotation: 0,
   map_pins: [],
+  map_drawings: [],
   tags: [],
   visibility: "public",
   allowed_emails: [],
@@ -77,18 +79,24 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
   const [dragStart, setDragStart] = useState(null);
   const [markDrag, setMarkDrag] = useState(null);
   const [mapHistory, setMapHistory] = useState({ past: [], future: [] });
+  const [drawingHistory, setDrawingHistory] = useState({ past: [], future: [] });
+  const [drawColor, setDrawColor] = useState("#b42318");
+  const [drawWidth, setDrawWidth] = useState(3);
   const mapSurfaceRef = useRef(null);
+  const mapPageRef = useRef(null);
   const mapZoomRef = useRef(1);
   const mapPanRef = useRef({ x: 0, y: 0 });
   const suppressNextMapClickRef = useRef(false);
+  const activeStrokeRef = useRef(null);
 
   const isMap = form.category === "map";
   const mapMarks = useMemo(() => (Array.isArray(form.map_pins) ? form.map_pins : []), [form.map_pins]);
+  const mapDrawings = useMemo(() => (Array.isArray(form.map_drawings) ? form.map_drawings : []), [form.map_drawings]);
   const editingMark = mapMarks.find((mark) => mark.id === editingMarkId);
 
   useEffect(() => {
     if (open) {
-      setForm(entry ? { ...createBlankEntry(), ...entry, map_pins: Array.isArray(entry.map_pins) ? entry.map_pins : [] } : createBlankEntry());
+      setForm(entry ? { ...createBlankEntry(), ...entry, map_pins: Array.isArray(entry.map_pins) ? entry.map_pins : [], map_drawings: Array.isArray(entry.map_drawings) ? entry.map_drawings : [] } : createBlankEntry());
       setTagInput("");
       setEditingMarkId("");
       setShowPdfHint(true);
@@ -99,6 +107,8 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
       setDragStart(null);
       setMarkDrag(null);
       setMapHistory({ past: [], future: [] });
+      setDrawingHistory({ past: [], future: [] });
+      activeStrokeRef.current = null;
       suppressNextMapClickRef.current = false;
       appClient.auth.me().then((u) => {
         if (!u?.campaign_id) return;
@@ -273,11 +283,10 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
       suppressNextMapClickRef.current = false;
       return;
     }
-    if ((!form.image_url && !form.pdf_url) || mapTool === "pan" || dragStart?.moved) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const localX = (event.clientX - rect.left - mapPan.x) / mapZoom;
-    const localY = (event.clientY - rect.top - mapPan.y) / mapZoom;
-    const mark = newMapMark(mapTool, (localX / rect.width) * 100, (localY / rect.height) * 100);
+    if (!isMap || !["pin", "label"].includes(mapTool) || dragStart?.moved) return;
+    const rect = mapPageRef.current?.getBoundingClientRect();
+    if (!rect || event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
+    const mark = newMapMark(mapTool, ((event.clientX - rect.left) / rect.width) * 100, ((event.clientY - rect.top) / rect.height) * 100);
     updateMapMarks((current) => [...current, mark]);
     setEditingMarkId(mark.id);
   };
@@ -329,10 +338,10 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    const rect = mapSurfaceRef.current?.getBoundingClientRect();
+    const rect = mapPageRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const pointerX = (event.clientX - rect.left - mapPan.x) / mapZoom;
-    const pointerY = (event.clientY - rect.top - mapPan.y) / mapZoom;
+    const pointerX = event.clientX - rect.left;
+    const pointerY = event.clientY - rect.top;
     const markX = (mark.x / 100) * rect.width;
     const markY = (mark.y / 100) * rect.height;
     setEditingMarkId(mark.id);
@@ -350,9 +359,10 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
   const moveMark = (event) => {
     if (!markDrag) return;
     const moved = Math.abs(event.clientX - markDrag.startX) + Math.abs(event.clientY - markDrag.startY) > 3;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const localX = (event.clientX - rect.left - mapPan.x) / mapZoom - markDrag.offsetX;
-    const localY = (event.clientY - rect.top - mapPan.y) / mapZoom - markDrag.offsetY;
+    const rect = mapPageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const localX = event.clientX - rect.left - markDrag.offsetX;
+    const localY = event.clientY - rect.top - markDrag.offsetY;
     const x = Math.max(0, Math.min(100, (localX / rect.width) * 100));
     const y = Math.max(0, Math.min(100, (localY / rect.height) * 100));
     if (moved) {
@@ -371,6 +381,72 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
       }));
     }
     setMarkDrag(null);
+  };
+
+  const drawingPoint = (event) => {
+    const rect = mapPageRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return {
+      x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
+      y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)),
+    };
+  };
+
+  const beginStroke = (event) => {
+    if (mapTool !== "draw" || event.button !== 0) return;
+    const point = drawingPoint(event);
+    if (!point) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const stroke = { id: `stroke-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, color: drawColor, width: drawWidth, points: [point] };
+    activeStrokeRef.current = stroke.id;
+    setDrawingHistory((history) => ({ past: [...history.past, mapDrawings.map((item) => ({ ...item, points: [...item.points] }))].slice(-50), future: [] }));
+    setForm((current) => ({ ...current, map_drawings: [...(current.map_drawings || []), stroke] }));
+  };
+
+  const continueStroke = (event) => {
+    const strokeId = activeStrokeRef.current;
+    if (!strokeId) return;
+    const point = drawingPoint(event);
+    if (!point) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setForm((current) => ({
+      ...current,
+      map_drawings: (current.map_drawings || []).map((stroke) => {
+        if (stroke.id !== strokeId) return stroke;
+        const previous = stroke.points[stroke.points.length - 1];
+        if (previous && Math.abs(previous.x - point.x) + Math.abs(previous.y - point.y) < 0.12) return stroke;
+        return { ...stroke, points: [...stroke.points, point] };
+      }),
+    }));
+  };
+
+  const endStroke = (event) => {
+    if (!activeStrokeRef.current) return;
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    activeStrokeRef.current = null;
+  };
+
+  const eraseStroke = (strokeId) => {
+    setDrawingHistory((history) => ({ past: [...history.past, mapDrawings.map((item) => ({ ...item, points: [...item.points] }))].slice(-50), future: [] }));
+    setForm((current) => ({ ...current, map_drawings: (current.map_drawings || []).filter((stroke) => stroke.id !== strokeId) }));
+  };
+
+  const undoDrawing = () => {
+    const previous = drawingHistory.past[drawingHistory.past.length - 1];
+    if (!previous) return;
+    setForm((current) => ({ ...current, map_drawings: previous }));
+    setDrawingHistory((history) => ({ past: history.past.slice(0, -1), future: [mapDrawings, ...history.future].slice(0, 50) }));
+  };
+
+  const redoDrawing = () => {
+    const next = drawingHistory.future[0];
+    if (!next) return;
+    setForm((current) => ({ ...current, map_drawings: next }));
+    setDrawingHistory((history) => ({ past: [...history.past, mapDrawings].slice(-50), future: history.future.slice(1) }));
   };
 
   const createLoreForMark = async () => {
@@ -494,11 +570,20 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
                 </div>
               </div>
             ) : (
-              <label className="flex items-center justify-center gap-2 h-24 rounded-sm border border-dashed border-border cursor-pointer hover:border-accent hover:bg-secondary/40 transition-all text-sm text-muted-foreground">
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                {uploading ? "Uploading..." : "Upload image or PDF"}
-                <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleUpload} />
-              </label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="flex items-center justify-center gap-2 h-24 rounded-sm border border-dashed border-border cursor-pointer hover:border-accent hover:bg-secondary/40 transition-all text-sm text-muted-foreground">
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {uploading ? "Uploading..." : "Upload image or PDF"}
+                  <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleUpload} />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setForm((current) => ({ ...current, category: "map" }))}
+                  className="flex h-24 items-center justify-center gap-2 rounded-sm border border-dashed border-border text-sm text-muted-foreground transition-all hover:border-accent hover:bg-secondary/40 hover:text-accent"
+                >
+                  <FilePlus2 className="h-4 w-4" /> Draw on a blank page
+                </button>
+              </div>
             )}
             {(form.image_url || form.pdf_url) && form.category !== "map" && (
               <Button
@@ -513,11 +598,11 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
             )}
           </div>
 
-          {(form.image_url || form.pdf_url) && isMap && (
+          {isMap && (
             <div className="rounded-sm border border-border bg-secondary/25 overflow-hidden">
               <div className="flex items-center justify-between gap-3 p-3 border-b border-border flex-wrap">
-                <Label className="m-0">Map Pins & Labels</Label>
-                <div className="flex items-center gap-2">
+                <Label className="m-0">Map Pins, Labels & Drawing</Label>
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setMapTool("pin")}
@@ -534,6 +619,20 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
                   </button>
                   <button
                     type="button"
+                    onClick={() => setMapTool("draw")}
+                    className={`h-8 px-3 rounded-sm border text-xs inline-flex items-center gap-1.5 ${mapTool === "draw" ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <PenLine className="w-3.5 h-3.5" /> Draw
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMapTool("erase")}
+                    className={`h-8 px-3 rounded-sm border text-xs inline-flex items-center gap-1.5 ${mapTool === "erase" ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <Eraser className="w-3.5 h-3.5" /> Erase
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setMapTool("pan")}
                     className={`h-8 px-3 rounded-sm border text-xs inline-flex items-center gap-1.5 ${mapTool === "pan" ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground hover:text-foreground"}`}
                   >
@@ -543,7 +642,7 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
                     type="button"
                     onClick={undoMapMarks}
                     disabled={mapHistory.past.length === 0}
-                    title="Undo"
+                    title="Undo pin or label"
                     className="h-8 w-8 rounded-sm border border-border text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground inline-flex items-center justify-center"
                   >
                     <Undo2 className="w-3.5 h-3.5" />
@@ -552,15 +651,40 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
                     type="button"
                     onClick={redoMapMarks}
                     disabled={mapHistory.future.length === 0}
-                    title="Redo"
+                    title="Redo pin or label"
                     className="h-8 w-8 rounded-sm border border-border text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground inline-flex items-center justify-center"
                   >
+                    <Redo2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button type="button" onClick={undoDrawing} disabled={drawingHistory.past.length === 0} title="Undo drawing" className="h-8 w-8 rounded-sm border border-border text-muted-foreground hover:text-foreground disabled:opacity-40 inline-flex items-center justify-center">
+                    <Undo2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button type="button" onClick={redoDrawing} disabled={drawingHistory.future.length === 0} title="Redo drawing" className="h-8 w-8 rounded-sm border border-border text-muted-foreground hover:text-foreground disabled:opacity-40 inline-flex items-center justify-center">
                     <Redo2 className="w-3.5 h-3.5" />
                   </button>
                   <button type="button" onClick={() => zoomFromCenter(-0.25)} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">-</button>
                   <button type="button" onClick={() => zoomFromCenter(0.25)} className="h-8 w-8 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">+</button>
                   <button type="button" onClick={() => setZoomAndPan(1, { x: 0, y: 0 })} className="h-8 px-2 rounded-sm border border-border text-xs text-muted-foreground hover:text-foreground">Reset</button>
                 </div>
+                {(mapTool === "draw" || mapTool === "erase") && (
+                  <div className="flex w-full items-center gap-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                    <label className="inline-flex items-center gap-2">
+                      Ink
+                      <input type="color" value={drawColor} onChange={(event) => setDrawColor(event.target.value)} className="h-7 w-9 cursor-pointer rounded border border-border bg-transparent p-0.5" />
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      Width
+                      <input type="range" min="1" max="12" step="1" value={drawWidth} onChange={(event) => setDrawWidth(Number(event.target.value))} className="w-28 accent-[hsl(var(--accent))]" />
+                      <span>{drawWidth}px</span>
+                    </label>
+                    {mapDrawings.length > 0 && (
+                      <button type="button" onClick={() => {
+                        setDrawingHistory((history) => ({ past: [...history.past, mapDrawings].slice(-50), future: [] }));
+                        setForm((current) => ({ ...current, map_drawings: [] }));
+                      }} className="ml-auto text-destructive hover:underline">Clear drawing</button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="min-h-[20rem]">
@@ -581,20 +705,24 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
                     endPan();
                     endMarkDrag();
                   }}
-                  className={`relative h-[70vh] min-h-[32rem] w-full bg-background overflow-hidden text-left ${mapTool === "pan" ? "cursor-grab active:cursor-grabbing" : "cursor-crosshair"}`}
+                  className={`relative h-[70vh] min-h-[32rem] w-full bg-muted/40 overflow-hidden text-left ${mapTool === "pan" ? "cursor-grab active:cursor-grabbing" : "cursor-crosshair"}`}
                 >
                   <div
                     className="absolute inset-0 origin-top-left"
                     style={{ transform: `translate(${mapPan.x}px, ${mapPan.y}px) scale(${mapZoom})` }}
                   >
-                    {form.image_url ? (
-                      <img src={form.image_url} alt="" className="absolute inset-0 w-full h-full object-contain" draggable={false} />
-                    ) : (
-                      <div className="absolute inset-0">
-                        <PdfMapCanvas url={form.pdf_url} rotation={form.pdf_rotation || 0} />
-                      </div>
-                    )}
-                    {mapMarks.map((mark) => (
+                    <MapPage imageUrl={form.image_url} pdfUrl={form.pdf_url} rotation={form.pdf_rotation || 0} pageRef={mapPageRef}>
+                      <MapDrawingLayer drawings={mapDrawings} interactive={mapTool === "erase"} erasing={mapTool === "erase"} onErase={eraseStroke} />
+                      {mapTool === "draw" && (
+                        <div
+                          className="absolute inset-0 z-40 cursor-crosshair touch-none"
+                          onPointerDown={beginStroke}
+                          onPointerMove={continueStroke}
+                          onPointerUp={endStroke}
+                          onPointerCancel={endStroke}
+                        />
+                      )}
+                      {mapMarks.map((mark) => (
                       <span
                         key={mark.id}
                         role="button"
@@ -696,7 +824,8 @@ export default function LoreEditor({ open, onOpenChange, entry, onSaved, campaig
                           </div>
                         )}
                       </span>
-                    ))}
+                      ))}
+                    </MapPage>
                   </div>
                   {form.pdf_url && (
                     <>

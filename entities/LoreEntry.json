@@ -78,6 +78,28 @@
         }
       }
     },
+    "map_drawings": {
+      "type": "array",
+      "description": "Freehand strokes stored as percentage coordinates on the map page",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "color": { "type": "string" },
+          "width": { "type": "number" },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
     "tags": {
       "type": "array",
       "items": {
